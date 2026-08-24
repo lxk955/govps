@@ -8,6 +8,7 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
+RUN mkdir -p public
 # API_ORIGIN 为构建期不需要的运行时变量；rewrites 在 start 阶段读取
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
