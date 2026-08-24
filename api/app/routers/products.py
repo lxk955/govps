@@ -81,23 +81,24 @@ def _line_filter_sql(values: list[str]):
 def _yearly_price_sql_expr():
     """折算年付价 SQL 表达式，与 schemas.yearly_price 查表逻辑一致。
 
-    周期写法先归一化（下划线→连字符）再查表；ROUND 对齐 Python 侧 quantize(0.01)。"""
+    周期写法先归一化（下划线→连字符）再查表；PostgreSQL 中 round(val, 2) 必须为 Numeric 类型。"""
     cycle = func.replace(func.coalesce(Product.billing_cycle, "annually"), "_", "-")
     factor = case(
-        (cycle == "monthly", 12.0),
-        (cycle == "quarterly", 4.0),
-        (cycle == "semi-annually", 2.0),
-        (cycle == "biennially", 0.5),
-        (cycle == "triennially", 1.0 / 3.0),
-        else_=1.0,
+        (cycle == "monthly", cast(12.0, Numeric(10, 4))),
+        (cycle == "quarterly", cast(4.0, Numeric(10, 4))),
+        (cycle == "semi-annually", cast(2.0, Numeric(10, 4))),
+        (cycle == "biennially", cast(0.5, Numeric(10, 4))),
+        (cycle == "triennially", cast(1.0 / 3.0, Numeric(10, 4))),
+        else_=cast(1.0, Numeric(10, 4)),
     )
-    return func.round(cast(Product.price, Numeric(10, 2)) * factor, 2)
+    product_price_num = cast(Product.price, Numeric(10, 2))
+    return func.round(cast(product_price_num * factor, Numeric(10, 2)), 2)
 
 
 def _group_key_sql_expr():
     """聚合分组键表达式。物化列缺失的行（如测试直插、未回填旧数据）退化为
     行级唯一键，保证不与其他行误聚合——等价于旧行为「每行独立元组」。"""
-    return func.coalesce(Product.spec_key, "u:" + cast(Product.id, String))
+    return func.coalesce(Product.spec_key, func.concat("u:", cast(Product.id, String)))
 
 
 def _attach_converted(item: dict, rates: dict[str, float]) -> None:
