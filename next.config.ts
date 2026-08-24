@@ -7,7 +7,12 @@ import type { NextConfig } from "next";
  * 未来拆分 api.govps.xyz 时仅需修改 API_ORIGIN，业务代码零改动。
  */
 function normalizeApiOrigin(raw?: string): string {
-  if (!raw) return "http://localhost:8000";
+  if (!raw) {
+    if (process.env.NODE_ENV === "production" || process.env.RENDER) {
+      return "https://govps-api.onrender.com";
+    }
+    return "http://localhost:8000";
+  }
   const trimmed = raw.trim();
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
     return trimmed;
