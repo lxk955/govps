@@ -63,7 +63,7 @@ def run_migrations(url: str | None = None) -> None:
     url 参数供迁移演练/测试定向到隔离库，生产路径恒用应用同源连接串。"""
     target_url = url or engine.url.render_as_string(hide_password=False)
     cfg = alembic_config()
-    cfg.set_main_option("sqlalchemy.url", target_url)
+    cfg.set_main_option("sqlalchemy.url", target_url.replace("%", "%%"))
 
     probe = sa_create_engine(target_url)
     try:

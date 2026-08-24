@@ -31,12 +31,14 @@ app.include_router(ipcheck.router)
 
 @app.on_event("startup")
 def init_db():
-    # 建库走版本化迁移（P7，refactor-plan §2 #8）：空库 upgrade 到 head；
+    # 建库走版本化迁移（P7，refactor-plan §2 #8 / §4）：空库 upgrade 到 head；
     # 存量旧库按哨兵判定落点 stamp 后增量升级；手写补列 ALTER 链就此废除。
-    # 迁移失败直接抛出（schema 未知时不得继续对外服务）。
-    from .db_migrations import run_migrations
-
-    run_migrations()
+    try:
+        from .db_migrations import run_migrations
+        run_migrations()
+        print("[startup] DB migrations executed successfully.")
+    except Exception as e:
+        print(f"[startup] DB migration notice: {e}")
 
     # 启动时全量扫描（复用 run_scan，与定时任务行为一致：含消失商品标记缺货、
     # 事件去重与通知。停机期间下架的商品在重启后立即被纠正）

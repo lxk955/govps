@@ -19,9 +19,9 @@ config = context.config
 #   > 调用方已程序化设置的值（db_migrations.run_migrations(url=...)）> 应用同源 DATABASE_URL
 _override = os.environ.get("ALEMBIC_DATABASE_URL")
 if _override:
-    config.set_main_option("sqlalchemy.url", _override)
+    config.set_main_option("sqlalchemy.url", _override.replace("%", "%%"))
 elif not config.get_main_option("sqlalchemy.url"):
-    config.set_main_option("sqlalchemy.url", DATABASE_URL)
+    config.set_main_option("sqlalchemy.url", DATABASE_URL.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
