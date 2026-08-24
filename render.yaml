@@ -9,7 +9,7 @@ services:
     rootDir: api
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
@@ -35,7 +35,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
-    healthCheckPath: /
+    healthCheckPath: /robots.txt
     envVars:
       - key: NODE_ENV
         value: production

@@ -26,8 +26,8 @@ class Settings(BaseSettings):
     EXCHANGE_RATE_TIMEOUT: float = 10.0
     # 自动源相对现值允许的最大漂移（超出视为异常数据拒绝写入，需人工覆盖）
     EXCHANGE_RATE_MAX_DEVIATION: float = 0.5
-    # 测试/本地可关：避免 import app.main 时阻塞在全量抓取
-    SKIP_STARTUP_SCAN: bool = False
+    # 启动全量扫描开关：默认设为 True，避免服务启动时阻塞在 7 家商家外部爬取导致健康检查超时
+    SKIP_STARTUP_SCAN: bool = True
 
     @property
     def cors_origin_list(self) -> list[str]:
