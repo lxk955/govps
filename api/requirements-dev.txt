@@ -1,0 +1,2 @@
+# 开发与 CI 依赖（运行依赖见 requirements.txt）
+pytest>=8.2

@@ -1,0 +1,717 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>六六云 666Clouds · 海外原生IP云服务器</title>
+<meta name="description" content="666Clouds 海外原生IP云服务器 — 港/日/韩/美/英/德/菲七大地区,双ISP原生住宅IP,CN2 GIA·9929·4837 精品回程线路,专为 TikTok、ChatGPT、跨境电商打造。">
+<style>
+  :root{
+    --bg:#eaeff5; --surface:#ffffff; --surface-2:#f3f7fb; --surface-3:#eef3f8;
+    --ink:#0b1a2b; --ink-soft:#495b6d; --ink-faint:#7b8b9a;
+    --line:#d8e1eb; --line-soft:#e7edf3;
+    --accent:#0a8ba3; --accent-bright:#0bb3cf; --accent-ink:#075366;
+    --amber:#c9781f; --amber-soft:#f3ede2;
+    --good:#1a9f57;
+    --hero-ground:#071620; --hero-ground-2:#0a2231;
+    --hero-ink:#eaf6f9; --hero-soft:#9fc0cb; --hero-line:rgba(120,205,225,.16);
+    --radius:14px; --radius-sm:9px;
+    --shadow:0 1px 2px rgba(11,26,43,.05),0 8px 28px -12px rgba(11,26,43,.16);
+    --shadow-lift:0 2px 6px rgba(11,26,43,.07),0 22px 44px -18px rgba(10,139,163,.34);
+    --mono:ui-monospace,"SFMono-Regular","SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:"PingFang SC","Microsoft YaHei","Hiragino Sans GB","Noto Sans CJK SC",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#060c12; --surface:#0e1824; --surface-2:#12202e; --surface-3:#16273700;
+      --surface-3:#152436;
+      --ink:#e7eff7; --ink-soft:#9aabbc; --ink-faint:#6d8093;
+      --line:#1e2f40; --line-soft:#182634;
+      --accent:#25b8d0; --accent-bright:#42d4ea; --accent-ink:#bfeaf2;
+      --amber:#e6a34e; --amber-soft:#241d12;
+      --good:#37c777;
+      --hero-ground:#04101a; --hero-ground-2:#082130;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.6);
+      --shadow-lift:0 2px 8px rgba(0,0,0,.45),0 26px 50px -20px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#060c12; --surface:#0e1824; --surface-2:#12202e; --surface-3:#152436;
+    --ink:#e7eff7; --ink-soft:#9aabbc; --ink-faint:#6d8093;
+    --line:#1e2f40; --line-soft:#182634;
+    --accent:#25b8d0; --accent-bright:#42d4ea; --accent-ink:#bfeaf2;
+    --amber:#e6a34e; --amber-soft:#241d12;
+    --good:#37c777;
+    --hero-ground:#04101a; --hero-ground-2:#082130;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.6);
+    --shadow-lift:0 2px 8px rgba(0,0,0,.45),0 26px 50px -20px rgba(0,0,0,.7);
+  }
+
+  :root{--map-ocean:#eef5f9; --map-land:#d2e5ed; --map-land-line:#c1dae5; --map-grid:#e3edf3}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--map-ocean:#0a1622; --map-land:#152a3c; --map-land-line:#1d3346; --map-grid:#142534}}
+  :root[data-theme="dark"]{--map-ocean:#0a1622; --map-land:#152a3c; --map-land-line:#1d3346; --map-grid:#142534}
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--sans); line-height:1.6;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  }
+  a{color:inherit; text-decoration:none}
+  .wrap{max-width:1160px; margin:0 auto; padding:0 22px}
+  .mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
+
+  /* ---- nav ---- */
+  header.nav{position:sticky; top:0; z-index:50;
+    background:color-mix(in srgb,var(--bg) 82%,transparent);
+    backdrop-filter:saturate(1.4) blur(12px);
+    border-bottom:1px solid var(--line-soft);}
+  .nav-in{display:flex; align-items:center; gap:26px; height:62px}
+  .brand{display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:-.01em; font-size:19px}
+  .brand .dot{width:26px; height:26px; border-radius:8px; flex:0 0 auto;
+    background:linear-gradient(135deg,var(--accent-bright),var(--accent-ink));
+    box-shadow:0 4px 14px -4px var(--accent); position:relative}
+  .brand .dot::after{content:""; position:absolute; inset:6px; border-radius:50%;
+    border:2px solid rgba(255,255,255,.85); border-right-color:transparent; transform:rotate(20deg)}
+  .brand .en{color:var(--accent); font-family:var(--mono); font-size:14px; font-weight:700; letter-spacing:-.02em; white-space:nowrap}
+  .nav-links{display:flex; gap:22px; margin-left:8px}
+  .nav-links a{font-size:14.5px; color:var(--ink-soft); font-weight:500}
+  .nav-links a:hover{color:var(--accent)}
+  .nav-cta{margin-left:auto; display:flex; gap:10px; align-items:center}
+  .btn{display:inline-flex; align-items:center; gap:7px; font-family:var(--sans);
+    font-size:14.5px; font-weight:650; padding:9px 17px; border-radius:10px; cursor:pointer;
+    border:1px solid transparent; transition:transform .15s ease, box-shadow .2s ease, background .2s}
+  .btn:active{transform:translateY(1px)}
+  .btn-ghost{color:var(--ink); border-color:var(--line)}
+  .btn-ghost:hover{border-color:var(--accent); color:var(--accent)}
+  .btn-solid{color:#fff; background:linear-gradient(135deg,var(--accent-bright),var(--accent));
+    box-shadow:0 8px 20px -8px var(--accent)}
+  .btn-solid:hover{box-shadow:0 12px 26px -8px var(--accent); transform:translateY(-1px)}
+  @media(max-width:820px){.nav-links{display:none}}
+
+  /* ---- hero ---- */
+  .hero{position:relative; overflow:hidden;
+    background:radial-gradient(120% 130% at 78% -10%,var(--hero-ground-2),var(--hero-ground) 62%);
+    color:var(--hero-ink); border-bottom:1px solid var(--hero-line)}
+  .hero canvas{position:absolute; inset:0; width:100%; height:100%; display:block}
+  .hero-in{position:relative; z-index:2; padding:82px 0 74px}
+  .eyebrow{display:inline-flex; align-items:center; gap:9px; font-size:12.5px; font-weight:600;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--hero-soft);
+    border:1px solid var(--hero-line); padding:6px 13px; border-radius:100px; margin-bottom:22px}
+  .eyebrow .pulse{width:7px; height:7px; border-radius:50%; background:var(--accent-bright);
+    box-shadow:0 0 0 0 var(--accent-bright); animation:pulse 2.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(66,212,234,.5)}70%{box-shadow:0 0 0 9px rgba(66,212,234,0)}100%{box-shadow:0 0 0 0 rgba(66,212,234,0)}}
+  @media(prefers-reduced-motion:reduce){.pulse{animation:none}}
+  .hero h1{font-size:clamp(34px,5.4vw,60px); line-height:1.06; letter-spacing:-.02em;
+    font-weight:850; margin:0 0 20px; text-wrap:balance; max-width:16ch}
+  .hero h1 .grad{background:linear-gradient(100deg,var(--accent-bright),#7fe6d6);
+    -webkit-background-clip:text; background-clip:text; color:transparent}
+  .hero p.lead{font-size:clamp(16px,2vw,19px); color:var(--hero-soft); max-width:52ch; margin:0 0 30px}
+  .hero-cta{display:flex; gap:13px; flex-wrap:wrap; margin-bottom:40px}
+  .btn-lg{padding:13px 24px; font-size:15.5px; border-radius:12px}
+  .chips{display:flex; flex-wrap:wrap; gap:9px; max-width:60ch}
+  .chip{font-size:13px; font-weight:550; color:var(--hero-ink);
+    background:rgba(120,205,225,.09); border:1px solid var(--hero-line);
+    padding:7px 13px; border-radius:9px; display:inline-flex; align-items:center; gap:7px}
+  .chip .k{font-family:var(--mono); font-size:11.5px; color:var(--accent-bright); font-weight:600}
+
+  /* ---- stats ---- */
+  .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:1px;
+    background:var(--hero-line); border:1px solid var(--hero-line); border-radius:14px; overflow:hidden; margin-top:52px}
+  .stat{background:linear-gradient(180deg,rgba(10,34,49,.5),rgba(7,22,32,.2)); padding:22px 20px}
+  .stat .n{font-family:var(--mono); font-size:clamp(24px,3vw,32px); font-weight:700; color:var(--hero-ink); letter-spacing:-.01em}
+  .stat .l{font-size:13px; color:var(--hero-soft); margin-top:3px}
+  @media(max-width:720px){.stats{grid-template-columns:repeat(2,1fr)}}
+
+  /* ---- section frame ---- */
+  section.block{padding:78px 0}
+  .sec-head{max-width:60ch; margin-bottom:40px}
+  .sec-tag{font-family:var(--mono); font-size:12.5px; font-weight:600; letter-spacing:.06em;
+    color:var(--accent); text-transform:uppercase}
+  .sec-head h2{font-size:clamp(25px,3.4vw,36px); line-height:1.15; letter-spacing:-.02em;
+    font-weight:800; margin:12px 0 12px; text-wrap:balance}
+  .sec-head p{color:var(--ink-soft); font-size:16px; margin:0}
+
+  /* ---- features ---- */
+  .feat-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  @media(max-width:900px){.feat-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:600px){.feat-grid{grid-template-columns:1fr}}
+  .feat{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:26px 24px; box-shadow:var(--shadow); transition:transform .18s ease, box-shadow .22s ease, border-color .2s}
+  .feat:hover{transform:translateY(-3px); box-shadow:var(--shadow-lift); border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+  .feat .ic{width:44px; height:44px; border-radius:11px; display:grid; place-items:center; margin-bottom:16px;
+    background:var(--surface-2); border:1px solid var(--line); color:var(--accent)}
+  .feat .ic svg{width:23px; height:23px}
+  .feat h3{font-size:17.5px; font-weight:750; margin:0 0 7px; letter-spacing:-.01em}
+  .feat p{color:var(--ink-soft); font-size:14.5px; margin:0}
+  .feat .tags{display:flex; flex-wrap:wrap; gap:6px; margin-top:14px}
+  .tg{font-family:var(--mono); font-size:11px; font-weight:600; color:var(--accent-ink);
+    background:var(--surface-2); border:1px solid var(--line); padding:3px 8px; border-radius:6px}
+
+  /* ---- products ---- */
+  .products{background:var(--surface-2); border-top:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft)}
+  .region{margin-bottom:34px}
+  .region:last-child{margin-bottom:0}
+  .region-head{display:flex; align-items:baseline; gap:13px; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--line)}
+  .region-head .flag{font-size:26px; line-height:1}
+  .region-head h3{font-size:20px; font-weight:800; letter-spacing:-.01em; margin:0}
+  .region-head .rc{font-family:var(--mono); font-size:12px; color:var(--ink-faint); margin-left:2px}
+  .region-head .count{margin-left:auto; font-family:var(--mono); font-size:12.5px; color:var(--ink-faint)}
+  .cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(268px,1fr)); gap:14px}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px 18px 16px; display:flex; flex-direction:column; gap:12px;
+    box-shadow:var(--shadow); transition:transform .16s ease, box-shadow .2s ease, border-color .2s; position:relative; overflow:hidden}
+  .card::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px;
+    background:linear-gradient(var(--accent-bright),var(--accent)); opacity:0; transition:opacity .2s}
+  .card:hover{transform:translateY(-3px); box-shadow:var(--shadow-lift); border-color:color-mix(in srgb,var(--accent) 38%,var(--line))}
+  .card:hover::before{opacity:1}
+  .card .pname{font-size:15px; font-weight:700; letter-spacing:-.005em; line-height:1.35; min-height:2.7em; display:flex; align-items:flex-start}
+  .card .route{display:flex; flex-wrap:wrap; gap:5px}
+  .card .price{display:flex; align-items:baseline; gap:4px; margin-top:auto}
+  .card .price .cur{font-size:14px; color:var(--amber); font-weight:700; font-family:var(--mono)}
+  .card .price .amt{font-size:29px; font-weight:800; font-family:var(--mono); letter-spacing:-.02em; color:var(--ink)}
+  .card .price .per{font-size:13px; color:var(--ink-faint)}
+  .card .year{font-size:12px; color:var(--ink-faint); font-family:var(--mono)}
+  .card .order{margin-top:2px; text-align:center; font-size:14px; font-weight:650; padding:9px;
+    border-radius:9px; border:1px solid var(--line); color:var(--accent); background:var(--surface-2);
+    transition:background .18s, color .18s, border-color .18s}
+  .card:hover .order{background:linear-gradient(135deg,var(--accent-bright),var(--accent)); color:#fff; border-color:transparent}
+  .badge{position:absolute; top:0; right:0; font-size:10.5px; font-weight:700; letter-spacing:.04em;
+    color:#fff; background:var(--amber); padding:3px 10px; border-bottom-left-radius:8px}
+
+  /* ---- coverage strip ---- */
+  .cover{display:flex; flex-wrap:wrap; gap:10px; margin-top:8px}
+  .cover .c{display:flex; align-items:center; gap:9px; background:var(--surface); border:1px solid var(--line);
+    border-radius:100px; padding:8px 16px 8px 12px; font-size:14px; font-weight:600; box-shadow:var(--shadow)}
+  .cover .c .flag{font-size:19px}
+  .cover .c .mono{font-size:11.5px; color:var(--ink-faint)}
+
+  /* ---- map ---- */
+  .map-panel{background:var(--surface); border:1px solid var(--line); border-radius:18px;
+    padding:18px 18px 10px; box-shadow:var(--shadow); overflow:hidden; position:relative}
+  .map-svg{width:100%; height:auto; display:block; overflow:visible}
+  .m-ocean{fill:var(--map-ocean)}
+  .m-land{fill:var(--map-land); stroke:var(--map-land-line); stroke-width:1; stroke-linejoin:round}
+  .m-grid{stroke:var(--map-grid); stroke-width:1; fill:none}
+  .m-arc{stroke:var(--accent); stroke-width:1.4; fill:none; opacity:.4; stroke-dasharray:3 6; stroke-linecap:round}
+  .m-node{fill:var(--accent-bright); stroke:var(--surface); stroke-width:1.6}
+  .m-ping{fill:var(--accent); opacity:.5; transform-box:fill-box; transform-origin:center; animation:mping 3.4s ease-out infinite}
+  @keyframes mping{0%{transform:scale(.55);opacity:.55}70%{transform:scale(2.6);opacity:0}100%{opacity:0}}
+  @media(prefers-reduced-motion:reduce){.m-ping{animation:none; opacity:.22}}
+  .m-label{font-family:var(--sans); font-size:15px; font-weight:650; fill:var(--ink); paint-order:stroke;
+    stroke:var(--surface); stroke-width:3.5px; stroke-linejoin:round}
+  .m-label .code{fill:var(--accent); font-family:var(--mono); font-size:13px; font-weight:700}
+
+  /* ---- cta band ---- */
+  .cta-band{position:relative; overflow:hidden; border-radius:20px; margin:0 0 8px;
+    background:radial-gradient(120% 160% at 85% 0%,var(--hero-ground-2),var(--hero-ground));
+    color:var(--hero-ink); padding:52px 46px; box-shadow:var(--shadow-lift)}
+  .cta-band h2{font-size:clamp(24px,3.2vw,34px); font-weight:820; margin:0 0 10px; letter-spacing:-.02em; text-wrap:balance}
+  .cta-band p{color:var(--hero-soft); margin:0 0 26px; font-size:16px; max-width:50ch}
+  .cta-band .hero-cta{margin-bottom:0}
+  @media(max-width:600px){.cta-band{padding:38px 26px}}
+
+  /* ---- footer ---- */
+  footer{padding:54px 0 40px; border-top:1px solid var(--line-soft); color:var(--ink-soft); font-size:14px}
+  .foot-grid{display:grid; grid-template-columns:1.6fr 1fr 1fr 1fr; gap:30px; margin-bottom:34px}
+  @media(max-width:760px){.foot-grid{grid-template-columns:1fr 1fr}}
+  .foot-grid h4{font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-faint); margin:0 0 14px; font-weight:700}
+  .foot-grid a{display:block; color:var(--ink-soft); margin-bottom:9px}
+  .foot-grid a:hover{color:var(--accent)}
+  .foot-brand p{max-width:34ch; font-size:13.5px; color:var(--ink-faint); margin:12px 0 0}
+  .foot-bot{display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    padding-top:22px; border-top:1px solid var(--line-soft); font-size:13px; color:var(--ink-faint)}
+  .foot-bot .mono{font-size:12px}
+</style>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top"><span class="dot"></span>六六云<b class="en">666Clouds</b></a>
+    <nav class="nav-links">
+      <a href="#features">主营业务</a>
+      <a href="#products">云服务器</a>
+      <a href="#coverage">覆盖地区</a>
+      <a href="#why">为什么选我们</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-ghost" href="/clientarea.php">客户中心</a>
+      <a class="btn btn-solid" href="/cart.php">立即选购</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero" id="top">
+  <canvas id="net"></canvas>
+  <div class="wrap hero-in">
+    <span class="eyebrow"><span class="pulse"></span>原生住宅IP · 精品回程线路</span>
+    <h1>海外<span class="grad">原生IP</span>云服务器<br>为跨境业务而生</h1>
+    <p class="lead">港、日、韩、美、英、德、菲七大地区,双ISP 原生住宅 IP,搭配 CN2 GIA / 9929 / 4837 精品回程线路。专为 TikTok 运营、ChatGPT、跨境电商与海外建站打造,秒级开通、可视化控制台。</p>
+    <div class="hero-cta">
+      <a class="btn btn-solid btn-lg" href="#products">浏览云服务器 →</a>
+      <a class="btn btn-ghost btn-lg" href="#features" style="color:var(--hero-ink);border-color:var(--hero-line)">了解主营业务</a>
+    </div>
+    <div class="chips">
+      <span class="chip"><span class="k">TikTok</span> 原生IP 解锁直播带货</span>
+      <span class="chip"><span class="k">ChatGPT</span> 纯净IP 稳定访问</span>
+      <span class="chip"><span class="k">双ISP</span> 真实住宅归属</span>
+      <span class="chip"><span class="k">秒级</span> 一键重装 · 快照 · 实时监控</span>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="n">7</div><div class="l">覆盖地区</div></div>
+      <div class="stat"><div class="n">29+</div><div class="l">在售套餐</div></div>
+      <div class="stat"><div class="n">99.9%</div><div class="l">节点在线率</div></div>
+      <div class="stat"><div class="n">7×24</div><div class="l">技术支持</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 主营业务 -->
+<section class="block" id="features">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-tag">// 主营业务</span>
+      <h2>不只是 VPS,是为出海场景调优的原生网络</h2>
+      <p>我们专注海外原生 IP 云服务器,从 IP 纯净度到回程线路逐项打磨,让 TikTok、ChatGPT、跨境电商等业务开箱即用、稳定跑得久。</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M2 12h20M12 2c3 3 3 17 0 20M12 2c-3 3-3 17 0 20"/></svg></div>
+        <h3>原生住宅 IP</h3>
+        <p>真实住宅段原生 IP,归属地纯净,解锁 TikTok 直播、ChatGPT、流媒体与各类风控敏感业务,注册与养号更省心。</p>
+        <div class="tags"><span class="tg">Native IP</span><span class="tg">Residential</span></div>
+      </div>
+      <div class="feat">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="7" cy="7" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="17" cy="17" r="1.4" fill="currentColor" stroke="none"/></svg></div>
+        <h3>双 ISP · 双线归属</h3>
+        <p>双 ISP 线路提供更真实的网络归属与更强的抗封能力,配合原生 IP,平台识别更友好,链路更稳定。</p>
+        <div class="tags"><span class="tg">Dual-ISP</span><span class="tg">低封控</span></div>
+      </div>
+      <div class="feat">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg></div>
+        <h3>精品回程线路</h3>
+        <p>CN2 GIA、联通 9929、电信 4837、CMI 等三网优化回程,大陆访问低延迟、丢包少,晚高峰依然跑得动。</p>
+        <div class="tags"><span class="tg">CN2 GIA</span><span class="tg">9929</span><span class="tg">4837</span><span class="tg">CMI</span></div>
+      </div>
+      <div class="feat">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18"/></svg></div>
+        <h3>全球七大地区</h3>
+        <p>香港、日本、韩国、美国、英国、德国、菲律宾节点任选,就近部署跨境业务,一个面板统一管理多地资产。</p>
+        <div class="tags"><span class="tg">HK</span><span class="tg">JP</span><span class="tg">KR</span><span class="tg">US</span><span class="tg">GB</span><span class="tg">DE</span><span class="tg">PH</span></div>
+      </div>
+      <div class="feat">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M7 21h10M8 13l2 2 4-4"/></svg></div>
+        <h3>秒级开通 · 可视化控制台</h3>
+        <p>下单即开,自助重装系统、创建快照、重置密码、查看实时 CPU / 流量 / 磁盘监控,VNC 直连救援一应俱全。</p>
+        <div class="tags"><span class="tg">一键重装</span><span class="tg">快照</span><span class="tg">实时监控</span></div>
+      </div>
+      <div class="feat">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <h3>7×24 技术支持</h3>
+        <p>工单与在线客服全天候响应,节点、线路、迁移与故障处理有专人跟进,业务不掉线。</p>
+        <div class="tags"><span class="tg">工单</span><span class="tg">在线客服</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 产品 -->
+<section class="block products" id="products">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-tag">// 云服务器 · 在售套餐</span>
+      <h2>按地区选择你的原生IP节点</h2>
+      <p>以下为当前在售套餐,价格为默认月付价(支持年付更优惠)。点击套餐即可进入选购。</p>
+    </div>
+
+    <!-- 菲律宾 -->
+    <div class="region">
+      <div class="region-head"><span class="flag">🇵🇭</span><h3>菲律宾 PH · 双ISP</h3><span class="rc mono">全新上架 · 干净IP</span><span class="count mono">2 款</span></div>
+      <div class="cards">
+        <a class="card" href="/cart.php?a=add&pid=214">
+          <span class="badge">新上线</span>
+          <div class="pname">菲律宾双ISP · 1TB流量</div>
+          <div class="route"><span class="tg">双ISP</span><span class="tg">200M</span><span class="tg">1TB</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">80</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥960</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=215">
+          <span class="badge">新上线</span>
+          <div class="pname">菲律宾双ISP · 4TB流量</div>
+          <div class="route"><span class="tg">双ISP</span><span class="tg">300M</span><span class="tg">4TB</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">160</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥1920</div><div class="order">立即选购</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- 香港 -->
+    <div class="region">
+      <div class="region-head"><span class="flag">🇭🇰</span><h3>香港 HK</h3><span class="rc mono">CMI 三网优化</span><span class="count mono">3 款</span></div>
+      <div class="cards">
+        <a class="card" href="/cart.php?a=add&pid=131">
+          <div class="pname">HK-CMI-normal 标准型</div>
+          <div class="route"><span class="tg">CMI</span><span class="tg">香港原生</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">50</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥600</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=179">
+          <div class="pname">HK-CMI-150M 大带宽型</div>
+          <div class="route"><span class="tg">CMI</span><span class="tg">150M</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">55</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥660</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=23">
+          <div class="pname">HK-CMI-medium 2H2G / 50M</div>
+          <div class="route"><span class="tg">CMI</span><span class="tg">2核2G</span><span class="tg">50M</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">80</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥960</div><div class="order">立即选购</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- 韩国 -->
+    <div class="region">
+      <div class="region-head"><span class="flag">🇰🇷</span><h3>韩国 KR · 原生IP</h3><span class="rc mono">低延迟直连</span><span class="count mono">3 款</span></div>
+      <div class="cards">
+        <a class="card" href="/cart.php?a=add&pid=87">
+          <div class="pname">韩国原生 IP 标准型</div>
+          <div class="route"><span class="tg">原生IP</span><span class="tg">韩国</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">60</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥720</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=209">
+          <div class="pname">韩国双 ISP IP</div>
+          <div class="route"><span class="tg">双ISP</span><span class="tg">原生</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">80</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥960</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=210">
+          <span class="badge">升级</span>
+          <div class="pname">韩国双 ISP · 升级 2H2G / 2T</div>
+          <div class="route"><span class="tg">双ISP</span><span class="tg">2核2G</span><span class="tg">2T</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">150</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥1800</div><div class="order">立即选购</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- 美国 -->
+    <div class="region">
+      <div class="region-head"><span class="flag">🇺🇸</span><h3>美国 US · 原生IP</h3><span class="rc mono">TikTok / ChatGPT</span><span class="count mono">10 款</span></div>
+      <div class="cards">
+        <a class="card" href="/cart.php?a=add&pid=187">
+          <span class="badge">新手首选</span>
+          <div class="pname">美西原生双ISP · 9929优化线路</div>
+          <div class="route"><span class="tg">双ISP</span><span class="tg">9929</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">55</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥660</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=157">
+          <div class="pname">美西原生双ISP · CU4837 / G口</div>
+          <div class="route"><span class="tg">双ISP</span><span class="tg">4837</span><span class="tg">G口</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">50</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥600</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=170">
+          <div class="pname">美西原生双ISP · 国际带宽</div>
+          <div class="route"><span class="tg">双ISP</span><span class="tg">国际带宽</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">50</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥600</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=191">
+          <div class="pname">美西原生双ISP · NTT 新IP</div>
+          <div class="route"><span class="tg">双ISP</span><span class="tg">NTT</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">50</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥600</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=193">
+          <span class="badge">网络最佳</span>
+          <div class="pname">美国原生 IP · 三网CN2 GIA 大带宽</div>
+          <div class="route"><span class="tg">CN2 GIA</span><span class="tg">三网</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">55</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥660</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=195">
+          <div class="pname">美西原生双ISP · GTT 线路</div>
+          <div class="route"><span class="tg">双ISP</span><span class="tg">GTT</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">55</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥660</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=188">
+          <div class="pname">美西原生双ISP · CU4837 / 2TB流量</div>
+          <div class="route"><span class="tg">4837</span><span class="tg">2TB</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">80</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥960</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=171">
+          <div class="pname">美西原生双ISP · 国际带宽 4TB</div>
+          <div class="route"><span class="tg">国际带宽</span><span class="tg">4TB</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">80</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥960</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=192">
+          <div class="pname">美西原生双ISP · NTT 新IP / 2TB</div>
+          <div class="route"><span class="tg">NTT</span><span class="tg">2TB</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">80</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥960</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=199">
+          <div class="pname">美西原生双ISP · GTT / 2TB流量</div>
+          <div class="route"><span class="tg">GTT</span><span class="tg">2TB</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">90</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥1080</div><div class="order">立即选购</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- 英国 -->
+    <div class="region">
+      <div class="region-head"><span class="flag">🇬🇧</span><h3>英国 GB · 原生IP</h3><span class="rc mono">双ISP / 三网双向优化</span><span class="count mono">5 款</span></div>
+      <div class="cards">
+        <a class="card" href="/cart.php?a=add&pid=211">
+          <span class="badge">限量</span>
+          <div class="pname">英国三网双向优化 · mini版</div>
+          <div class="route"><span class="tg">三网双向</span><span class="tg">mini</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">45</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥540</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=148">
+          <div class="pname">英国双 ISP(新)</div>
+          <div class="route"><span class="tg">双ISP</span><span class="tg">原生</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">60</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥720</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=207">
+          <div class="pname">英国三网双向优化 标准型</div>
+          <div class="route"><span class="tg">三网双向</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">60</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥720</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=204">
+          <div class="pname">英国三网双向优化 · 2核2G</div>
+          <div class="route"><span class="tg">三网双向</span><span class="tg">2核2G</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">120</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥1440</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=201">
+          <span class="badge">高配</span>
+          <div class="pname">英国双 ISP · 高配版</div>
+          <div class="route"><span class="tg">双ISP</span><span class="tg">高配</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">120</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥1440</div><div class="order">立即选购</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- 德国 -->
+    <div class="region">
+      <div class="region-head"><span class="flag">🇩🇪</span><h3>德国 DE · 原生IP</h3><span class="rc mono">欧洲节点</span><span class="count mono">2 款</span></div>
+      <div class="cards">
+        <a class="card" href="/cart.php?a=add&pid=194">
+          <div class="pname">德国原生 IP(新IP补货)</div>
+          <div class="route"><span class="tg">原生IP</span><span class="tg">德国</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">60</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥720</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=205">
+          <span class="badge">高配</span>
+          <div class="pname">德国原生 IP · 高配置</div>
+          <div class="route"><span class="tg">原生IP</span><span class="tg">高配</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">100</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥1200</div><div class="order">立即选购</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- 日本 -->
+    <div class="region">
+      <div class="region-head"><span class="flag">🇯🇵</span><h3>日本 JP · 软银</h3><span class="rc mono">SoftBank 优化</span><span class="count mono">4 款</span></div>
+      <div class="cards">
+        <a class="card" href="/cart.php?a=add&pid=155">
+          <div class="pname">日本软银 · 联通首选</div>
+          <div class="route"><span class="tg">软银</span><span class="tg">联通优化</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">48</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥576</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=94">
+          <div class="pname">日本 JP 软银 标准型</div>
+          <div class="route"><span class="tg">软银</span><span class="tg">原生</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">55</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥660</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=169">
+          <div class="pname">日本软银大流量 · 联通起飞</div>
+          <div class="route"><span class="tg">软银</span><span class="tg">大流量</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">80</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥960</div><div class="order">立即选购</div>
+        </a>
+        <a class="card" href="/cart.php?a=add&pid=206">
+          <span class="badge">高配</span>
+          <div class="pname">日本 JP 软银 4H4G</div>
+          <div class="route"><span class="tg">软银</span><span class="tg">4核4G</span></div>
+          <div class="price"><span class="cur">¥</span><span class="amt">200</span><span class="per">/月</span></div>
+          <div class="year mono">年付 ¥2400</div><div class="order">立即选购</div>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 覆盖地区 -->
+<section class="block" id="coverage">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-tag">// 覆盖地区</span>
+      <h2>就近部署,一个面板管全球</h2>
+      <p>七大地区节点持续补货,原生 IP 与精品线路同步供应。</p>
+    </div>
+    <div class="map-panel">
+      <svg class="map-svg" viewBox="0 40 1000 408" role="img" aria-label="全球节点覆盖地图:香港、韩国、美国、英国、德国、日本">
+        <g class="m-grid" opacity=".7">
+          <line x1="0" y1="125" x2="1000" y2="125"/>
+          <line x1="0" y1="250" x2="1000" y2="250"/>
+          <line x1="0" y1="375" x2="1000" y2="375"/>
+          <line x1="200" y1="40" x2="200" y2="448"/>
+          <line x1="400" y1="40" x2="400" y2="448"/>
+          <line x1="600" y1="40" x2="600" y2="448"/>
+          <line x1="800" y1="40" x2="800" y2="448"/>
+        </g>
+        <image class="m-landimg" href="/home_assets/worldmap.svg" x="0" y="0" width="1000" height="500"/>
+        <g class="m-arc">
+          <path d="M172,156 Q336,86 500,107"/>
+          <path d="M500,107 Q658,97 817,188"/>
+          <path d="M172,156 Q494,102 817,188"/>
+          <path d="M817,188 Q852,144 888,151"/>
+          <path d="M817,188 Q835,145 853,146"/>
+        </g>
+        <g>
+          <circle class="m-ping" cx="817" cy="188" r="6"/>
+          <circle class="m-ping" cx="853" cy="146" r="6" style="animation-delay:.5s"/>
+          <circle class="m-ping" cx="172" cy="156" r="6" style="animation-delay:1s"/>
+          <circle class="m-ping" cx="500" cy="107" r="6" style="animation-delay:1.5s"/>
+          <circle class="m-ping" cx="524" cy="111" r="6" style="animation-delay:2s"/>
+          <circle class="m-ping" cx="888" cy="151" r="6" style="animation-delay:2.5s"/>
+          <circle class="m-ping" cx="836" cy="224" r="6" style="animation-delay:3s"/>
+          <circle class="m-node" cx="817" cy="188" r="5.5"/>
+          <circle class="m-node" cx="853" cy="146" r="5.5"/>
+          <circle class="m-node" cx="172" cy="156" r="5.5"/>
+          <circle class="m-node" cx="500" cy="107" r="5.5"/>
+          <circle class="m-node" cx="524" cy="111" r="5.5"/>
+          <circle class="m-node" cx="888" cy="151" r="5.5"/>
+          <circle class="m-node" cx="836" cy="224" r="5.5"/>
+        </g>
+        <g>
+          <text class="m-label" x="172" y="180" text-anchor="middle"><tspan class="code">US</tspan> 美国</text>
+          <text class="m-label" x="489" y="99" text-anchor="end"><tspan class="code">GB</tspan> 英国</text>
+          <text class="m-label" x="536" y="122" text-anchor="start"><tspan class="code">DE</tspan> 德国</text>
+          <text class="m-label" x="812" y="211" text-anchor="middle"><tspan class="code">HK</tspan> 香港</text>
+          <text class="m-label" x="853" y="132" text-anchor="middle"><tspan class="code">KR</tspan> 韩国</text>
+          <text class="m-label" x="901" y="156" text-anchor="start"><tspan class="code">JP</tspan> 日本</text>
+          <text class="m-label" x="843" y="244" text-anchor="start"><tspan class="code">PH</tspan> 菲律宾</text>
+        </g>
+      </svg>
+    </div>
+    <div class="cover">
+      <div class="c"><span class="flag">🇭🇰</span>香港 <span class="mono">CMI</span></div>
+      <div class="c"><span class="flag">🇰🇷</span>韩国 <span class="mono">原生/双ISP</span></div>
+      <div class="c"><span class="flag">🇺🇸</span>美国 <span class="mono">CN2·9929·4837</span></div>
+      <div class="c"><span class="flag">🇬🇧</span>英国 <span class="mono">双ISP</span></div>
+      <div class="c"><span class="flag">🇩🇪</span>德国 <span class="mono">原生IP</span></div>
+      <div class="c"><span class="flag">🇯🇵</span>日本 <span class="mono">SoftBank</span></div>
+      <div class="c"><span class="flag">🇵🇭</span>菲律宾 <span class="mono">双ISP·干净IP</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 为什么选我们 + CTA -->
+<section class="block" id="why" style="padding-top:0">
+  <div class="wrap">
+    <div class="cta-band">
+      <h2>准备好为你的出海业务上线一台原生IP服务器了吗?</h2>
+      <p>秒级开通,不满意支持售后处理。选一个地区,几分钟内即可拥有干净、稳定、跑得久的海外节点。</p>
+      <div class="hero-cta">
+        <a class="btn btn-solid btn-lg" href="/cart.php">立即选购 →</a>
+        <a class="btn btn-ghost btn-lg" href="/submitticket.php" style="color:var(--hero-ink);border-color:var(--hero-line)">咨询客服</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="#top"><span class="dot"></span>六六云<b class="en">666Clouds</b></a>
+        <p>专注海外原生 IP 云服务器,为 TikTok、ChatGPT 与跨境电商提供干净稳定的网络底座。</p>
+      </div>
+      <div>
+        <h4>产品</h4>
+        <a href="#products">香港 / 日本 / 韩国</a>
+        <a href="#products">美国 / 英国 / 德国</a>
+        <a href="#products">原生IP · 双ISP</a>
+        <a href="#coverage">覆盖地区</a>
+      </div>
+      <div>
+        <h4>支持</h4>
+        <a href="/clientarea.php">客户中心</a>
+        <a href="/submitticket.php">提交工单</a>
+        <a href="/knowledgebase.php">帮助文档</a>
+        <a href="/serverstatus.php">节点状态</a>
+      </div>
+      <div>
+        <h4>账户</h4>
+        <a href="/register.php">注册账号</a>
+        <a href="/login.php">登录</a>
+        <a href="/cart.php">购物车</a>
+      </div>
+    </div>
+    <div class="foot-bot">
+      <span>© 2026 六六云 666Clouds. 海外原生IP云服务器.</span>
+      <span class="mono">TikTok · ChatGPT · 跨境电商 · 海外建站</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var c=document.getElementById('net'); if(!c) return;
+  var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  var ctx=c.getContext('2d'), w,h,dpr,nodes=[],raf;
+  function size(){
+    dpr=Math.min(window.devicePixelRatio||1,2);
+    w=c.clientWidth; h=c.clientHeight;
+    c.width=w*dpr; c.height=h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  function init(){
+    size();
+    var n=Math.max(26,Math.min(60,Math.floor(w/26)));
+    nodes=[];
+    for(var i=0;i<n;i++){
+      nodes.push({x:Math.random()*w,y:Math.random()*h,
+        vx:(Math.random()-.5)*.22,vy:(Math.random()-.5)*.22,r:Math.random()*1.6+.6});
+    }
+  }
+  function draw(){
+    ctx.clearRect(0,0,w,h);
+    for(var i=0;i<nodes.length;i++){
+      var a=nodes[i];
+      if(!reduce){a.x+=a.vx; a.y+=a.vy;
+        if(a.x<0||a.x>w)a.vx*=-1; if(a.y<0||a.y>h)a.vy*=-1;}
+      for(var j=i+1;j<nodes.length;j++){
+        var b=nodes[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);
+        if(d<128){
+          ctx.strokeStyle='rgba(90,200,225,'+(0.14*(1-d/128))+')';
+          ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+        }
+      }
+    }
+    for(var k=0;k<nodes.length;k++){
+      var p=nodes[k];
+      ctx.fillStyle='rgba(120,215,235,.55)';
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.2832); ctx.fill();
+    }
+    if(!reduce) raf=requestAnimationFrame(draw);
+  }
+  init(); draw();
+  var t; window.addEventListener('resize',function(){clearTimeout(t);t=setTimeout(function(){cancelAnimationFrame(raf);init();draw();},180);});
+})();
+</script>

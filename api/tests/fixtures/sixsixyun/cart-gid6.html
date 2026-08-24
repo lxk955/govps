@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>购物车 - 六六云</title>
+
+    <!-- Styling -->
+<link href="//fonts.googleapis.com/css?family=Open+Sans:300,400,600|Raleway:400,700" rel="stylesheet">
+<link href="/templates/six/css/all.min.css?v=d2d29a" rel="stylesheet">
+<link href="/assets/css/fontawesome-all.min.css" rel="stylesheet">
+<link href="/templates/six/css/custom.css" rel="stylesheet">
+
+<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+<!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+<!--[if lt IE 9]>
+  <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+  <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+<![endif]-->
+
+<script type="text/javascript">
+    var csrfToken = 'bbc70639c1555735ec3b607ef678cf6a59fc9f9a',
+        markdownGuide = 'Markdown 使用教程',
+        locale = 'en',
+        saved = '已保存',
+        saving = '自动保存',
+        whmcsBaseUrl = "",
+        requiredText = '必填',
+        recaptchaSiteKey = "";
+</script>
+<script src="/templates/six/js/scripts.min.js?v=d2d29a"></script>
+
+
+    
+
+</head>
+<body data-phone-cc-input="1">
+
+
+
+<section id="header">
+    <div class="container">
+        <ul class="top-nav">
+                            <li>
+                    <a href="#" class="choose-language" data-toggle="popover" id="languageChooser">
+                        中文
+                        <b class="caret"></b>
+                    </a>
+                    <div id="languageChooserContent" class="hidden">
+                        <ul>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=arabic">العربية</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=azerbaijani">Azerbaijani</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=catalan">Català</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=chinese-as">中文</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=croatian">Hrvatski</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=czech">Čeština</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=danish">Dansk</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=dutch">Nederlands</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=english">English</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=estonian">Estonian</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=farsi">Persian</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=french">Français</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=german">Deutsch</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=hebrew">עברית</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=hungarian">Magyar</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=italian">Italiano</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=macedonian">Macedonian</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=norwegian">Norwegian</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=portuguese-br">Português</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=portuguese-pt">Português</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=romanian">Română</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=russian">Русский</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=spanish">Español</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=swedish">Svenska</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=turkish">Türkçe</a>
+                                </li>
+                                                            <li>
+                                    <a href="/cart.php?gid=6&amp;language=ukranian">Українська</a>
+                                </li>
+                                                    </ul>
+                    </div>
+                </li>
+                                        <li>
+                    <a href="/clientarea.php">用户登录</a>
+                </li>
+                                    <li>
+                        <a href="/register.php">注册账户</a>
+                    </li>
+                                <li class="primary-action">
+                    <a href="/cart.php?a=view" class="btn">
+                        查看购物车
+                    </a>
+                </li>
+                                </ul>
+
+                    <a href="/index.php" class="logo logo-text">六六云</a>
+        
+    </div>
+</section>
+
+<section id="main-menu">
+
+    <nav id="nav" class="navbar navbar-default navbar-main" role="navigation">
+        <div class="container">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#primary-nav">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="primary-nav">
+
+                <ul class="nav navbar-nav">
+
+                        <li menuItemName="Home" class="" id="Primary_Navbar-Home">
+        <a href="/index.php">
+                        用户中心
+                                </a>
+            </li>
+    <li menuItemName="Store" class="dropdown" id="Primary_Navbar-Store">
+        <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                        在线购买
+                        &nbsp;<b class="caret"></b>        </a>
+                    <ul class="dropdown-menu">
+                            <li menuItemName="Browse Products Services" id="Primary_Navbar-Store-Browse_Products_Services">
+                    <a href="/cart.php">
+                                                浏览全部
+                                            </a>
+                </li>
+                            <li menuItemName="Shop Divider 1" class="nav-divider" id="Primary_Navbar-Store-Shop_Divider_1">
+                    <a href="">
+                                                -----
+                                            </a>
+                </li>
+                            <li menuItemName="特价专区" id="Primary_Navbar-Store-特价专区">
+                    <a href="/cart.php?gid=27">
+                                                特价专区
+                                            </a>
+                </li>
+                            <li menuItemName="菲律宾原生PH双ISP" id="Primary_Navbar-Store-菲律宾原生PH双ISP">
+                    <a href="/cart.php?gid=26">
+                                                菲律宾原生PH双ISP
+                                            </a>
+                </li>
+                            <li menuItemName="韩国原生IP" id="Primary_Navbar-Store-韩国原生IP">
+                    <a href="/cart.php?gid=16">
+                                                韩国原生IP
+                                            </a>
+                </li>
+                            <li menuItemName="香港HK" id="Primary_Navbar-Store-香港HK">
+                    <a href="/cart.php?gid=6">
+                                                香港HK
+                                            </a>
+                </li>
+                            <li menuItemName="德国DE tiktok" id="Primary_Navbar-Store-德国DE_tiktok">
+                    <a href="/cart.php?gid=25">
+                                                德国DE tiktok
+                                            </a>
+                </li>
+                            <li menuItemName="英国原生GB（tiktok、chatgpt）" id="Primary_Navbar-Store-英国原生GB（tiktok、chatgpt）">
+                    <a href="/cart.php?gid=22">
+                                                英国原生GB（tiktok、chatgpt）
+                                            </a>
+                </li>
+                            <li menuItemName="美国原生US（tiktok、chatgpt）" id="Primary_Navbar-Store-美国原生US（tiktok、chatgpt）">
+                    <a href="/cart.php?gid=21">
+                                                美国原生US（tiktok、chatgpt）
+                                            </a>
+                </li>
+                            <li menuItemName="日本JP软银" id="Primary_Navbar-Store-日本JP软银">
+                    <a href="/cart.php?gid=19">
+                                                日本JP软银
+                                            </a>
+                </li>
+                        </ul>
+            </li>
+    <li menuItemName="Announcements" class="" id="Primary_Navbar-Announcements">
+        <a href="/index.php/announcements">
+                        公告信息
+                                </a>
+            </li>
+    <li menuItemName="Knowledgebase" class="" id="Primary_Navbar-Knowledgebase">
+        <a href="/index.php/knowledgebase">
+                        帮助中心
+                                </a>
+            </li>
+    <li menuItemName="Network Status" class="" id="Primary_Navbar-Network_Status">
+        <a href="/serverstatus.php">
+                        服务监控
+                                </a>
+            </li>
+    <li menuItemName="Affiliates" class="" id="Primary_Navbar-Affiliates">
+        <a href="/affiliates.php">
+                        用户推广
+                                </a>
+            </li>
+    <li menuItemName="Contact Us" class="" id="Primary_Navbar-Contact_Us">
+        <a href="/contact.php">
+                        联系我们
+                                </a>
+            </li>
+
+                </ul>
+
+                <ul class="nav navbar-nav navbar-right">
+
+                        <li menuItemName="Account" class="dropdown" id="Secondary_Navbar-Account">
+        <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                        账户管理
+                        &nbsp;<b class="caret"></b>        </a>
+                    <ul class="dropdown-menu">
+                            <li menuItemName="Login" id="Secondary_Navbar-Account-Login">
+                    <a href="/clientarea.php">
+                                                用户登录
+                                            </a>
+                </li>
+                            <li menuItemName="Register" id="Secondary_Navbar-Account-Register">
+                    <a href="/register.php">
+                                                注册账户
+                                            </a>
+                </li>
+                            <li menuItemName="Divider" class="nav-divider" id="Secondary_Navbar-Account-Divider">
+                    <a href="">
+                                                -----
+                                            </a>
+                </li>
+                            <li menuItemName="Forgot Password?" id="Secondary_Navbar-Account-Forgot_Password?">
+                    <a href="/index.php/password/reset/begin">
+                                                忘记密码？
+                                            </a>
+                </li>
+                        </ul>
+            </li>
+
+                </ul>
+
+            </div><!-- /.navbar-collapse -->
+        </div>
+    </nav>
+
+</section>
+
+
+
+<section id="main-body">
+    <div class="container">
+        <div class="row">
+
+                <!-- Container for main page display content -->
+        <div class="col-xs-12 main-content">
+            
+
+<link rel="stylesheet" type="text/css" href="/templates/orderforms/standard_cart/css/all.min.css?v=d2d29a" />
+<script type="text/javascript" src="/templates/orderforms/standard_cart/js/scripts.min.js?v=d2d29a"></script>
+<style>
+#order-standard_cart .product{position:relative}
+.hdr-badge{float:right;clear:right;color:#fff;font-size:12px;font-weight:700;line-height:1;padding:4px 10px;border-radius:9px;margin-top:6px;letter-spacing:.02em}
+.cb-new{background:#2e9e5b}
+.cb-best{background:#d9534f}
+</style>
+
+
+<div id="order-standard_cart">
+
+    <div class="row">
+
+        <div class="pull-md-right col-md-9">
+
+            <div class="header-lined">
+                <h1>
+                                            香港HK
+                                    </h1>
+                            </div>
+                    </div>
+
+        <div class="col-md-3 pull-md-left sidebar hidden-xs hidden-sm">
+                <div menuItemName="Categories" class="panel panel-sidebar">
+        <div class="panel-heading">
+            <h3 class="panel-title">
+                                    <i class="fas fa-shopping-cart"></i>&nbsp;
+                
+                分类
+
+                
+                <i class="fas fa-chevron-up panel-minimise pull-right"></i>
+            </h3>
+        </div>
+
+        
+                    <div class="list-group">
+                                                            <a menuItemName="特价专区" href="/cart.php?gid=27" class="list-group-item" id="Secondary_Sidebar-Categories-特价专区">
+                            
+                            特价专区
+
+                                                    </a>
+                                                                                <a menuItemName="菲律宾原生PH双ISP" href="/cart.php?gid=26" class="list-group-item" id="Secondary_Sidebar-Categories-菲律宾原生PH双ISP">
+                            
+                            菲律宾原生PH双ISP
+
+                                                    </a>
+                                                                                <a menuItemName="韩国原生IP" href="/cart.php?gid=16" class="list-group-item" id="Secondary_Sidebar-Categories-韩国原生IP">
+                            
+                            韩国原生IP
+
+                                                    </a>
+                                                                                <a menuItemName="香港HK" href="/cart.php?gid=6" class="list-group-item active" id="Secondary_Sidebar-Categories-香港HK">
+                            
+                            香港HK
+
+                                                    </a>
+                                                                                <a menuItemName="德国DE tiktok" href="/cart.php?gid=25" class="list-group-item" id="Secondary_Sidebar-Categories-德国DE_tiktok">
+                            
+                            德国DE tiktok
+
+                                                    </a>
+                                                                                <a menuItemName="英国原生GB（tiktok、chatgpt）" href="/cart.php?gid=22" class="list-group-item" id="Secondary_Sidebar-Categories-英国原生GB（tiktok、chatgpt）">
+                            
+                            英国原生GB（tiktok、chatgpt）
+
+                                                    </a>
+                                                                                <a menuItemName="美国原生US（tiktok、chatgpt）" href="/cart.php?gid=21" class="list-group-item" id="Secondary_Sidebar-Categories-美国原生US（tiktok、chatgpt）">
+                            
+                            美国原生US（tiktok、chatgpt）
+
+                                                    </a>
+                                                                                <a menuItemName="日本JP软银" href="/cart.php?gid=19" class="list-group-item" id="Secondary_Sidebar-Categories-日本JP软银">
+                            
+                            日本JP软银
+
+                                                    </a>
+                                                </div>
+        
+            </div>
+
+        <div menuItemName="Actions" class="panel panel-sidebar">
+        <div class="panel-heading">
+            <h3 class="panel-title">
+                                    <i class="fas fa-plus"></i>&nbsp;
+                
+                操作
+
+                
+                <i class="fas fa-chevron-up panel-minimise pull-right"></i>
+            </h3>
+        </div>
+
+        
+                    <div class="list-group">
+                                                            <a menuItemName="View Cart" href="/cart.php?a=view" class="list-group-item" id="Secondary_Sidebar-Actions-View_Cart">
+                                                            <i class="fas fa-shopping-cart fa-fw"></i>&nbsp;
+                            
+                            查看购物车
+
+                                                    </a>
+                                                </div>
+        
+            </div>
+
+            </div>
+
+        <div class="col-md-9 pull-md-right">
+
+            <div class="categories-collapsed visible-xs visible-sm clearfix">
+
+    <div class="pull-left form-inline">
+        <form method="get" action="/cart.php">
+            <select name="gid" onchange="submit()" class="form-control">
+                <optgroup label="Product Categories">
+                                            <option value="27">特价专区</option>
+                                            <option value="26">菲律宾双ISP</option>
+                                            <option value="16">韩国原生IP</option>
+                                            <option value="6" selected="selected">香港HK</option>
+                                            <option value="25">德国DE tiktok</option>
+                                            <option value="22">英国原生GB（tiktok、chatgpt）</option>
+                                            <option value="21">美国原生US（tiktok、chatgpt）</option>
+                                            <option value="19">日本JP软银</option>
+                                    </optgroup>
+                <optgroup label="Actions">
+                                                                                <option value="viewcart">查看购物车</option>
+                </optgroup>
+            </select>
+        </form>
+    </div>
+
+    
+</div>
+
+            
+            <div class="products" id="products">
+                <div class="row row-eq-height">
+                                            <div class="col-md-6">
+                            <div class="product clearfix" id="product1">
+                                <header>
+                                                                            <span class="qty">
+                                            149 可用
+                                        </span>
+                                                                                                            <span id="product1-name">HK-CMI-150M</span>
+                                </header>
+                                <div class="product-desc">
+                                                                            <p id="product1-description">
+                                            香港优化线路大带宽，三网适合，油管跑分优秀；高速、低延迟<br />
+<strong>1vCPU</strong><br />
+<strong>1G</strong> 内存<br />
+<strong>150Mbps</strong> 峰值带宽<br />
+双向<strong>800GB</strong>流量<br />
+
+                                        </p>
+                                                                        <ul>
+                                                                                    <li id="product1-feature1">
+                                                <span class="feature-value">154.36.144.1</span>
+                                                测试IP
+                                            </li>
+                                                                            </ul>
+                                </div>
+                                <footer>
+                                    <div class="product-pricing" id="product1-price">
+                                                                                                                                <span class="price">¥55.00 CNY</span>
+                                            <br />
+                                                                                            每月
+                                                                                        <br>
+                                                                                                                        </div>
+                                    <a href="cart.php?a=add&pid=179" class="btn btn-success btn-sm" id="product1-order-button">
+                                        <i class="fas fa-shopping-cart"></i>
+                                        立即订购
+                                    </a>
+                                </footer>
+                            </div>
+                        </div>
+                                                                    <div class="col-md-6">
+                            <div class="product clearfix" id="product2">
+                                <header>
+                                                                            <span class="qty">
+                                            30 可用
+                                        </span>
+                                                                                                            <span id="product2-name">HK-CMI-normal</span>
+                                </header>
+                                <div class="product-desc">
+                                                                            <p id="product2-description">
+                                            <strong>1vCPU</strong><br />
+<strong>1G</strong> 内存<br />
+<strong>50Mbps</strong> 峰值带宽<br />
+双向<strong>1000GB</strong>流量<br />
+
+                                        </p>
+                                                                        <ul>
+                                                                            </ul>
+                                </div>
+                                <footer>
+                                    <div class="product-pricing" id="product2-price">
+                                                                                                                                <span class="price">¥50.00 CNY</span>
+                                            <br />
+                                                                                            每月
+                                                                                        <br>
+                                                                                                                        </div>
+                                    <a href="cart.php?a=add&pid=131" class="btn btn-success btn-sm" id="product2-order-button">
+                                        <i class="fas fa-shopping-cart"></i>
+                                        立即订购
+                                    </a>
+                                </footer>
+                            </div>
+                        </div>
+                                                    </div>
+                            <div class="row row-eq-height">
+                                                                    <div class="col-md-6">
+                            <div class="product clearfix" id="product3">
+                                <header>
+                                                                            <span class="qty">
+                                            20 可用
+                                        </span>
+                                                                                                            <span id="product3-name">HK-CMI-medium-2H2G-50M</span>
+                                </header>
+                                <div class="product-desc">
+                                                                            <p id="product3-description">
+                                            <strong>2vCPU</strong><br />
+<strong>2G</strong> 内存<br />
+<strong>50Mbps</strong> 峰值带宽<br />
+双向<strong>1200GB</strong>流量<br />
+1个独立IP<br />
+
+                                        </p>
+                                                                        <ul>
+                                                                            </ul>
+                                </div>
+                                <footer>
+                                    <div class="product-pricing" id="product3-price">
+                                                                                                                                <span class="price">¥80.00 CNY</span>
+                                            <br />
+                                                                                            每月
+                                                                                        <br>
+                                                                                                                        </div>
+                                    <a href="cart.php?a=add&pid=23" class="btn btn-success btn-sm" id="product3-order-button">
+                                        <i class="fas fa-shopping-cart"></i>
+                                        立即订购
+                                    </a>
+                                </footer>
+                            </div>
+                        </div>
+                                                            </div>
+            </div>
+
+            
+        </div>
+    </div>
+</div>
+
+
+
+                </div><!-- /.main-content -->
+                            <div class="clearfix"></div>
+        </div>
+    </div>
+</section>
+
+<section id="footer">
+    <div class="container">
+        <a href="#" class="back-to-top"><i class="fas fa-chevron-up"></i></a>
+        <p>Copyright &copy; 2026 六六云. All Rights Reserved.</p>
+    </div>
+</section>
+
+<div id="fullpage-overlay" class="hidden">
+    <div class="outer-wrapper">
+        <div class="inner-wrapper">
+            <img src="/assets/img/overlay-spinner.svg">
+            <br>
+            <span class="msg"></span>
+        </div>
+    </div>
+</div>
+
+<div class="modal system-modal fade" id="modalAjax" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content panel-primary">
+            <div class="modal-header panel-heading">
+                <button type="button" class="close" data-dismiss="modal">
+                    <span aria-hidden="true">&times;</span>
+                    <span class="sr-only">关闭</span>
+                </button>
+                <h4 class="modal-title"></h4>
+            </div>
+            <div class="modal-body panel-body">
+                加载中…
+            </div>
+            <div class="modal-footer panel-footer">
+                <div class="pull-left loader">
+                    <i class="fas fa-circle-notch fa-spin"></i>
+                    加载中…
+                </div>
+                <button type="button" class="btn btn-default" data-dismiss="modal">
+                    关闭
+                </button>
+                <button type="button" class="btn btn-primary modal-submit">
+                    提交
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form action="#" id="frmGeneratePassword" class="form-horizontal">
+    <div class="modal fade" id="modalGeneratePassword">
+        <div class="modal-dialog">
+            <div class="modal-content panel-primary">
+                <div class="modal-header panel-heading">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">
+                        生成密码
+                    </h4>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger hidden" id="generatePwLengthError">
+                        请为密码长度输入一个介于8和64之间的数字
+                    </div>
+                    <div class="form-group">
+                        <label for="generatePwLength" class="col-sm-4 control-label">密码长度</label>
+                        <div class="col-sm-8">
+                            <input type="number" min="8" max="64" value="12" step="1" class="form-control input-inline input-inline-100" id="inputGeneratePasswordLength">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="generatePwOutput" class="col-sm-4 control-label">生成的密码</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control" id="inputGeneratePasswordOutput">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-8 col-sm-offset-4">
+                            <button type="submit" class="btn btn-default btn-sm">
+                                <i class="fas fa-plus fa-fw"></i>
+                                生成新密码
+                            </button>
+                            <button type="button" class="btn btn-default btn-sm copy-to-clipboard" data-clipboard-target="#inputGeneratePasswordOutput">
+                                <img src="/assets/img/clippy.svg" alt="Copy to clipboard" width="15">
+                                
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">
+                        关闭
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnGeneratePasswordInsert" data-clipboard-target="#inputGeneratePasswordOutput">
+                        复制到剪贴板并插入
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+
+
+</body>
+</html>
