@@ -5,8 +5,10 @@ from .config import settings
 
 
 def _normalize_db_url(url: str) -> str:
-    """Render 注入的 DATABASE_URL 是 postgresql:// 前缀，SQLAlchemy 默认走 psycopg2。
-    我们安装的是 psycopg(v3)，统一规范化到 postgresql+psycopg://。"""
+    """Render 注入的 DATABASE_URL 可能是 postgres:// 或 postgresql:// 前缀，
+    SQLAlchemy 默认走 psycopg2。我们安装的是 psycopg(v3)，统一规范化到 postgresql+psycopg://。"""
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+psycopg://", 1)
     if url.startswith("postgresql://"):
         return url.replace("postgresql://", "postgresql+psycopg://", 1)
     return url

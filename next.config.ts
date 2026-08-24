@@ -6,7 +6,20 @@ import type { NextConfig } from "next";
  * 目标地址必须通过环境变量配置，禁止硬编码到业务代码。
  * 未来拆分 api.govps.xyz 时仅需修改 API_ORIGIN，业务代码零改动。
  */
-const API_ORIGIN = process.env.API_ORIGIN ?? "http://localhost:8000";
+function normalizeApiOrigin(raw?: string): string {
+  if (!raw) return "http://localhost:8000";
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  // Render fromService property:host 产出无协议的主机名（如 govps-api.onrender.com 或 govps-api:8000）
+  if (trimmed.includes("localhost") || trimmed.includes("127.0.0.1") || trimmed.includes(":8000")) {
+    return `http://${trimmed}`;
+  }
+  return `https://${trimmed}`;
+}
+
+const API_ORIGIN = normalizeApiOrigin(process.env.API_ORIGIN);
 
 const nextConfig: NextConfig = {
   output: "standalone",
