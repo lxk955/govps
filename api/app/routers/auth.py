@@ -26,9 +26,20 @@ IP_MAX_REQUESTS = 5
 
 
 def _client_ip(request: Request) -> str:
-    # Render 前面有代理，真实 IP 在 X-Forwarded-For 第一个值
+    # 优先取 Cloudflare 注入的真实客户端公网 IP
+    cf_ip = request.headers.get("cf-connecting-ip")
+    if cf_ip and cf_ip.strip():
+        return cf_ip.strip()
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip and real_ip.strip():
+        return real_ip.strip()
     fwd = request.headers.get("x-forwarded-for")
     if fwd:
+        for part in fwd.split(","):
+            ip_str = part.strip()
+            # 过滤内网/容器间代理 IP
+            if ip_str and not ip_str.startswith(("127.", "10.", "192.168.", "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.")):
+                return ip_str
         return fwd.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
 
