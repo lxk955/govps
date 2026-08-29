@@ -73,14 +73,18 @@ export function MobileFilterSheet({
       </SheetTrigger>
 
       {/*
-       * 必须用确定高度 h-[85dvh]，不能用 shadcn bottom 变体默认的 h-auto：
-       * height:auto 的 flex 容器里，中间区 flex-1（flex-basis:0）对容器高度的
-       * 贡献为 0，容器高度只剩头部+底部，中间内容被挤成几乎不可见——表现为
-       * 「只能看到服务商的一小截」。给定高度后 flex 才能正确分配剩余空间。
-       * gap-0 / p-0：头部与底部要贴边，间距由各自内部控制。
+       * 侧滑全高抽屉（side=left + h-dvh），而非底部抽屉：
+       * 1) 垂直空间从 85dvh 提到 100dvh，且与桌面端侧栏形态一致；
+       * 2) 高度确定是关键——shadcn bottom 变体的 h-auto 会让 flex-1 子项
+       *    （flex-basis:0）对容器高度贡献为 0，中间内容被挤没。
+       * 宽度取 min(86vw, 320px)；gap-0 / p-0 让头尾贴边。
        */}
-      <SheetContent side="bottom" className="flex h-[85dvh] flex-col gap-0 rounded-t-3xl p-0">
-        <div className="border-border flex items-center justify-between border-b px-4 py-3.5">
+      <SheetContent
+        side="left"
+        className="flex h-dvh w-[86vw] max-w-[320px] flex-col gap-0 border-r p-0"
+      >
+        {/* pr-12：给 shadcn 自带的右上角关闭按钮留位 */}
+        <div className="border-border flex items-center justify-between border-b px-4 py-3.5 pr-12">
           <SheetTitle className="text-sm font-bold">筛选</SheetTitle>
           {activeCount > 0 && (
             <button

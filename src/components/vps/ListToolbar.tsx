@@ -147,11 +147,14 @@ export function ListToolbar({
 
         <div className="flex items-center gap-2">
           <MobileFilterSheet state={state} merchants={merchants} total={total} />
-          {/* 视图切换（旧站 ViewModeToggle 复刻） */}
+          {/*
+           * 视图切换仅 md 及以上显示：小屏只给卡片视图。列表（表格）形态在
+           * 窄屏下需要横向滚动，体验不如卡片；少一个出错的交互面也更稳。
+           */}
           <div
             role="group"
             aria-label="视图模式"
-            className="border-border flex items-center gap-0.5 rounded-xl border bg-slate-50/70 p-0.5 dark:bg-slate-800/60"
+            className="border-border hidden items-center gap-0.5 rounded-xl border bg-slate-50/70 p-0.5 md:flex dark:bg-slate-800/60"
           >
             <button
               type="button"

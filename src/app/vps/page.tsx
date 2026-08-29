@@ -168,7 +168,7 @@ export default async function VpsListPage({ searchParams }: PageProps) {
           </div>
         ) : view === "card" ? (
           /* 卡片视图：列宽随容器自适应（旧站 .card-grid 同款规则） */
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-4">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(312px,100%),1fr))] gap-4">
             {items.map((p) => (
               <VpsCard key={p.id} product={p} />
             ))}
