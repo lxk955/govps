@@ -4,12 +4,19 @@
  * 列表页是 RSC 每请求回源（no-store），后端免费实例冷启动可能耗时数十秒，
  * 没有 fallback 时用户看到的是整页白屏。这里用与真实布局同构的占位块，
  * 让首屏立刻有内容、避免布局跳变（CLS）。
+ *
+ * 无障碍：容器标记 aria-busy 并给出 sr-only 状态文本；骨架块是纯装饰结构，
+ * 用 aria-hidden 移出无障碍树，避免屏幕阅读器播报无意义的占位元素。
  */
 export default function Loading() {
   return (
-    <div className="flex gap-6">
+    <div className="flex gap-6" aria-busy="true">
+      <p role="status" className="sr-only">
+        正在加载套餐列表…
+      </p>
+
       {/* 桌面端侧栏筛选占位 */}
-      <aside className="hidden w-60 shrink-0 lg:block">
+      <aside aria-hidden="true" className="hidden w-60 shrink-0 lg:block">
         <div className="border-border bg-card space-y-2.5 rounded-2xl border p-3.5 shadow-sm">
           <div className="h-4 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
           <div className="h-9 w-full animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
@@ -22,10 +29,13 @@ export default function Loading() {
         </div>
       </aside>
 
-      <section className="border-border bg-card min-w-0 flex-1 rounded-2xl border p-5">
+      <section
+        aria-hidden="true"
+        className="border-border bg-card min-w-0 flex-1 rounded-2xl border p-5"
+      >
         {/* 顶部工具栏占位 */}
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <div className="h-9 w-full max-w-xs animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800 sm:w-64" />
+          <div className="h-9 w-full max-w-xs animate-pulse rounded-xl bg-slate-100 sm:w-64 dark:bg-slate-800" />
           <div className="h-8 w-40 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
         </div>
 
