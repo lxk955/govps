@@ -55,6 +55,18 @@ async function resolveBaseUrl(): Promise<string> {
   return `${proto}://${host}`;
 }
 
+/**
+ * Render 免费实例空闲后会休眠，唤醒窗口内请求被边缘直接拒绝：
+ * 429 + x-render-routing: hibernate-rate-limited，body 为纯文本（非 JSON）。
+ * 仅对幂等 GET 退避重试，覆盖冷启动抖动；非 GET 重试可能造成重复写入。
+ */
+const RETRY_STATUS = new Set([429, 502, 503]);
+const RETRY_DELAYS_MS = [600, 1200];
+
+function shouldRetry(res: Response, method?: string): boolean {
+  return (method ?? "GET").toUpperCase() === "GET" && RETRY_STATUS.has(res.status);
+}
+
 export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promise<T> {
   const { body, next, headers, ...rest } = init;
   // 服务端（RSC）永不携带用户凭证：登录态不影响公开页 SSR/SEO
@@ -64,16 +76,24 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
   let res: Response;
   try {
     const base = await resolveBaseUrl();
-    res = await fetch(`${base}${path}`, {
-      ...rest,
-      ...(next ? { next } : {}),
-      headers: {
-        "Content-Type": "application/json",
-        ...(hadAuth ? { Authorization: `Bearer ${authToken}` } : {}),
-        ...headers,
-      },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-    });
+    const send = () =>
+      fetch(`${base}${path}`, {
+        ...rest,
+        ...(next ? { next } : {}),
+        headers: {
+          "Content-Type": "application/json",
+          ...(hadAuth ? { Authorization: `Bearer ${authToken}` } : {}),
+          ...headers,
+        },
+        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      });
+
+    res = await send();
+    for (const delay of RETRY_DELAYS_MS) {
+      if (!shouldRetry(res, rest.method)) break;
+      await new Promise((r) => setTimeout(r, delay));
+      res = await send();
+    }
   } catch (cause) {
     throw new ApiError(0, cause instanceof Error ? cause.message : "网络请求失败");
   }
@@ -91,6 +111,11 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
       if (typeof data?.detail === "string") detail = data.detail;
     } catch {
       // 非 JSON 响应体：保留 statusText
+    }
+    // 休眠拒绝是纯文本 429，不是业务限流：换成用户可操作的提示，
+    // 避免把 HTTP 状态文本 "Too Many Requests" 直接丢到页面上。
+    if (res.status === 429 && res.headers.get("x-render-routing") === "hibernate-rate-limited") {
+      detail = "数据服务正在启动，请稍后刷新页面";
     }
     throw new ApiError(res.status, detail);
   }
