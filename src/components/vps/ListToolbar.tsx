@@ -190,44 +190,55 @@ export function ListToolbar({
         </div>
       </div>
 
-      {/* 第 2 行：快捷筛选胶囊按钮排（移动端水平平滑滚动） */}
-      <div className="no-scrollbar flex items-center gap-2 overflow-x-auto py-0.5">
-        {QUICK_FILTERS.map((f) => (
-          <Chip
-            key={f.key}
-            tone={f.tone}
-            active={Boolean(state[f.key])}
-            onClick={() => go({ [f.key]: !state[f.key] } as Partial<ListQueryState>)}
-          >
-            <span aria-hidden>{f.icon}</span> {f.label}
-          </Chip>
-        ))}
+      {/*
+       * 第 2 行：快捷筛选胶囊。
+       * 移动端按类别分三排（快捷筛选 / 热门机房 / 线路）：原先是单行横向滚动，
+       * 右侧胶囊在屏外看不见。桌面端仍合并为一行，组间用竖线分隔。
+       * 各组用 flex-wrap 兜底，避免窄屏横向溢出（AGENTS.md 要求）。
+       */}
+      <div className="flex flex-col gap-1.5 py-0.5 md:flex-row md:items-center md:gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {QUICK_FILTERS.map((f) => (
+            <Chip
+              key={f.key}
+              tone={f.tone}
+              active={Boolean(state[f.key])}
+              onClick={() => go({ [f.key]: !state[f.key] } as Partial<ListQueryState>)}
+            >
+              <span aria-hidden>{f.icon}</span> {f.label}
+            </Chip>
+          ))}
+        </div>
 
-        <div aria-hidden className="bg-border mx-0.5 h-4 w-px shrink-0" />
+        <div aria-hidden className="bg-border hidden h-4 w-px shrink-0 md:block" />
 
-        {POPULAR_LOCATIONS.map((loc) => (
-          <Chip
-            key={loc.name}
-            tone="blue"
-            active={state.location.includes(loc.name)}
-            onClick={() => toggleIn("location", loc.name)}
-          >
-            <span aria-hidden>{loc.flag}</span> {loc.name}
-          </Chip>
-        ))}
+        <div className="flex flex-wrap items-center gap-2">
+          {POPULAR_LOCATIONS.map((loc) => (
+            <Chip
+              key={loc.name}
+              tone="blue"
+              active={state.location.includes(loc.name)}
+              onClick={() => toggleIn("location", loc.name)}
+            >
+              <span aria-hidden>{loc.flag}</span> {loc.name}
+            </Chip>
+          ))}
+        </div>
 
-        <div aria-hidden className="bg-border mx-0.5 h-4 w-px shrink-0" />
+        <div aria-hidden className="bg-border hidden h-4 w-px shrink-0 md:block" />
 
-        {LINE_OPTIONS.filter((opt) => QUICK_LINE_KEYS.includes(opt.value)).map((opt) => (
-          <Chip
-            key={opt.value}
-            tone="indigo"
-            active={state.line.includes(opt.value)}
-            onClick={() => toggleIn("line", opt.value)}
-          >
-            {opt.label}
-          </Chip>
-        ))}
+        <div className="flex flex-wrap items-center gap-2">
+          {LINE_OPTIONS.filter((opt) => QUICK_LINE_KEYS.includes(opt.value)).map((opt) => (
+            <Chip
+              key={opt.value}
+              tone="indigo"
+              active={state.line.includes(opt.value)}
+              onClick={() => toggleIn("line", opt.value)}
+            >
+              {opt.label}
+            </Chip>
+          ))}
+        </div>
       </div>
     </div>
   );
