@@ -22,14 +22,13 @@ export function HeaderNav() {
 
   return (
     /*
-     * 窄屏放不下全部导航项（实测 390px 视口下需要 454px），若任由 flex 压缩
-     * 会把链接文字挤变形，且右侧工具栏 shrink-0 会撑破页面产生横向溢出。
-     * 这里让导航自己横向滚动：min-w-0 允许收缩，overflow-x-auto 承接溢出，
-     * 滚动局限在导航内部，不会整页横向滚动（AGENTS.md 要求）。
+     * 仅 sm 以上显示：窄屏放不下全部导航项（390px 视口下需要 454px，可用 358px），
+     * 曾在顶部改为横向滚动，但滚动条隐藏后用户看不出还有内容，等于没有导航。
+     * 窄屏的导航改由 BottomNav（底部等分标签栏）承担，四项全部完整可见。
      */
     <nav
       aria-label="主导航"
-      className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-xs sm:gap-1.5 sm:overflow-x-visible sm:text-sm"
+      className="hidden items-center gap-1 text-xs sm:flex sm:gap-1.5 sm:text-sm"
     >
       {NAV_ITEMS.map((item) => {
         const active =

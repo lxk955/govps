@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { AuthProvider } from "@/components/auth-provider";
 import { BookmarkDialog } from "@/components/bookmark-dialog";
+import { BottomNav } from "@/components/bottom-nav";
 import { HeaderAuth } from "@/components/header-auth";
 import { HeaderNav } from "@/components/header-nav";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -70,7 +71,9 @@ export default function RootLayout({
 
             <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6">{children}</main>
 
-            <footer className="border-border px-4 py-6 text-center text-xs text-slate-400 dark:text-slate-500">
+            {/* 窄屏底部留出标签栏净空（pb-24）。留白必须加在页脚而非 main 上：
+                main 的 padding 保护不到它之后的页脚，实测会被 fixed 标签栏压住 56px。 */}
+            <footer className="border-border px-4 pb-24 pt-6 text-center text-xs text-slate-400 sm:pb-6 dark:text-slate-500">
               <div className="mb-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
                 <span>GoVPS · 库存与价格数据来自各商家官网公开页面，仅供参考</span>
                 <BookmarkDialog />
@@ -79,6 +82,8 @@ export default function RootLayout({
                 部分商家链接为推广链接，通过它们购买我们会获得佣金，你的购买价格不受任何影响，也不影响本站的数据展示与排序。
               </p>
             </footer>
+
+            <BottomNav />
           </AuthProvider>
         </ThemeProvider>
       </body>
