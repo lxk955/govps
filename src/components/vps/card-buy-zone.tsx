@@ -66,7 +66,6 @@ export function CardBuyZone({ product }: { product: ProductListItem }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-1">
           <span className="text-foreground text-xl leading-none font-bold">
-            {sym}
             {formatPrice(current.price, current.currency)}
           </span>
           <span className="text-xs text-slate-400 dark:text-slate-500">/ {cycleCn}</span>
@@ -83,8 +82,7 @@ export function CardBuyZone({ product }: { product: ProductListItem }) {
             >
               {options.map((opt, i) => (
                 <option key={`${opt.billing_cycle}-${opt.price}`} value={i}>
-                  {cycleLabel(opt.billing_cycle)}付 · {currencySymbol(opt.currency)}
-                  {formatPrice(opt.price, opt.currency)}
+                  {cycleLabel(opt.billing_cycle)}付 · {formatPrice(opt.price, opt.currency)}
                 </option>
               ))}
             </select>

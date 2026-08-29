@@ -5,7 +5,7 @@ import { createContext, useContext, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { WatchButton } from "@/components/vps/watch-button";
 import type { ProductDetail } from "@/lib/api/endpoints";
-import { cycleLabel, currencySymbol, formatPrice } from "@/lib/format";
+import { cycleLabel, formatPrice } from "@/lib/format";
 import { copyPromoCode, getMerchantPromo } from "@/lib/promos";
 
 /**
@@ -133,14 +133,12 @@ export function DetailPromoBar({ slug }: { slug: string }) {
 export function DetailPriceCard() {
   const { options, idx, setIdx } = useCycle();
   const cur = options[idx] ?? options[0];
-  const sym = currencySymbol(cur.currency);
 
   return (
     <div className="border-border bg-card flex flex-col justify-between rounded-2xl border p-5 shadow-sm">
       <div>
         <div className="text-xs font-medium text-slate-400 dark:text-slate-500">当前在售价格</div>
         <div className="text-slate-900 mt-1 text-2xl font-black dark:text-slate-100">
-          {sym}
           {formatPrice(cur.price, cur.currency)}
           <span className="text-xs font-normal text-slate-400 dark:text-slate-500">
             {" "}
@@ -158,8 +156,7 @@ export function DetailPriceCard() {
           >
             {options.map((opt, i) => (
               <option key={`${opt.billing_cycle}-${opt.price}`} value={i}>
-                {cycleLabel(opt.billing_cycle)}付 · {currencySymbol(opt.currency)}
-                {formatPrice(opt.price, opt.currency)}
+                {cycleLabel(opt.billing_cycle)}付 · {formatPrice(opt.price, opt.currency)}
               </option>
             ))}
           </select>

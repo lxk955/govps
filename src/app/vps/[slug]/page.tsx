@@ -18,7 +18,7 @@ import {
   type ProductDetail,
 } from "@/lib/api/endpoints";
 import { lineInfo, lineTierClass, shortName } from "@/lib/display";
-import { currencySymbol, formatPrice, timeAgo } from "@/lib/format";
+import { formatPrice, timeAgo } from "@/lib/format";
 import { testIpFor } from "@/lib/merchant-test-ips";
 import { parseSlugId, productHref } from "@/lib/slug";
 import { ApiError } from "@/lib/api/client";
@@ -134,7 +134,6 @@ export default async function VpsDetailPage({ params }: PageProps) {
 
   const line = lineInfo(p);
   const short = shortName(p);
-  const sym = currencySymbol(p.currency);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -242,12 +241,11 @@ export default async function VpsDetailPage({ params }: PageProps) {
               历史原价 / 降幅
             </div>
             <div className="text-slate-500 mt-1 text-2xl font-black dark:text-slate-400">
-              {p.prev_price != null ? `${sym}${formatPrice(p.prev_price, p.currency)}` : "—"}
+              {p.prev_price != null ? formatPrice(p.prev_price, p.currency) : "—"}
             </div>
             {p.price_dropped && (
               <div className="mt-2 text-xs font-bold text-rose-600 dark:text-rose-400">
-                相比原价已直降 {sym}
-                {formatPrice((p.prev_price || 0) - p.price, p.currency)}
+                相比原价已直降 {formatPrice((p.prev_price || 0) - p.price, p.currency)}
               </div>
             )}
           </div>

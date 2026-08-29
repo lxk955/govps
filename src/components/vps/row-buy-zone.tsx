@@ -66,7 +66,6 @@ export function RowBuyZone({ product }: { product: ProductListItem }) {
       <div className="min-w-0 text-left sm:w-[125px] sm:shrink-0 sm:text-right">
         <div className="flex items-baseline justify-start gap-1 sm:justify-end">
           <span className="text-foreground text-base font-bold">
-            {sym}
             {formatPrice(current.price, current.currency)}
           </span>
           {options.length <= 1 && (
@@ -86,8 +85,7 @@ export function RowBuyZone({ product }: { product: ProductListItem }) {
             >
               {options.map((opt, i) => (
                 <option key={`${opt.billing_cycle}-${opt.price}`} value={i}>
-                  {cycleLabel(opt.billing_cycle)}付 · {currencySymbol(opt.currency)}
-                  {formatPrice(opt.price, opt.currency)}
+                  {cycleLabel(opt.billing_cycle)}付 · {formatPrice(opt.price, opt.currency)}
                 </option>
               ))}
             </select>
