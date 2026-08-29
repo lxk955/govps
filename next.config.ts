@@ -30,10 +30,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   async rewrites() {
     return [
-      // 注意：/api/* 已由 src/app/api/[...path]/route.ts 接管。
-      // rewrites 不支持自定义转发头，后端只能看到本服务的出口 IP（影响
-      // /api/ip/check 的默认检测与 auth 的 IP 限流）；Route Handler 走
-      // Node.js Runtime，可在转发时注入客户端真实 IP。
+      { source: "/api/:path*", destination: `${API_ORIGIN}/api/:path*` },
       { source: "/go/:path*", destination: `${API_ORIGIN}/go/:path*` },
     ];
   },
