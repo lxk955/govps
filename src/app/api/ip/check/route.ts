@@ -67,6 +67,11 @@ async function proxy(request: NextRequest): Promise<NextResponse> {
       redirect: "manual",
     });
 
+    // 完整读取后再返回而非流式转发 upstream.body：流式传输的错误发生在
+    // try/catch 之外（生产实测表现为 Cloudflare 502 而非本函数的 JSON 502）。
+    // IP 检测响应仅数 KB，完整读取没有内存压力。
+    const body = await upstream.text();
+
     // fetch 已自动解压，原样透传 content-encoding/content-length 会让客户端
     // 二次解压或长度校验失败
     const resHeaders = new Headers(upstream.headers);
@@ -74,9 +79,8 @@ async function proxy(request: NextRequest): Promise<NextResponse> {
     resHeaders.delete("content-length");
     resHeaders.delete("transfer-encoding");
 
-    return new NextResponse(upstream.body, {
+    return new NextResponse(body, {
       status: upstream.status,
-      statusText: upstream.statusText,
       headers: resHeaders,
     });
   } catch (cause) {
