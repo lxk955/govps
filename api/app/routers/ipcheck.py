@@ -6,6 +6,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query, Request
 import httpx
 
+from ..services.client_ip import client_ip
+
 router = APIRouter(prefix="/api/ip", tags=["ipcheck"])
 
 # 常见住宅宽带 / 知名双 ISP 运营商关键词库
@@ -152,17 +154,14 @@ async def check_ip(
 ) -> dict[str, Any]:
     # 1. 确定目标 IP
     if not ip or not ip.strip():
-        # 优先读取反向代理客户端真实 IP
-        client_ip = (
-            request.headers.get("cf-connecting-ip")
-            or request.headers.get("x-real-ip")
-            or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
-            or (request.client.host if request.client else "")
-        )
-        if not client_ip or client_ip in ("127.0.0.1", "localhost", "::1"):
+        # 兜底解析请求来源。经 Next.js rewrite 转发后这里通常只能拿到前端
+        # 服务（Render）的出口 IP，因此 /ip 页面已改为显式传 ?ip=。
+        # 统一复用 services/client_ip，避免与 auth 的限流判定出现分歧。
+        detected_ip = client_ip(request)
+        if detected_ip in ("", "unknown", "127.0.0.1", "localhost", "::1"):
             target_ip = "1.1.1.1"  # 本地开发测试回退
         else:
-            target_ip = client_ip
+            target_ip = detected_ip
         query_target = target_ip
     else:
         query_target = ip.strip()

@@ -16,7 +16,7 @@ import {
   getCompareIds,
   useCompareIds,
 } from "@/lib/compare-store";
-import { currencySymbol, formatCycle } from "@/lib/format";
+import { currencySymbol, cycleLabel } from "@/lib/format";
 import { productHref } from "@/lib/slug";
 
 /**
@@ -149,7 +149,9 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
                     <span className="font-bold tabular-nums">
                       {currencySymbol(p.currency)}{p.price.toFixed(2)}
                     </span>
-                    <span className="text-muted-foreground text-xs">{formatCycle(p.billing_cycle)}</span>
+                    <span className="text-muted-foreground text-xs">
+                      /{cycleLabel(p.billing_cycle)}
+                    </span>
                   </td>
                 ))}
               </Row>

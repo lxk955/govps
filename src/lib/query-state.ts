@@ -4,16 +4,12 @@
  * 本模块同时被 RSC（解析）与 Client 组件（增删改）引用，保持单一口径。
  */
 
-export const SORT_OPTIONS = [
-  { value: "hot", label: "综合推荐" },
-  { value: "deal", label: "值得买指数" },
-  { value: "popularity", label: "热度" },
-  { price: true, value: "price_asc", label: "价格从低到高" },
-  { price: true, value: "price_desc", label: "价格从高到低" },
-  { value: "updated", label: "最近更新" },
-] as const;
-
-export type SortValue = (typeof SORT_OPTIONS)[number]["value"];
+/**
+ * 支持的排序值（URL 上的 ?sort=）。列表页目前没有排序 UI（与旧站一致），
+ * 仅通过 URL 参数生效，因此这里只保留合法值的单一定义用于解析与类型约束，
+ * 不再维护从未被渲染的 label。
+ */
+export type SortValue = "hot" | "deal" | "popularity" | "price_asc" | "price_desc" | "updated";
 
 /** 线路筛选分类（与后端 LINE_FILTERS 的 key 对齐） */
 export const LINE_OPTIONS = [

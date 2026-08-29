@@ -12,6 +12,7 @@ from ..deps import get_current_user
 from ..models import EmailCode, User
 from ..schemas import TokenOut
 from ..services.notify import send_email
+from ..services.client_ip import client_ip
 from ..services.rate_limit import hit_rate_limited
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -23,25 +24,6 @@ MAX_ATTEMPTS = 5
 # 计数存 request_rate_events 表，多 worker / 重启后窗口仍连续。
 IP_RATE_SECONDS = 60
 IP_MAX_REQUESTS = 5
-
-
-def _client_ip(request: Request) -> str:
-    # 优先取 Cloudflare 注入的真实客户端公网 IP
-    cf_ip = request.headers.get("cf-connecting-ip")
-    if cf_ip and cf_ip.strip():
-        return cf_ip.strip()
-    real_ip = request.headers.get("x-real-ip")
-    if real_ip and real_ip.strip():
-        return real_ip.strip()
-    fwd = request.headers.get("x-forwarded-for")
-    if fwd:
-        for part in fwd.split(","):
-            ip_str = part.strip()
-            # 过滤内网/容器间代理 IP
-            if ip_str and not ip_str.startswith(("127.", "10.", "192.168.", "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.")):
-                return ip_str
-        return fwd.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
 
 
 class RequestCodeIn(BaseModel):
@@ -74,7 +56,7 @@ def _send_code_email(email: str, code: str) -> tuple[bool, str | None]:
 @router.post("/request-code")
 def request_code(payload: RequestCodeIn, request: Request, db: Session = Depends(get_db)):
     """发送 6 位登录验证码。同一邮箱 60 秒内只允许发一次；每 IP 每分钟最多 5 次。"""
-    ip = _client_ip(request)
+    ip = client_ip(request)
     if hit_rate_limited(db, ip, window_seconds=IP_RATE_SECONDS, max_requests=IP_MAX_REQUESTS):
         raise HTTPException(status_code=429, detail="请求过于频繁，请稍后再试")
     email = str(payload.email).lower()

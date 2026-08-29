@@ -53,18 +53,9 @@ export function monthlyEquivalent(price: number, cycle: string): string | null {
   return d ? (price / d).toFixed(2) : null;
 }
 
-export function formatCycle(cycle: string): string {
-  const labels: Record<string, string> = {
-    monthly: "/月",
-    quarterly: "/季",
-    "semi-annually": "/半年",
-    semi_annually: "/半年",
-    annually: "/年",
-    biennially: "/两年",
-    triennially: "/三年",
-  };
-  return labels[cycle] ?? `/${cycle}`;
-}
+// 说明：曾存在 formatCycle()（返回带斜杠的「/月」），与 cycleLabel 是同一张
+// 映射表写两遍。已统一为 cycleLabel，需要斜杠前缀时在调用处拼接即可
+// （如 /{cycleLabel(cycle)}），避免改映射时漏改一处。
 
 /** 相对时间（数据新鲜度提示，AGENTS.md Data Freshness） */
 export function timeAgo(iso: string | null | undefined): string {

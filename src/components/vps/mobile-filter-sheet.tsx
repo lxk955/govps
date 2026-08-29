@@ -34,7 +34,8 @@ export function MobileFilterSheet({
           筛选
         </button>
       </SheetTrigger>
-      <SheetContent side="bottom" className="flex max-h-[85dvh] flex-col rounded-t-3xl p-4">
+      {/* max-h 由 sheet.tsx 的 bottom 变体提供，此处只覆盖圆角与内边距 */}
+      <SheetContent side="bottom" className="flex flex-col rounded-t-3xl p-4">
         <SheetTitle className="shrink-0 text-sm font-bold">筛选条件</SheetTitle>
         {/*
          * 滚动交给独立的内容区，不能直接放在 SheetContent 上：
