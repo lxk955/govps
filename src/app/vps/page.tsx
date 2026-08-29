@@ -80,7 +80,13 @@ export default async function VpsListPage({ searchParams }: PageProps) {
         <FilterControls state={state} merchants={merchantOptions} />
       </aside>
 
-      <section className="border-border bg-card min-w-0 flex-1 rounded-2xl border p-5">
+      {/*
+       * 这层卡片外框服务于桌面端「左筛选栏 + 右列表区」的两栏布局。移动端侧栏
+       * 已改为抽屉，外框就成了多余的第二层框：它与内部产品卡片的边框叠加，左右
+       * 各吃掉 21px，390px 屏上内容区由 358px 缩到 316px（浪费约 12%）。
+       * 移动端去掉边框/圆角/背景/内边距，lg 以上（侧栏出现的断点）恢复原样。
+       */}
+      <section className="border-border bg-card min-w-0 flex-1 lg:rounded-2xl lg:border lg:p-5">
         {/* 补货/降价动态聚合条（有事件才展示） */}
         {summary && (summary.restock_count > 0 || summary.drop_count > 0) && (
           <Link

@@ -31,7 +31,7 @@ export default function Loading() {
 
       <section
         aria-hidden="true"
-        className="border-border bg-card min-w-0 flex-1 rounded-2xl border p-5"
+        className="border-border bg-card min-w-0 flex-1 lg:rounded-2xl lg:border lg:p-5"
       >
         {/* 顶部工具栏占位 */}
         <div className="mb-4 flex flex-wrap items-center gap-2">
