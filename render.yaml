@@ -46,6 +46,12 @@ services:
       # 只改环境变量不重新构建不会生效。
       - key: NEXT_PUBLIC_SITE_URL
         value: https://vps.govps.xyz
+      # 浏览器直连后端的地址：IP 检测需要后端看到访客真实公网 IP，
+      # 经 Next.js rewrite 转发后 Cloudflare 注入的 cf-connecting-ip 会丢失
+      # （详见 src/lib/api/endpoints.ts 的 checkIp 注释）。
+      # 注意：NEXT_PUBLIC_* 为构建期内联，改动后必须重新构建部署才生效。
+      - key: NEXT_PUBLIC_API_URL
+        value: https://govps-api.onrender.com
       - key: API_ORIGIN
         fromService:
           type: web
