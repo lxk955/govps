@@ -5,10 +5,6 @@ import { apiFetch } from "./client";
  * 类型只声明前端实际消费的字段；与 FastAPI 响应保持同形（refactor-plan §1）。
  */
 
-export function getHealth(): Promise<{ ok: boolean }> {
-  return apiFetch<{ ok: boolean }>("/api/health", { cache: "no-store" });
-}
-
 // ── P1：VPS 列表域 ──────────────────────────────────────────────
 
 export interface ProductPriceOption {
@@ -63,18 +59,6 @@ export interface ProductsResponse {
 }
 
 // ── P5：多币种与汇率 ───────────────────────────────────────────
-
-export interface RateInfo {
-  code: string;
-  /** 兑 1 美元所需该币种单位数（如 CNY 7.2 = 7.2 元/美元）；USD 金额 = 外币 ÷ 该值 */
-  units_per_usd: number;
-  source: "auto" | "manual";
-  updated_at: string | null;
-}
-
-export function getRates(): Promise<{ base: string; rates: RateInfo[] }> {
-  return apiFetch<{ base: string; rates: RateInfo[] }>("/api/rates", { cache: "no-store" });
-}
 
 /** {iso_date: {code: units_per_usd}}，历史价格换算按日期匹配 */
 export function getRateSnapshots(
