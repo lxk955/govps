@@ -24,6 +24,14 @@ const POPULAR_LOCATIONS = [
   { name: "新加坡", flag: "🇸🇬" },
 ] as const;
 
+/**
+ * 顶部快捷胶囊只放最常用的三条优质线路：胶囊排同时承载快捷筛选与热门机房，
+ * 全量 7 档会让顶部过宽、移动端横向滚动过长。
+ * 其余线路（CN2 GT / 普通 BGP / 国际线路）由搜索框模糊匹配或 URL 参数筛选；
+ * 已选条件栏仍从完整 LINE_OPTIONS 取中文名，故此处只过滤渲染、不裁剪常量。
+ */
+const QUICK_LINE_KEYS: readonly string[] = ["cn2_gia", "9929", "cmin2"];
+
 const QUICK_FILTERS = [
   { key: "recent_restock", label: "最新补货", icon: "⚡", tone: "emerald" },
   { key: "lowest_price", label: "史低价", icon: "🏷️", tone: "rose" },
@@ -204,7 +212,7 @@ export function ListToolbar({
 
         <div aria-hidden className="bg-border mx-0.5 h-4 w-px shrink-0" />
 
-        {LINE_OPTIONS.map((opt) => (
+        {LINE_OPTIONS.filter((opt) => QUICK_LINE_KEYS.includes(opt.value)).map((opt) => (
           <Chip
             key={opt.value}
             tone="indigo"
