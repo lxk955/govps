@@ -230,6 +230,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
                     {p.in_stock ? (
                       <a
                         href={`/go/${p.id}?src=compare`}
+                        rel="nofollow sponsored noopener"
                         className="inline-flex items-center gap-0.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors hover:bg-muted"
                       >
                         前往购买

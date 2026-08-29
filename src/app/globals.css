@@ -3,27 +3,31 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* shadcn/ui 设计令牌（neutral 基调，oklch）。明暗主题经 .dark 类切换（next-themes P0 后接入）。 */
+/* shadcn/ui 设计令牌（oklch）。明暗主题经 .dark 类切换（next-themes）。
+ *
+ * 亮色态对齐旧站（VPS 雷达）配色：slate 基调 + blue-600 主色 + 白卡片，
+ * 数值取 Tailwind slate/blue 色标的 oklch 等价，保证 1:1 复刻后观感一致。
+ * 暗色态沿用既有深色令牌——旧站无暗色，此为新站增补能力。 */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --radius: 0.75rem;
+  --background: oklch(0.984 0.003 247.858); /* slate-50  */
+  --foreground: oklch(0.208 0.042 265.755); /* slate-900 */
+  --card: oklch(1 0 0); /* white      */
+  --card-foreground: oklch(0.208 0.042 265.755);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.208 0.042 265.755);
+  --primary: oklch(0.546 0.245 262.881); /* blue-600  */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.968 0.007 247.896); /* slate-100 */
+  --secondary-foreground: oklch(0.279 0.041 260.031); /* slate-800 */
+  --muted: oklch(0.968 0.007 247.896); /* slate-100 */
+  --muted-foreground: oklch(0.554 0.046 257.417); /* slate-500 */
+  --accent: oklch(0.968 0.007 247.896);
+  --accent-foreground: oklch(0.279 0.041 260.031);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: oklch(0.929 0.013 255.508); /* slate-200 */
+  --input: oklch(0.929 0.013 255.508);
+  --ring: oklch(0.623 0.214 259.815); /* blue-500  */
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);

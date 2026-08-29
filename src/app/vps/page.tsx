@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, SearchX } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { ActiveFilterChips } from "@/components/vps/ActiveFilterChips";
-import { FilterControls } from "@/components/vps/FilterControls";
+import { FilterControls, type MerchantOption } from "@/components/vps/FilterControls";
 import { ListToolbar } from "@/components/vps/ListToolbar";
+import { NotifyBanner } from "@/components/vps/notify-banner";
 import { Pagination } from "@/components/vps/Pagination";
 import { VpsCard } from "@/components/vps/VpsCard";
 import { VpsRow } from "@/components/vps/VpsRow";
-import { listMerchants, listProducts, type ProductsResponse } from "@/lib/api/endpoints";
+import { getEventsSummary, listMerchants, listProducts, type ProductsResponse } from "@/lib/api/endpoints";
+import { timeAgo } from "@/lib/format";
 import { parseListQuery } from "@/lib/query-state";
 
 export const metadata: Metadata = {
@@ -36,7 +36,7 @@ export default async function VpsListPage({ searchParams }: PageProps) {
       location: state.location,
       line: state.line,
       keyword: state.keyword || undefined,
-      sort: state.sort,
+      sort: state.sort === "hot" ? undefined : state.sort,
       page: state.page,
       size: state.size,
       min_price: state.min_price,
@@ -57,99 +57,151 @@ export default async function VpsListPage({ searchParams }: PageProps) {
 
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
-  const merchantOptions = merchants.map((m) => ({
+  const merchantOptions: MerchantOption[] = merchants.map((m) => ({
     slug: m.slug,
     name: m.name,
+    count: m.count,
     in_stock_count: m.in_stock_count,
   }));
 
+  const summary = await getEventsSummary(24).catch(() => null);
+  const view = state.view ?? "card";
+
+  // 数据新鲜度：页内产品最近一次被爬虫成功确认的时间（AGENTS.md Data Freshness）
+  const freshness = items.reduce<string | null>((acc, p) => {
+    if (!p.last_checked_at) return acc;
+    return !acc || p.last_checked_at > acc ? p.last_checked_at : acc;
+  }, null);
+
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:py-8">
-      <header className="mb-4">
-        <h1 className="text-xl font-bold tracking-tight lg:text-2xl">VPS 套餐</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          {error
-            ? "数据加载失败，请稍后重试"
-            : total > 0
-              ? `共 ${total} 款套餐（聚合同配置不同付款周期）`
-              : "暂无匹配的套餐"}
-        </p>
-      </header>
+    <div className="flex gap-6">
+      {/* 桌面端侧栏筛选 */}
+      <aside className="sticky top-20 hidden max-h-[calc(100dvh-6rem)] w-60 shrink-0 self-start overflow-y-auto lg:block">
+        <FilterControls state={state} merchants={merchantOptions} />
+      </aside>
 
-      <div className="flex flex-col gap-4">
-        <ActiveFilterChips state={state} />
+      <section className="border-border bg-card min-w-0 flex-1 rounded-2xl border p-5">
+        {/* 补货/降价动态聚合条（有事件才展示） */}
+        {summary && (summary.restock_count > 0 || summary.drop_count > 0) && (
+          <Link
+            href="/deals"
+            className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/90 to-indigo-50/70 px-3.5 py-2 text-xs text-slate-600 transition-all hover:border-blue-300 dark:border-blue-900 dark:from-blue-950/50 dark:to-indigo-950/40 dark:text-slate-300"
+          >
+            <span className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-100">
+              📡 实时动态
+            </span>
+            {summary.restock_count > 0 && (
+              <span className="flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400">
+                ⚡ 近 24h 补货 <b className="font-black">{summary.restock_count}</b> 个
+              </span>
+            )}
+            {summary.drop_count > 0 && (
+              <span className="flex items-center gap-1 font-medium text-orange-600 dark:text-orange-400">
+                📉 降价 <b className="font-black">{summary.drop_count}</b> 个
+              </span>
+            )}
+            <span className="ml-auto flex items-center gap-1 font-bold text-blue-600 dark:text-blue-400">
+              查看动态 →
+            </span>
+          </Link>
+        )}
+
+        {/* 顶部操作区：搜索 + 视图切换 + 快捷筛选胶囊 */}
         <ListToolbar state={state} merchants={merchantOptions} />
-      </div>
+        <ActiveFilterChips state={state} merchants={merchantOptions} />
 
-      <div className="mt-4 flex flex-col gap-6 lg:mt-6 lg:flex-row lg:gap-8">
-        {/* 桌面侧栏筛选（lg+ 显示；移动端走 ListToolbar 里的 Sheet） */}
-        <aside className="hidden w-64 shrink-0 lg:block" aria-label="筛选侧栏">
-          <FilterControls state={state} merchants={merchantOptions} />
-        </aside>
+        {/* 未登录通知引导横幅 */}
+        <NotifyBanner />
 
-        <section className="min-w-0 flex-1" aria-label="套餐列表" aria-busy={error ? undefined : false}>
-          {error ? (
-            <div
-              role="alert"
-              className="border-destructive/30 bg-destructive/5 text-destructive flex flex-col items-center gap-3 rounded-xl border p-10 text-center"
+        {error ? (
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-12 text-center dark:border-red-900 dark:bg-red-950/30">
+            <div className="text-3xl">📡</div>
+            <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>
+            <Link
+              href="/vps"
+              className="rounded-xl bg-red-600 px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700"
             >
-              <AlertTriangle aria-hidden className="h-8 w-8" />
-              <p className="text-sm">{error}</p>
-              <Button asChild variant="outline" size="sm">
-                <Link href="/vps">重置筛选并重试</Link>
-              </Button>
+              重新加载
+            </Link>
+          </div>
+        ) : items.length === 0 ? (
+          /* 智能零结果状态（带推荐快捷动作） */
+          <div className="border-border flex flex-col items-center justify-center rounded-2xl border border-dashed px-4 py-16 text-center">
+            <svg
+              className="mb-3 h-12 w-12 text-slate-300 dark:text-slate-600"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path strokeLinecap="round" d="m20 20-3.5-3.5" />
+            </svg>
+            <h3 className="text-slate-800 text-base font-bold dark:text-slate-100">
+              未找到符合当前多重筛选条件的套餐
+            </h3>
+            <p className="text-slate-400 mt-1 max-w-sm text-xs dark:text-slate-500">
+              可能是某些限制（如预算、最低内存或特定机房）过于严苛，建议尝试放宽限制或浏览热门机房：
+            </p>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <Link
+                href="/vps"
+                className="rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-blue-700"
+              >
+                ✨ 一键重置全部筛选
+              </Link>
+              {[
+                { loc: "洛杉矶", flag: "🇺🇸", label: "洛杉矶热门套餐" },
+                { loc: "东京", flag: "🇯🇵", label: "日本东京精品套餐" },
+                { loc: "香港", flag: "🇭🇰", label: "香港低延迟套餐" },
+              ].map((q) => (
+                <Link
+                  key={q.loc}
+                  href={`/vps?location=${encodeURIComponent(q.loc)}`}
+                  className="border-border bg-card text-foreground rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  {q.flag} {q.label}
+                </Link>
+              ))}
             </div>
-          ) : items.length === 0 ? (
-            <div className="text-muted-foreground flex flex-col items-center gap-3 rounded-xl border border-dashed p-12 text-center">
-              <SearchX aria-hidden className="h-8 w-8" />
-              <p className="text-sm">没有符合当前筛选的套餐</p>
-              <Button asChild variant="outline" size="sm">
-                <Link href="/vps">清空筛选</Link>
-              </Button>
+          </div>
+        ) : view === "card" ? (
+          /* 卡片视图：列宽随容器自适应（旧站 .card-grid 同款规则） */
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-4">
+            {items.map((p) => (
+              <VpsCard key={p.id} product={p} />
+            ))}
+          </div>
+        ) : (
+          /* 列表视图：表头仅桌面端显示，移动端行内已自解释 */
+          <div>
+            <div className="border-border/60 bg-slate-50/80 text-muted-foreground mb-1 hidden items-center gap-3 rounded-xl px-4 py-2 text-xs font-bold sm:flex dark:bg-slate-800/60">
+              <div className="min-w-0 flex-1">套餐名称与商家</div>
+              <div className="hidden w-[220px] shrink-0 lg:block">配置 / 流量</div>
+              <div className="hidden w-[100px] shrink-0 md:block">机房位置</div>
+              <div className="hidden w-[168px] shrink-0 lg:block">网络与线路</div>
+              <div className="w-[125px] shrink-0 text-right">价格与周期</div>
+              <div className="hidden w-16 shrink-0 text-center xl:block">现货状态</div>
+              <div className="w-[144px] shrink-0 text-right">操作</div>
             </div>
-          ) : (
-            <>
-              {/* 移动/平板：卡片形态 */}
-              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
-                {items.map((p) => (
-                  <li key={p.id} className="min-w-0">
-                    <VpsCard product={p} />
-                  </li>
-                ))}
-              </ul>
-              {/* 桌面：表格行形态（外层包裹 overflow-x-auto 防止 1024px 视口撑破页面） */}
-              <div className="hidden lg:block overflow-x-auto rounded-xl border">
-                <table className="w-full min-w-[680px] border-separate border-spacing-0 text-left">
-                  <caption className="sr-only">VPS 套餐列表</caption>
-                  <thead>
-                    <tr className="bg-muted/40 text-muted-foreground text-xs">
-                      <th scope="col" className="border-b px-3 py-2.5 font-medium">套餐 / 商家</th>
-                      <th scope="col" className="border-b px-3 py-2.5 font-medium">配置</th>
-                      <th scope="col" className="border-b px-3 py-2.5 font-medium">流量 / 带宽</th>
-                      <th scope="col" className="border-b px-3 py-2.5 font-medium">机房 / 线路</th>
-                      <th scope="col" className="border-b px-3 py-2.5 font-medium">状态</th>
-                      <th scope="col" className="border-b px-3 py-2.5 text-right font-medium">价格</th>
-                      <th scope="col" className="border-b px-3 py-2.5 font-medium">
-                        <span className="sr-only">购买</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {items.map((p) => (
-                      <VpsRow key={p.id} product={p} />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <Pagination state={state} total={total} />
-              <p className="text-muted-foreground mt-4 text-xs">
-                价格为商家原币标价；「折年 ≈」为同币种按付款周期折算，跨币种统一换算将在后续版本提供。
-                数据更新时间以卡片标注为准，库存与价格以商家页面为准。
-              </p>
-            </>
-          )}
-        </section>
-      </div>
+            {items.map((p) => (
+              <VpsRow key={p.id} product={p} />
+            ))}
+          </div>
+        )}
+
+        {items.length > 0 && (
+          <Pagination state={state} total={total} freshness={timeAgo(freshness)} />
+        )}
+
+        {items.length > 0 && (
+          <p className="text-muted-foreground mt-4 text-xs leading-relaxed">
+            价格为商家原币标价，「折年」为同币种按付款周期折算，跨币种统一折算为美元参考价。
+            数据更新时间以卡片标注为准，库存与价格以商家页面为准。
+          </p>
+        )}
+      </section>
     </div>
   );
 }

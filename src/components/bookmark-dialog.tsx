@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bookmark, Check, Copy } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -30,11 +30,18 @@ export function BookmarkDialog() {
 
   return (
     <Dialog>
+      {/* 1:1 复刻旧站头部/页脚的 ⭐ 收藏胶囊（hover 转琥珀色） */}
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-muted-foreground gap-1.5 text-xs">
-          <Bookmark aria-hidden className="h-3.5 w-3.5" />
-          收藏本站
-        </Button>
+        <button
+          type="button"
+          title="收藏 GoVPS 到浏览器书签"
+          className="group flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200/90 bg-slate-50/80 px-2.5 py-1 text-xs font-bold text-slate-700 transition-all hover:border-amber-300 hover:bg-amber-50/70 hover:text-amber-800 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:border-amber-500/60 dark:hover:bg-amber-950/40 dark:hover:text-amber-300"
+        >
+          <span aria-hidden className="text-amber-500 transition-transform group-hover:scale-110">
+            ⭐
+          </span>
+          <span className="hidden sm:inline">收藏本站</span>
+        </button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, MailCheck } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -79,94 +78,109 @@ export function LoginForm({ next }: { next: string | null }) {
   };
 
   return (
-    <div className="bg-card mx-auto w-full max-w-sm rounded-xl border p-5">
-      {step === "email" ? (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void requestCode();
-          }}
-          className="flex flex-col gap-3"
-        >
-          <Label htmlFor="login-email">邮箱地址</Label>
-          <Input
-            id="login-email"
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="you@example.com"
-            className="text-base"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Button type="submit" disabled={loading || !email.trim()}>
-            {loading && <Loader2 aria-hidden className="h-4 w-4 animate-spin" />}
-            获取验证码
-          </Button>
-        </form>
-      ) : (
-        <form onSubmit={submitCode} className="flex flex-col gap-3">
-          <p className="text-muted-foreground flex items-center gap-1.5 text-sm">
-            <MailCheck aria-hidden className="h-4 w-4 shrink-0" />
-            验证码已发送至 <span className="truncate font-medium">{email}</span>
-          </p>
-          <Label htmlFor="login-code">6 位验证码（10 分钟内有效）</Label>
-          <Input
-            id="login-code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            pattern="\d{6}"
-            maxLength={6}
-            required
-            placeholder="000000"
-            className="text-center font-mono text-base tracking-[0.4em]"
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-          />
-          <Button type="submit" disabled={loading || code.length !== 6}>
-            {loading && <Loader2 aria-hidden className="h-4 w-4 animate-spin" />}
-            登录 / 注册
-          </Button>
-          <div className="flex items-center justify-between text-xs">
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
-              onClick={() => setStep("email")}
+    <div className="mx-auto mt-16 w-full max-w-sm">
+      <div className="border-border bg-card rounded-2xl border p-6 shadow-sm">
+        <h1 className="text-slate-900 text-lg font-bold dark:text-slate-100">登录 / 注册</h1>
+        <p className="text-muted-foreground mt-1 text-sm">
+          邮箱验证码登录，无需密码。登录后可关注套餐并接收到货/降价邮件通知。
+        </p>
+
+        {step === "email" ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void requestCode();
+            }}
+            className="mt-5 space-y-3"
+          >
+            <Label htmlFor="login-email" className="sr-only">
+              邮箱地址
+            </Label>
+            <Input
+              id="login-email"
+              type="email"
+              required
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="focus-visible:border-blue-400 focus-visible:ring-0 h-auto w-full rounded-lg border-border px-3 py-2.5 text-base sm:text-sm"
+            />
+            <Button
+              type="submit"
+              disabled={loading || !email.trim()}
+              className="h-auto w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
             >
-              换一个邮箱
-            </button>
+              {loading ? "发送中…" : "获取验证码"}
+            </Button>
+          </form>
+        ) : (
+          <form onSubmit={submitCode} className="mt-5 space-y-3">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              验证码已发送至{" "}
+              <b className="text-slate-700 dark:text-slate-300">{email}</b>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("email");
+                  setCode("");
+                }}
+                className="ml-2 cursor-pointer text-blue-600 hover:underline dark:text-blue-400"
+              >
+                更换邮箱
+              </button>
+            </p>
+            <Label htmlFor="login-code" className="sr-only">
+              6 位验证码
+            </Label>
+            <Input
+              id="login-code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              required
+              placeholder="6 位验证码"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              className="focus-visible:border-blue-400 focus-visible:ring-0 h-auto w-full rounded-lg border-border px-3 py-2.5 text-center text-lg tracking-[0.5em]"
+            />
+            <Button
+              type="submit"
+              disabled={loading || code.length !== 6}
+              className="h-auto w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              {loading ? "验证中…" : "登录"}
+            </Button>
             <Button
               type="button"
-              variant="link"
-              size="sm"
-              className="h-auto p-0 text-xs"
+              variant="ghost"
               disabled={cooldown > 0 || loading}
               onClick={() => void requestCode()}
+              className="hover:text-blue-600 dark:text-slate-500 h-auto w-full text-sm text-slate-400 hover:bg-transparent"
             >
-              {cooldown > 0 ? `${cooldown}s 后可重发` : "重新发送"}
+              {cooldown > 0 ? `${cooldown}s 后可重新发送` : "重新发送验证码"}
             </Button>
-          </div>
-        </form>
-      )}
+            {devCode && (
+              <p className="rounded bg-amber-50 p-2 text-center text-xs text-amber-600 dark:bg-amber-950/50 dark:text-amber-400">
+                开发模式（未配置邮件服务），验证码：<b>{devCode}</b>
+              </p>
+            )}
+          </form>
+        )}
 
-      {/* 仅本地开发（服务端未配置发信）时后端会回传验证码 */}
-      {devCode && (
-        <p className="mt-3 rounded-lg bg-muted px-3 py-2 text-xs" role="note">
-          本地开发模式：邮件未配置，本次验证码为{" "}
-          <span className="font-mono font-bold tracking-widest">{devCode}</span>
+        {error && (
+          <p role="alert" className="mt-3 text-sm text-red-500 dark:text-red-400">
+            {error}
+          </p>
+        )}
+
+        <p className="text-muted-foreground mt-4 border-t pt-3 text-xs leading-relaxed">
+          登录即注册；邮箱仅用于发送库存与降价通知。验证码 10 分钟内有效、
+          连续输错 5 次将锁定，需重新获取。
         </p>
-      )}
-
-      {error && (
-        <p role="alert" className="text-destructive mt-3 text-sm">
-          {error}
-        </p>
-      )}
-
-      <p className="text-muted-foreground mt-4 border-t pt-3 text-xs leading-relaxed">
-        登录即注册；邮箱仅用于发送库存与降价通知。验证码 10 分钟内有效、
-        连续输错 5 次将锁定，需重新获取。
-      </p>
+      </div>
     </div>
   );
 }

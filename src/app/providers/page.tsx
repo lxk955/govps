@@ -34,7 +34,7 @@ function Freshness({ at }: { at: string | null }) {
 function MerchantCard({ m }: { m: MerchantSummary }) {
   const soldOut = Math.max(0, m.count - m.in_stock_count);
   return (
-    <li className="bg-card flex min-w-0 flex-col gap-3 rounded-xl border p-4">
+    <li className="border-border bg-card flex min-w-0 flex-col gap-3 rounded-2xl border p-5 shadow-sm">
       <header className="flex min-w-0 items-start justify-between gap-2">
         <div className="min-w-0">
           <h2 className="break-words text-base font-semibold">{m.name}</h2>
@@ -93,9 +93,9 @@ export default async function ProvidersPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6">
+    <div className="border-border bg-card rounded-xl border p-5 shadow-sm">
       <header className="mb-5">
-        <h1 className="text-xl font-bold tracking-tight lg:text-2xl">服务商一览</h1>
+        <h1 className="text-slate-900 text-xl font-bold dark:text-slate-100">服务商一览</h1>
         <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
           套餐款数按聚合后唯一 SKU 卡片口径统计，与列表页卡片数量一致；
           抓取时间为 GoVPS 最近一次成功同步该商家数据的时刻。
@@ -103,11 +103,17 @@ export default async function ProvidersPage() {
       </header>
 
       {error ? (
-        <div role="alert" className="border-destructive/30 bg-destructive/5 text-destructive rounded-xl border p-10 text-center text-sm">
-          服务商数据加载失败，请稍后重试。
+        <div
+          role="alert"
+          className="flex flex-col items-center gap-3 rounded-xl border border-red-100 bg-red-50 p-12 text-center dark:border-red-900 dark:bg-red-950/30"
+        >
+          <div className="text-3xl">📡</div>
+          <p className="text-sm font-medium text-red-600 dark:text-red-400">
+            服务商数据加载失败，请稍后重试。
+          </p>
         </div>
       ) : merchants.length === 0 ? (
-        <div className="text-muted-foreground rounded-xl border border-dashed p-10 text-center text-sm">
+        <div className="border-border rounded-xl border border-dashed p-12 text-center text-sm text-slate-400 dark:text-slate-500">
           暂无已收录的服务商。
         </div>
       ) : (

@@ -1,30 +1,74 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { SlidersHorizontal } from "lucide-react";
+import { LayoutGrid, List, Search, X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import {
-  SORT_OPTIONS,
-  withParams,
-  type ListQueryState,
-} from "@/lib/query-state";
-import { FilterControls } from "./FilterControls";
+import { MobileFilterSheet } from "@/components/vps/mobile-filter-sheet";
+import type { MerchantOption } from "@/components/vps/FilterControls";
+import { LINE_OPTIONS, type ListQueryState, withParams } from "@/lib/query-state";
+import { cn } from "@/lib/utils";
 
-interface MerchantOption {
-  slug: string;
-  name: string;
-  in_stock_count: number;
+/**
+ * 列表顶部工具栏（1:1 复刻旧站 ProductList.vue 顶部两行）：
+ * 第 1 行 搜索框 + 视图切换；第 2 行 快捷筛选胶囊排（移动端横向滚动）。
+ *
+ * 未复刻「❤️ 我的关注」胶囊：该筛选依赖登录凭证，而列表页为 RSC 服务端取数，
+ * 请求不携带用户 token，直接下发会被后端判 401（详见交付说明）。
+ */
+
+const POPULAR_LOCATIONS = [
+  { name: "洛杉矶", flag: "🇺🇸" },
+  { name: "东京", flag: "🇯🇵" },
+  { name: "香港", flag: "🇭🇰" },
+  { name: "新加坡", flag: "🇸🇬" },
+] as const;
+
+const QUICK_FILTERS = [
+  { key: "recent_restock", label: "最新补货", icon: "⚡", tone: "emerald" },
+  { key: "lowest_price", label: "史低价", icon: "🏷️", tone: "rose" },
+  { key: "price_drop", label: "降价中", icon: "📉", tone: "orange" },
+  { key: "in_stock", label: "仅看有货", icon: "🟢", tone: "emerald" },
+] as const;
+
+const TONE_ON: Record<string, string> = {
+  emerald:
+    "border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/50",
+  rose: "border-rose-500 bg-rose-50 text-rose-600 ring-2 ring-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/50",
+  orange:
+    "border-orange-500 bg-orange-50 text-orange-600 ring-2 ring-orange-100 dark:bg-orange-950/50 dark:text-orange-300 dark:ring-orange-900/50",
+  blue: "border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-100 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/50",
+  indigo:
+    "border-indigo-500 bg-indigo-50 text-indigo-600 ring-2 ring-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-300 dark:ring-indigo-900/50",
+};
+
+const CHIP_BASE =
+  "shrink-0 flex cursor-pointer items-center gap-1 rounded-xl border px-3 py-1 text-xs font-bold transition-all";
+const CHIP_OFF =
+  "border-border bg-slate-50/70 text-slate-600 hover:border-slate-300 hover:bg-slate-100 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-800";
+
+function Chip({
+  active,
+  tone,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  tone: keyof typeof TONE_ON;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(CHIP_BASE, active ? TONE_ON[tone] : CHIP_OFF)}
+    >
+      {children}
+    </button>
+  );
 }
-
-/** 列表工具行：排序切换（原生 select，移动端原生滚轮体验）+ 移动端筛选抽屉入口。 */
 
 export function ListToolbar({
   state,
@@ -34,41 +78,143 @@ export function ListToolbar({
   merchants: MerchantOption[];
 }) {
   const router = useRouter();
+  const [kw, setKw] = useState(state.keyword);
+
+  useEffect(() => setKw(state.keyword), [state.keyword]);
+
+  const go = (patch: Partial<ListQueryState>) => {
+    router.push(`/vps?${withParams(state, patch)}`);
+  };
+
+  const toggleIn = (key: "location" | "line", value: string) => {
+    const cur = state[key];
+    go({ [key]: cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value] });
+  };
+
+  const setView = (view: "card" | "list") => go({ view });
+
+  const submitKeyword = () => go({ keyword: kw });
 
   return (
-    <div className="flex items-center gap-2">
-      {/* 移动端：筛选抽屉（shadcn Sheet）；lg+ 由侧栏承担 */}
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-1.5 lg:hidden">
-            <SlidersHorizontal aria-hidden className="h-4 w-4" />
-            筛选
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="bottom" className="overflow-y-auto px-4 pb-8">
-          <SheetHeader>
-            <SheetTitle>筛选条件</SheetTitle>
-          </SheetHeader>
-          <div className="px-1">
-            <FilterControls state={state} merchants={merchants} />
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      <label className="ml-auto flex items-center gap-2 text-sm">
-        <span className="text-muted-foreground whitespace-nowrap">排序</span>
-        <select
-          value={state.sort}
-          onChange={(e) => router.push(`/vps?${withParams(state, { sort: e.target.value as ListQueryState["sort"] })}`)}
-          className="border-input bg-background focus-visible:ring-ring/50 h-9 rounded-md border px-2 py-1 text-base outline-none focus-visible:ring-[3px] md:text-sm"
+    <div className="mb-5 flex flex-col gap-3">
+      {/* 第 1 行：左侧快捷搜索框，右侧视图切换 */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <form
+          role="search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            submitKeyword();
+          }}
+          className="relative min-w-[220px] flex-1 sm:max-w-md"
         >
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </label>
+          <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+            <Search aria-hidden className="h-4 w-4" />
+          </span>
+          <input
+            type="text"
+            value={kw}
+            onChange={(e) => setKw(e.target.value)}
+            aria-label="搜索套餐、机房、线路或配置"
+            placeholder="搜索套餐、机房、线路或配置..."
+            className="border-border bg-slate-50/70 focus:border-blue-500 focus:ring-blue-100 text-foreground placeholder:text-slate-400 w-full rounded-xl border py-1.5 pr-8 pl-9 text-base transition-all focus:bg-white focus:ring-2 focus:outline-none sm:text-sm dark:bg-slate-800/60 dark:focus:bg-slate-900"
+          />
+          {kw && (
+            <button
+              type="button"
+              onClick={() => {
+                setKw("");
+                go({ keyword: "" });
+              }}
+              title="清空搜索"
+              aria-label="清空搜索"
+              className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-2.5 text-slate-400 hover:text-slate-600"
+            >
+              <X aria-hidden className="h-4 w-4" />
+            </button>
+          )}
+        </form>
+
+        <div className="flex items-center gap-2">
+          <MobileFilterSheet state={state} merchants={merchants} />
+          {/* 视图切换（旧站 ViewModeToggle 复刻） */}
+          <div
+            role="group"
+            aria-label="视图模式"
+            className="border-border flex items-center gap-0.5 rounded-xl border bg-slate-50/70 p-0.5 dark:bg-slate-800/60"
+          >
+            <button
+              type="button"
+              onClick={() => setView("card")}
+              aria-pressed={state.view === "card"}
+              aria-label="卡片视图"
+              title="卡片视图"
+              className={cn(
+                "cursor-pointer rounded-lg px-2 py-1 transition-colors",
+                state.view === "card"
+                  ? "bg-card text-blue-600 shadow-sm dark:text-blue-400"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400",
+              )}
+            >
+              <LayoutGrid aria-hidden className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("list")}
+              aria-pressed={state.view === "list"}
+              aria-label="列表视图"
+              title="列表视图"
+              className={cn(
+                "cursor-pointer rounded-lg px-2 py-1 transition-colors",
+                state.view === "list"
+                  ? "bg-card text-blue-600 shadow-sm dark:text-blue-400"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400",
+              )}
+            >
+              <List aria-hidden className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 第 2 行：快捷筛选胶囊按钮排（移动端水平平滑滚动） */}
+      <div className="no-scrollbar flex items-center gap-2 overflow-x-auto py-0.5">
+        {QUICK_FILTERS.map((f) => (
+          <Chip
+            key={f.key}
+            tone={f.tone}
+            active={Boolean(state[f.key])}
+            onClick={() => go({ [f.key]: !state[f.key] } as Partial<ListQueryState>)}
+          >
+            <span aria-hidden>{f.icon}</span> {f.label}
+          </Chip>
+        ))}
+
+        <div aria-hidden className="bg-border mx-0.5 h-4 w-px shrink-0" />
+
+        {POPULAR_LOCATIONS.map((loc) => (
+          <Chip
+            key={loc.name}
+            tone="blue"
+            active={state.location.includes(loc.name)}
+            onClick={() => toggleIn("location", loc.name)}
+          >
+            <span aria-hidden>{loc.flag}</span> {loc.name}
+          </Chip>
+        ))}
+
+        <div aria-hidden className="bg-border mx-0.5 h-4 w-px shrink-0" />
+
+        {LINE_OPTIONS.map((opt) => (
+          <Chip
+            key={opt.value}
+            tone="indigo"
+            active={state.line.includes(opt.value)}
+            onClick={() => toggleIn("line", opt.value)}
+          >
+            {opt.label}
+          </Chip>
+        ))}
+      </div>
     </div>
   );
 }

@@ -28,7 +28,7 @@ export function WatchButton({
   productId: number;
   /** 挂载后查询真实状态（详情页） */
   hydrate?: boolean;
-  size?: "sm" | "icon";
+  size?: "sm" | "icon" | "xs";
 }) {
   const { user } = useAuth();
   const router = useRouter();
@@ -75,6 +75,28 @@ export function WatchButton({
       setBusy(false);
     }
   }, [user, watching, productId, router, pathname]);
+
+  // xs：卡片头部 24px 专属槽内的紧凑形态（1:1 复刻旧站卡片头部关注按钮）
+  if (size === "xs") {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label={watching ? "取消关注该套餐" : "关注该套餐"}
+        title={watching ? "取消关注" : "关注"}
+        aria-pressed={watching}
+        disabled={busy || user === undefined}
+        onClick={() => void toggle()}
+        className={cn("h-6 w-6 shrink-0", watching && "text-blue-600 dark:text-blue-400")}
+      >
+        {watching ? (
+          <BookmarkCheck aria-hidden className="h-3.5 w-3.5" />
+        ) : (
+          <Bookmark aria-hidden className="text-slate-400 h-3.5 w-3.5" />
+        )}
+      </Button>
+    );
+  }
 
   if (size === "icon") {
     return (

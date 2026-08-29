@@ -5,9 +5,9 @@ import Link from "next/link";
 import { Loader2, RotateCcw, Star, X } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { VpsCard } from "@/components/vps/VpsCard";
 import {
   getWatchlist,
   unwatchProduct,
@@ -15,8 +15,6 @@ import {
   type WatchlistItem,
   type WatchPrefs,
 } from "@/lib/api/endpoints";
-import { currencySymbol, formatCycle, timeAgo } from "@/lib/format";
-import { productHref } from "@/lib/slug";
 
 /** 关注管理面板：通知开关、降幅阈值、取关 + 撤销（方案 P4 交付物「取关撤销」）。 */
 
@@ -41,19 +39,23 @@ export function WatchlistPanel() {
 
   if (user === undefined || (user && items === null && !error)) {
     return (
-      <div className="bg-card text-muted-foreground flex items-center justify-center gap-2 rounded-xl border p-10 text-sm" role="status">
-        <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
-        加载中…
+      /* 骨架屏：与卡片网格同构，减少加载时的视觉跳动 */
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-4" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="bg-muted h-72 animate-pulse rounded-2xl" />
+        ))}
       </div>
     );
   }
 
   if (user === null) {
     return (
-      <div className="bg-card flex flex-col items-center gap-3 rounded-xl border p-10 text-center">
-        <Star aria-hidden className="text-muted-foreground h-8 w-8" />
-        <p className="text-sm">登录后即可关注套餐，降价与补货第一时间收到邮件。</p>
-        <Button asChild size="sm">
+      <div className="border-border rounded-xl border border-dashed p-12 text-center">
+        <Star aria-hidden className="text-muted-foreground mx-auto h-8 w-8" />
+        <p className="text-muted-foreground mt-3 text-sm">
+          登录后即可关注套餐，降价与补货第一时间收到邮件。
+        </p>
+        <Button asChild size="sm" className="mt-3">
           <Link href="/login?next=%2Fwatchlist">登录 / 注册</Link>
         </Button>
       </div>
@@ -62,10 +64,18 @@ export function WatchlistPanel() {
 
   if (error) {
     return (
-      <div role="alert" className="border-destructive/30 bg-destructive/5 text-destructive flex flex-col items-center gap-3 rounded-xl border p-10 text-center text-sm">
-        加载失败，请稍后重试。
-        <Button variant="outline" size="sm" onClick={() => void load()}>
-          重试
+      <div
+        role="alert"
+        className="flex flex-col items-center gap-3 rounded-xl border border-red-100 bg-red-50 p-12 text-center dark:border-red-900 dark:bg-red-950/30"
+      >
+        <div className="text-3xl">📡</div>
+        <p className="text-sm font-medium text-red-600 dark:text-red-400">加载失败，请稍后重试。</p>
+        <Button
+          size="sm"
+          onClick={() => void load()}
+          className="rounded-xl bg-red-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-red-700"
+        >
+          重新加载
         </Button>
       </div>
     );
@@ -73,11 +83,14 @@ export function WatchlistPanel() {
 
   if (!items || items.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed p-12 text-center">
-        <Star aria-hidden className="text-muted-foreground h-8 w-8" />
-        <p className="text-muted-foreground text-sm">还没有关注的套餐。</p>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/vps">去列表挑一个</Link>
+      <div className="border-border rounded-xl border border-dashed p-12 text-center">
+        <p className="text-muted-foreground text-sm">还没有关注任何套餐</p>
+        <Button
+          asChild
+          size="sm"
+          className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          <Link href="/vps">去逛逛</Link>
         </Button>
       </div>
     );
@@ -85,11 +98,15 @@ export function WatchlistPanel() {
 
   return (
     <>
-      <ul className="flex flex-col gap-3">
+      {/* 卡片视图（1:1 复刻旧站 Watchlist.vue 的 card-grid + 卡下通知开关） */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-4">
         {items.map((w) => (
-          <WatchRow key={w.id} item={w} onChanged={load} />
+          <div key={w.id} className="flex min-w-0 flex-col gap-1">
+            <VpsCard product={w.product} watchHydrate />
+            <WatchPrefsBar item={w} onChanged={load} />
+          </div>
         ))}
-      </ul>
+      </div>
       <UndoZone onUndoDone={load} />
     </>
   );
@@ -154,8 +171,8 @@ function UndoZone({ onUndoDone }: { onUndoDone: () => Promise<void> }) {
   );
 }
 
-/** 单个关注行：产品信息 + 通知开关 + 降幅阈值 + 取关。 */
-function WatchRow({
+/** 卡片下方的通知偏好行（1:1 复刻旧站卡下开关；降幅阈值为新站增补）。 */
+function WatchPrefsBar({
   item,
   onChanged,
 }: {
@@ -200,74 +217,59 @@ function WatchRow({
   };
 
   return (
-    <li className="bg-card rounded-xl border p-4">
-      <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Link href={productHref(p.id, p.name)} className="block truncate font-medium hover:text-sky-700 hover:underline dark:hover:text-sky-400">
-            {p.name}
-          </Link>
-          <p className="text-muted-foreground mt-0.5 truncate text-xs">
-            {p.merchant.name} · {p.location || "—"} · 关注于 {timeAgo(item.created_at)}
-          </p>
-          <p className="mt-1 text-sm font-bold tabular-nums">
-            {currencySymbol(p.currency)}
-            {p.price.toFixed(2)}
-            <span className="text-muted-foreground text-xs font-normal">{formatCycle(p.billing_cycle)}</span>
-            {!p.in_stock && (
-              <Badge variant="secondary" className="ml-2 text-muted-foreground">
-                缺货
-              </Badge>
-            )}
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => void unwatch()} disabled={saving}>
-          取消关注
-        </Button>
-      </div>
-
-      {/* 通知偏好 */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-t pt-3">
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="accent-primary h-4 w-4"
-            checked={prefs.notify_restock}
-            onChange={() => togglePref("notify_restock")}
+    <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1.5 px-1 text-xs text-slate-500 dark:text-slate-400">
+      <label
+        className="flex cursor-pointer items-center gap-1.5"
+        title={p.in_stock ? "有货时不会发信；售罄后再补货会通知" : "缺货补货时邮件提醒"}
+      >
+        <input
+          type="checkbox"
+          className="accent-primary h-3.5 w-3.5"
+          checked={prefs.notify_restock}
+          onChange={() => togglePref("notify_restock")}
+        />
+        <span>到货通知</span>
+      </label>
+      <label className="flex cursor-pointer items-center gap-1.5">
+        <input
+          type="checkbox"
+          className="accent-primary h-3.5 w-3.5"
+          checked={prefs.notify_price_drop}
+          onChange={() => togglePref("notify_price_drop")}
+        />
+        <span>降价通知</span>
+      </label>
+      {prefs.notify_price_drop && (
+        <label className="flex items-center gap-1.5">
+          <span className="whitespace-nowrap">降幅 ≥</span>
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            defaultValue={prefs.min_drop_percent}
+            aria-label="最低降幅百分比"
+            onBlur={(e) => {
+              const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+              e.target.value = String(v);
+              const next = { ...prefs, min_drop_percent: v };
+              setPrefs(next);
+              void save(next);
+            }}
+            className="h-6 w-14 px-1.5 text-center text-base sm:text-xs"
           />
-          补货通知
+          <span>%</span>
         </label>
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="accent-primary h-4 w-4"
-            checked={prefs.notify_price_drop}
-            onChange={() => togglePref("notify_price_drop")}
-          />
-          降价通知
-        </label>
-        {prefs.notify_price_drop && (
-          <label className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground whitespace-nowrap">降幅 ≥</span>
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              defaultValue={prefs.min_drop_percent}
-              aria-label="最低降幅百分比"
-              onBlur={(e) => {
-                const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
-                e.target.value = String(v);
-                const next = { ...prefs, min_drop_percent: v };
-                setPrefs(next);
-                void save(next);
-              }}
-              className="h-7 w-16 px-2 text-center text-base md:text-sm"
-            />
-            <span className="text-muted-foreground">%</span>
-            {saving && <Loader2 aria-hidden className="h-3 w-3 animate-spin" />}
-          </label>
-        )}
-      </div>
-    </li>
+      )}
+      {saving && <Loader2 aria-hidden className="h-3 w-3 animate-spin" />}
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={() => void unwatch()}
+        disabled={saving}
+        className="hover:text-rose-700 dark:text-rose-400 h-auto p-0 text-xs text-rose-600 hover:bg-transparent"
+      >
+        取消关注
+      </Button>
+    </div>
   );
 }

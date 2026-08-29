@@ -1,0 +1,604 @@
+/* ip.cx 风格视觉系统 —— 1:1 移植自旧站 views/ip/ipcx.css。
+ *
+ * 仅作用于 IP 检测板块，通过 .ipcx 命名空间隔离，不污染站点其余 Tailwind 页面。
+ *
+ * 相对旧站的两处适配：
+ * 1) 主题选择器由 `[data-theme]` 改为跟随全站 next-themes 的 `.dark`，
+ *    旧站板块内自带的独立主题按钮随之移除——避免出现两套互不同步的主题。
+ * 2) navbar 的 sticky 偏移改为 3.5rem，避让全站 sticky 头部（h-14）；
+ *    旧站板块 navbar 独占视口顶部，新站之上还有一层站点头部。
+ */
+
+.ipcx {
+  --bg: #f1f3f5;
+  --fg: #212529;
+  --muted: #868e96;
+  --faint: #adb5bd;
+  --card: #ffffff;
+  --line: #e9ecef;
+  --accent: #1971c2;
+  --ok: #2f9e44;
+  --warn: #e8590c;
+  --danger: #e03131;
+  color-scheme: light;
+}
+.dark .ipcx {
+  --bg: #0d0f12;
+  --fg: #e9ecef;
+  --muted: #9096a2;
+  --faint: #5c636e;
+  --card: #16181d;
+  --line: #23262d;
+  --accent: #4dabf7;
+  --ok: #51cf66;
+  --warn: #ffa94d;
+  --danger: #ff6b6b;
+  color-scheme: dark;
+}
+
+.ipcx {
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 15px;
+  line-height: 1.65;
+}
+.ipcx .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.ipcx a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.ipcx .dim {
+  color: var(--muted);
+}
+.ipcx .faint {
+  color: var(--faint);
+}
+
+/* ── 版心 ── */
+.ipcx .wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 20px 48px;
+}
+
+/* ── 二级导航 ── */
+.ipcx .navbar {
+  border-bottom: 1px solid var(--line);
+  background: var(--card);
+  position: sticky;
+  top: 3.5rem; /* 避让全站 sticky 头部（h-14） */
+  z-index: 10;
+}
+.ipcx .navbar__inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 52px;
+}
+.ipcx .nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ipcx .nav::-webkit-scrollbar {
+  display: none;
+}
+.ipcx .nav__item {
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: var(--muted);
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.ipcx .nav__item:hover {
+  color: var(--fg);
+  background: var(--bg);
+}
+.ipcx .nav__item.is-active {
+  color: var(--accent);
+  font-weight: 700;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+/* ── Hero ── */
+.ipcx .hero {
+  margin-top: 26px;
+}
+.ipcx .hero__title {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.ipcx .hero__lede {
+  margin: 10px 0 0;
+  max-width: 46em;
+  color: var(--muted);
+}
+
+/* ── 查询表单 ── */
+.ipcx .query {
+  margin-top: 24px;
+}
+.ipcx .query__line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 6px 6px 6px 16px;
+}
+.ipcx .query__icon {
+  color: var(--faint);
+  display: inline-flex;
+}
+.ipcx .query__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--fg);
+  font-size: 15px;
+  padding: 10px 0;
+}
+.ipcx .query__input::placeholder {
+  color: var(--faint);
+}
+.ipcx .query__submit {
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 11px 26px;
+  cursor: pointer;
+}
+.ipcx .query__submit:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.ipcx .presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  align-items: center;
+}
+.ipcx .preset {
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--muted);
+  font-size: 12.5px;
+  padding: 3px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.ipcx .preset:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── 当前公网 IP ── */
+.ipcx .current {
+  margin-top: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.ipcx .current__eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  display: block;
+}
+.ipcx .current__ip {
+  font-size: clamp(22px, 5vw, 32px);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  word-break: break-all;
+}
+.ipcx .current__host {
+  color: var(--muted);
+  font-size: 13.5px;
+}
+.ipcx .iconbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--muted);
+  font-size: 13px;
+  border-radius: 10px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.ipcx .iconbtn:hover {
+  color: var(--fg);
+}
+.ipcx .current__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── 分组卡片与行 ── */
+.ipcx .groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+.ipcx .group {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 20px 8px;
+}
+.ipcx .group__title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  margin: 0 0 6px;
+  color: var(--fg);
+}
+.ipcx .rows {
+  display: block;
+}
+.ipcx .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+.ipcx .row:last-child {
+  border-bottom: 0;
+}
+.ipcx .row__label {
+  color: var(--muted);
+  flex-shrink: 0;
+  font-size: 14px;
+}
+.ipcx .row__value {
+  text-align: right;
+  font-weight: 600;
+  font-size: 14px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ── 徽章 / 标签 ── */
+.ipcx .badge {
+  display: inline-block;
+  font-size: 12.5px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 11px;
+}
+.ipcx .badge--green {
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+  color: var(--ok);
+}
+.ipcx .badge--danger {
+  background: color-mix(in srgb, var(--danger) 13%, transparent);
+  color: var(--danger);
+}
+.ipcx .badge--warn {
+  background: color-mix(in srgb, var(--warn) 15%, transparent);
+  color: var(--warn);
+}
+.ipcx .badge--info {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+
+/* ── IP 评分进度条 ── */
+.ipcx .score {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.ipcx .score__trackwrap {
+  width: 130px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+.ipcx .score__fill {
+  height: 100%;
+  border-radius: 999px;
+}
+.ipcx .score__num {
+  font-weight: 800;
+}
+.ipcx .score__total {
+  color: var(--faint);
+  font-weight: 600;
+}
+
+/* ── 探测页（webrtc / dnsleak）── */
+.ipcx .probe {
+  margin-top: 22px;
+}
+.ipcx .probe__bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.ipcx .probe__run {
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 800;
+  font-size: 14.5px;
+  border-radius: 12px;
+  padding: 11px 28px;
+  cursor: pointer;
+}
+.ipcx .probe__run:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.ipcx .probe__hint {
+  color: var(--faint);
+  font-size: 13px;
+}
+.ipcx .verdict {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-top: 14px;
+}
+.ipcx .verdict__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  margin-top: 7px;
+  flex-shrink: 0;
+  background: var(--faint);
+}
+.ipcx .verdict--ok .verdict__dot {
+  background: var(--ok);
+}
+.ipcx .verdict--warn .verdict__dot {
+  background: var(--warn);
+}
+.ipcx .verdict--danger .verdict__dot {
+  background: var(--danger);
+}
+.ipcx .verdict__title {
+  margin: 0;
+  font-weight: 800;
+}
+.ipcx .verdict__note {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+.ipcx .fixnote {
+  background: color-mix(in srgb, var(--warn) 7%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--warn) 25%, var(--line));
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-top: 14px;
+}
+.ipcx .fixnote__title {
+  margin: 0;
+  font-weight: 800;
+  font-size: 14px;
+}
+.ipcx .fixnote__note {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+.ipcx .fixnote__link {
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+/* ── STUN / DNS 条目 ── */
+.ipcx .stun,
+.ipcx .dnsrow {
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+.ipcx .stun:last-child,
+.ipcx .dnsrow:last-child {
+  border-bottom: 0;
+}
+.ipcx .stun__meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.ipcx .tag {
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 6px;
+  padding: 1px 7px;
+  letter-spacing: 0.03em;
+}
+.ipcx .tag--cn {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+.ipcx .tag--global {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+.ipcx .tag--name {
+  background: var(--bg);
+  color: var(--muted);
+}
+.ipcx .stun__url {
+  font-size: 13px;
+  margin-top: 2px;
+  word-break: break-all;
+}
+.ipcx .stun__result {
+  margin-top: 3px;
+  font-size: 13.5px;
+}
+
+/* ── 指纹页 ── */
+.ipcx .tabs {
+  display: flex;
+  gap: 6px;
+  margin-top: 22px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ipcx .tabs__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 12px;
+  padding: 9px 16px;
+  cursor: pointer;
+  color: var(--muted);
+}
+.ipcx .tabs__item.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ipcx .tabs__name {
+  font-weight: 800;
+  font-size: 13.5px;
+}
+.ipcx .tabs__tag {
+  font-size: 11px;
+}
+.ipcx .fp__panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-top: 14px;
+}
+.ipcx .fp__desc {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+.ipcx .hash {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  background: var(--bg);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+.ipcx .hash__eyebrow {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+.ipcx .hash__value {
+  font-size: 17px;
+  font-weight: 700;
+  word-break: break-all;
+}
+.ipcx .fp__meta {
+  color: var(--faint);
+  font-size: 12.5px;
+  margin: 10px 0 0;
+}
+
+/* ── 长文说明 ── */
+.ipcx .prose {
+  margin-top: 30px;
+  color: var(--fg);
+  max-width: 46em;
+}
+.ipcx .prose h2 {
+  font-size: 19px;
+  margin: 22px 0 8px;
+}
+.ipcx .prose h3 {
+  font-size: 15.5px;
+  margin: 18px 0 6px;
+}
+.ipcx .prose p {
+  color: var(--muted);
+  margin: 8px 0;
+  font-size: 14.5px;
+}
+.ipcx .prose strong {
+  color: var(--fg);
+}
+.ipcx .prose ol,
+.ipcx .prose ul {
+  color: var(--muted);
+  padding-left: 22px;
+  margin: 8px 0;
+}
+.ipcx .prose li {
+  margin: 4px 0;
+  font-size: 14.5px;
+}
+
+/* ── 页脚 ── */
+.ipcx .foot {
+  margin-top: 44px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  color: var(--faint);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+/* ── 焦点可见（AGENTS.md Accessibility）──
+   旧站未定义任何焦点样式，键盘用户在板块内会完全失去位置感，此处补齐。
+   查询框是特例：input 自带 outline:0，改由整行 :focus-within 高亮，
+   避免在圆角容器内部再描一圈难看的边。 */
+.ipcx :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.ipcx .query__input:focus-visible {
+  outline: none;
+}
+.ipcx .query__line:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+@media (max-width: 640px) {
+  .ipcx .hero__title {
+    font-size: 24px;
+  }
+  .ipcx .group {
+    padding: 14px 16px 4px;
+  }
+  .ipcx .query__submit {
+    padding: 11px 18px;
+  }
+}

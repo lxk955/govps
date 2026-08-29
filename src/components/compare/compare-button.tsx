@@ -15,7 +15,7 @@ export function CompareButton({
   size = "icon",
 }: {
   productId: number;
-  size?: "sm" | "icon";
+  size?: "sm" | "icon" | "xs";
 }) {
   const { ids, ready, toggle } = useCompareIds();
   const inSet = ids.includes(productId);
@@ -35,6 +35,30 @@ export function CompareButton({
     : hint || (full && ready)
       ? `最多对比 ${COMPARE_MAX} 款，请先移除一款`
       : "加入对比";
+
+  // xs：卡片头部 24px 专属槽内的紧凑形态
+  if (size === "xs") {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label={title}
+        aria-pressed={ready ? inSet : undefined}
+        title={title}
+        onClick={onClick}
+        className={cn(
+          "h-6 w-6 shrink-0",
+          ready && inSet && "text-blue-600 dark:text-blue-400",
+        )}
+      >
+        {ready && inSet ? (
+          <Check aria-hidden className="h-3.5 w-3.5" />
+        ) : (
+          <Scale aria-hidden className="text-slate-400 h-3.5 w-3.5" />
+        )}
+      </Button>
+    );
+  }
 
   if (size === "icon") {
     return (

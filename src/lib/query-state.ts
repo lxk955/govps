@@ -45,6 +45,8 @@ export interface ListQueryState {
   lowest_price?: boolean;
   recent_restock?: boolean;
   recommended?: boolean;
+  /** 视图形态（旧站 view_mode 复刻）。未设置时列表页按视口自行决定。 */
+  view?: "card" | "list";
 }
 
 const MULTI_KEYS = ["merchant", "location", "line"] as const;
@@ -95,6 +97,8 @@ export function parseListQuery(sp: URLSearchParams | Record<string, string | str
     const raw = get(k);
     if (raw === "true" || raw === "1") state[k] = true;
   }
+  const view = get("view");
+  if (view === "card" || view === "list") state.view = view;
   return state;
 }
 
@@ -107,6 +111,7 @@ export function queryToString(state: ListQueryState): string {
     if (v !== undefined) qs.set(k, String(v));
   }
   for (const k of BOOL_KEYS) if (state[k]) qs.set(k, "true");
+  if (state.view) qs.set("view", state.view);
   if (state.sort && state.sort !== "hot") qs.set("sort", state.sort);
   if (state.page > 1) qs.set("page", String(state.page));
   if (state.size !== 30) qs.set("size", String(state.size));

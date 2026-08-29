@@ -1,33 +1,25 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ArrowLeft,
-  ArrowUpRight,
-  CheckCircle2,
-  Cpu,
-  Gauge,
-  HardDrive,
-  MemoryStick,
-  ShieldCheck,
-  Tag,
-  Wifi,
-  XCircle,
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { CompareButton } from "@/components/compare/compare-button";
+import {
+  DetailBuyButton,
+  DetailCycleProvider,
+  DetailPriceCard,
+  DetailPromoBar,
+} from "@/components/vps/detail-cycle";
 import { PriceHistoryChart } from "@/components/vps/price-history-chart";
-import { StockTimeline } from "@/components/vps/stock-timeline";
-import { WatchButton } from "@/components/vps/watch-button";
 import {
   getProductDetail,
   getRateSnapshots,
   listProducts,
   type ProductDetail,
 } from "@/lib/api/endpoints";
-import { currencySymbol, formatCycle, formatPrice, timeAgo } from "@/lib/format";
+import { lineInfo, lineTierClass, shortName } from "@/lib/display";
+import { currencySymbol, formatPrice, timeAgo } from "@/lib/format";
+import { testIpFor } from "@/lib/merchant-test-ips";
 import { parseSlugId, productHref } from "@/lib/slug";
 
 interface PageProps {
@@ -59,7 +51,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     .filter(Boolean)
     .join(" · ");
 
-  const description = `${p.merchant.name} ${p.name}：${specBits}，${formatPrice(p.price, p.currency)}${formatCycle(p.billing_cycle)}（折年 ≈ ${formatPrice(p.price_yearly, p.currency)}），${p.in_stock ? "当前有货" : "暂时缺货"}。GoVPS 监控价格与库存变动。`;
+  const description = `${p.merchant.name} ${p.name}：${specBits}，${formatPrice(p.price, p.currency)}（折年 ≈ ${formatPrice(p.price_yearly, p.currency)}），${p.in_stock ? "当前有货" : "暂时缺货"}。GoVPS 监控价格与库存变动。`;
 
   return {
     title: `${p.name} - ${p.merchant.name}`,
@@ -80,7 +72,6 @@ export default async function VpsDetailPage({ params }: PageProps) {
   const p = await fetchProduct(slug);
   if (!p) notFound();
 
-  // P5：历史价格换算使用「对应日期」的汇率快照（缺失日期宁缺毋滥）
   const rateSnapshots = await getRateSnapshots(90)
     .then((r) => r.snapshots)
     .catch(() => ({}));
@@ -102,25 +93,20 @@ export default async function VpsDetailPage({ params }: PageProps) {
   }
   similar = similar.slice(0, 4);
 
-  let host = "";
-  try {
-    host = new URL(p.purchase_url).hostname;
-  } catch {
-    /* 购买链接异常时不展示 IP 检测入口 */
+  // 旧站逻辑：优先用商家机房测试 IP——购买页域名通常是商家官网，
+  // 并不代表机房出口线路；都没有时回退到域名。
+  let host = testIpFor(p.merchant.slug, p.location) ?? "";
+  if (!host) {
+    try {
+      host = new URL(p.purchase_url).hostname;
+    } catch {
+      /* 购买链接异常时不展示 IP 检测入口 */
+    }
   }
 
-  const specs: { icon: React.ReactNode; label: string; value: string }[] = [
-    { icon: <Cpu aria-hidden className="h-4 w-4" />, label: "CPU", value: p.cpu_cores != null ? `${p.cpu_cores} 核` : "—" },
-    { icon: <MemoryStick aria-hidden className="h-4 w-4" />, label: "内存", value: p.ram_gb != null ? `${p.ram_gb} GB` : "—" },
-    { icon: <HardDrive aria-hidden className="h-4 w-4" />, label: "硬盘", value: p.disk_gb != null ? `${p.disk_gb} GB` : "—" },
-    {
-      icon: <Wifi aria-hidden className="h-4 w-4" />,
-      label: "月流量",
-      value: p.bandwidth_gb == null ? "—" : p.bandwidth_gb < 0 ? "不限" : `${p.bandwidth_gb.toLocaleString("zh-CN")} GB`,
-    },
-    { icon: <Gauge aria-hidden className="h-4 w-4" />, label: "带宽", value: p.port_mbps != null ? `${p.port_mbps} Mbps` : "—" },
-    { icon: <Tag aria-hidden className="h-4 w-4" />, label: "机房", value: p.location || "—" },
-  ];
+  const line = lineInfo(p);
+  const short = shortName(p);
+  const sym = currencySymbol(p.currency);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -137,191 +123,221 @@ export default async function VpsDetailPage({ params }: PageProps) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-6">
+    <div className="space-y-6">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <Link
-        href="/vps"
-        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
-      >
-        <ArrowLeft aria-hidden className="h-4 w-4" />
-        返回列表
-      </Link>
+      <DetailCycleProvider product={p}>
+        {p.price_dropped && p.prev_price != null && null}
 
-      {/* 头部：商家 / 名称 / 状态徽标 */}
-      <header className="mt-3 flex min-w-0 flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-muted-foreground text-sm">{p.merchant.name}</p>
-          <h1 className="mt-0.5 break-words text-xl font-bold tracking-tight lg:text-2xl">
-            {p.name}
-          </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {p.in_stock ? (
-              <Badge className="gap-1 bg-emerald-600 text-white hover:bg-emerald-600">
-                <CheckCircle2 aria-hidden className="h-3 w-3" /> 有货
-              </Badge>
-            ) : (
-              <Badge variant="secondary" className="gap-1 text-muted-foreground">
-                <XCircle aria-hidden className="h-3 w-3" /> 缺货
-              </Badge>
-            )}
-            {p.recommended && (
-              <Badge className="bg-amber-500 text-white hover:bg-amber-500">精选推荐</Badge>
-            )}
-            {p.is_lowest_price && <Badge variant="outline">史低价</Badge>}
-            {p.line_tags.map((t) => (
-              <Badge key={t} variant="outline" className="text-sky-700 dark:text-sky-300">
-                {t}
-              </Badge>
-            ))}
-          </div>
-        </div>
-
-        {/* 推荐指数 */}
-        {p.hot_score != null && (
-          <div className="bg-card shrink-0 rounded-xl border px-4 py-3 text-center">
-            <ShieldCheck aria-hidden className="mx-auto h-4 w-4 text-orange-500" />
-            <p className="text-xl font-bold tabular-nums">{p.hot_score}</p>
-            <p className="text-muted-foreground text-xs">综合推荐指数</p>
-          </div>
-        )}
-      </header>
-
-      {/* 价格块 + 全周期购买选项 */}
-      <section aria-label="价格与购买" className="bg-card mt-5 rounded-xl border p-4 lg:p-5">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-2xl font-bold tabular-nums">
-              {formatPrice(p.price, p.currency)}
-              <span className="text-muted-foreground text-sm font-normal">
-                {formatCycle(p.billing_cycle)}
+        {/* 头部信息 */}
+        <div className="border-border bg-card flex flex-wrap items-start justify-between gap-4 rounded-2xl border p-6 shadow-sm">
+          <div className="max-w-2xl space-y-2">
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-400 dark:text-slate-500">
+              <span className="bg-muted text-foreground rounded px-2 py-0.5 font-bold">
+                {p.merchant.name}
               </span>
-            </p>
-            <p className="text-muted-foreground mt-0.5 text-xs">
-              折年 ≈ {formatPrice(p.price_yearly, p.currency)}
-              {p.currency !== "USD" && p.price_yearly_converted != null && (
-                <span className="ml-1">≈ ${p.price_yearly_converted.toFixed(2)}</span>
-              )}
-              {p.prev_price != null && (
-                <span className={p.price_dropped ? "ml-2 text-red-600 dark:text-red-400" : "ml-2"}>
-                  原价 {formatPrice(p.prev_price, p.currency)}
-                  {p.price_dropped ? " ↓" : ""}
+              {p.location && (
+                <span className="bg-muted text-muted-foreground rounded px-2 py-0.5 font-bold">
+                  {p.location}
                 </span>
               )}
-              <span className="ml-2">{timeAgo(p.updated_at)}更新</span>
-            </p>
-            {p.recommend_reasons.length > 0 && (
-              <ul className="text-muted-foreground mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs" aria-label="推荐理由">
-                {p.recommend_reasons.map((r) => (
-                  <li key={r}>· {r}</li>
-                ))}
-              </ul>
+            </div>
+
+            <h1 className="text-slate-900 text-2xl leading-snug font-black dark:text-slate-100">
+              {short}
+            </h1>
+            {short !== p.name && (
+              <div className="text-xs text-slate-400 dark:text-slate-500" title={p.name}>
+                {p.name}
+              </div>
             )}
+
+            {/* 标签区 */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className={lineTierClass(line.level)}>{line.tier}</span>
+              <span className="bg-muted text-muted-foreground rounded px-2 py-0.5 text-xs font-medium">
+                {line.carrierRows.join(" ")}
+              </span>
+
+              {p.hot_score != null && p.hot_score >= 80 && (
+                <span className="rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-600 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+                  🔥 综合热度 {Math.round(p.hot_score)}
+                </span>
+              )}
+
+              {p.is_recent_restock && p.in_stock && (
+                <span className="inline-flex animate-pulse items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                  ⚡ 最新补货
+                </span>
+              )}
+
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                  p.in_stock
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                    : "bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300"
+                }`}
+              >
+                {p.in_stock ? "● 有货" : "● 缺货"}
+              </span>
+              {p.last_checked_at && (
+                <span
+                  className="text-[11px] text-slate-400 dark:text-slate-500"
+                  title="后端爬虫最近一次成功确认该套餐库存的时间"
+                >
+                  确认于 {timeAgo(p.last_checked_at)}
+                </span>
+              )}
+              {p.price_dropped && (
+                <span className="rounded bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-600 dark:bg-orange-950/60 dark:text-orange-300">
+                  降价促销中
+                </span>
+              )}
+            </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <CompareButton productId={p.id} />
-            <WatchButton productId={p.id} hydrate />
-            <Button asChild disabled={!p.in_stock} size="lg"
-              className={p.in_stock ? "" : "pointer-events-none opacity-60"}>
-              <a href={`/go/${p.id}?src=detail`} aria-disabled={!p.in_stock}>
-                前往购买
-                <ArrowUpRight aria-hidden className="h-4 w-4" />
-              </a>
-            </Button>
-          </div>
+
+          <DetailBuyButton product={p} />
         </div>
 
-        {p.price_options.length > 1 && (
-          <ul className="mt-4 grid grid-cols-1 gap-2 border-t pt-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="其他付款周期">
-            {p.price_options.map((o) => (
-              <li key={`${o.billing_cycle}-${o.price}`} className="flex items-center justify-between gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm">
-                <span className="min-w-0">
-                  {formatPrice(o.price, o.currency)}
-                  <span className="text-muted-foreground">{formatCycle(o.billing_cycle)}</span>
+        {/* 优惠码一键复制通告栏 */}
+        <DetailPromoBar slug={p.merchant.slug} />
+
+        {/* 规格与价格概览卡片 */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <DetailPriceCard />
+
+          <div className="border-border bg-card rounded-2xl border p-5 shadow-sm">
+            <div className="text-xs font-medium text-slate-400 dark:text-slate-500">
+              历史原价 / 降幅
+            </div>
+            <div className="text-slate-500 mt-1 text-2xl font-black dark:text-slate-400">
+              {p.prev_price != null ? `${sym}${formatPrice(p.prev_price, p.currency)}` : "—"}
+            </div>
+            {p.price_dropped && (
+              <div className="mt-2 text-xs font-bold text-rose-600 dark:text-rose-400">
+                相比原价已直降 {sym}
+                {formatPrice((p.prev_price || 0) - p.price, p.currency)}
+              </div>
+            )}
+          </div>
+
+          <div className="border-border bg-card rounded-2xl border p-5 shadow-sm">
+            <div className="text-xs font-medium text-slate-400 dark:text-slate-500">硬件规格</div>
+            <div className="text-slate-800 mt-1 text-sm leading-6 font-bold dark:text-slate-200">
+              {[
+                p.cpu_cores && `${p.cpu_cores} 核 CPU`,
+                p.ram_gb && `${p.ram_gb}G 内存`,
+                p.disk_gb && `${p.disk_gb}G 存储`,
+              ]
+                .filter(Boolean)
+                .join(" · ") || "规格见官网详情"}
+            </div>
+          </div>
+
+          <div className="border-border bg-card rounded-2xl border p-5 shadow-sm">
+            <div className="text-xs font-medium text-slate-400 dark:text-slate-500">
+              网络与带宽
+            </div>
+            <div className="text-slate-800 mt-1 text-sm leading-6 font-bold dark:text-slate-200">
+              {[
+                p.bandwidth_gb
+                  ? p.bandwidth_gb < 0
+                    ? "无限月流量"
+                    : `${p.bandwidth_gb >= 1000 ? `${p.bandwidth_gb / 1000}T` : `${p.bandwidth_gb}G`} 流量/月`
+                  : "",
+                p.port_mbps
+                  ? p.port_mbps >= 1000
+                    ? `${p.port_mbps / 1000}Gbps 端口`
+                    : `${p.port_mbps}Mbps 端口`
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" · ") || "见商家网络说明"}
+            </div>
+            {host && (
+              <Link
+                href={`/ip?q=${encodeURIComponent(host)}`}
+                title={`检测 ${p.merchant.name} 机房测试 IP ${host}`}
+                className="mt-3 inline-flex cursor-pointer items-center gap-1 rounded-lg border border-blue-100 bg-blue-50/60 px-2 py-1 text-xs font-bold text-blue-600 transition-colors hover:border-blue-300 hover:bg-blue-50 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300"
+              >
+                🔍 检测该机房 IP 纯净度
+              </Link>
+            )}
+          </div>
+        </div>
+      </DetailCycleProvider>
+
+      {/* 历史价格走势 */}
+      <div className="border-border bg-card rounded-2xl border p-6 shadow-sm">
+        <h2 className="text-slate-900 mb-3 text-base font-bold dark:text-slate-100">价格走势监测</h2>
+        {p.price_snapshots.length > 0 ? (
+          <PriceHistoryChart
+            points={p.price_snapshots}
+            currency={p.currency}
+            snapshots={rateSnapshots}
+          />
+        ) : (
+          <p className="text-muted-foreground py-6 text-center text-sm">暂无价格快照记录</p>
+        )}
+      </div>
+
+      {/* 库存变化历史 */}
+      <div className="border-border bg-card rounded-2xl border p-6 shadow-sm">
+        <h2 className="text-slate-900 mb-3 text-base font-bold dark:text-slate-100">库存异动追踪</h2>
+        {p.stock_snapshots.length > 0 ? (
+          <ul className="border-border divide-border divide-y text-sm">
+            {[...p.stock_snapshots].reverse().map((s, i) => (
+              <li key={`${s.checked_at}-${i}`} className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-2">
+                  <span
+                    aria-hidden
+                    className={`inline-block h-2.5 w-2.5 rounded-full ${
+                      s.in_stock
+                        ? "bg-emerald-500 ring-2 ring-emerald-100 dark:ring-emerald-900"
+                        : "bg-rose-500 ring-2 ring-rose-100 dark:ring-rose-900"
+                    }`}
+                  />
+                  <span
+                    className={`font-bold ${
+                      s.in_stock
+                        ? "text-emerald-700 dark:text-emerald-400"
+                        : "text-rose-600 dark:text-rose-400"
+                    }`}
+                  >
+                    {s.in_stock ? "补货（有货）" : "售罄（缺货）"}
+                  </span>
+                </div>
+                <span className="text-xs text-slate-400 dark:text-slate-500">
+                  {new Date(s.checked_at).toLocaleString("zh-CN")}
                 </span>
-                <a
-                  href={`/go/${p.id}?src=detail&cycle=${encodeURIComponent(o.billing_cycle)}`}
-                  className="inline-flex shrink-0 items-center gap-0.5 text-sky-700 hover:underline dark:text-sky-400"
-                >
-                  购买 <ArrowUpRight aria-hidden className="h-3 w-3" />
-                </a>
               </li>
             ))}
           </ul>
-        )}
-
-        {host && (
-          <p className="text-muted-foreground mt-4 border-t pt-3 text-xs">
-            打算入手？先检查一下你到机房线路的质量：
-            <Link href={`/ip?q=${encodeURIComponent(host)}`} className="ml-1 text-sky-700 hover:underline dark:text-sky-400">
-              检测机房 IP（{host}）
-            </Link>
+        ) : (
+          <p className="text-sm text-slate-400 dark:text-slate-500">
+            持续监控中，暂无库存异动记录。
           </p>
         )}
-      </section>
-
-      {/* 规格矩阵 */}
-      <section aria-label="配置规格" className="mt-5">
-        <h2 className="mb-2 text-base font-semibold">配置规格</h2>
-        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          {specs.map((s) => (
-            <div key={s.label} className="bg-card rounded-lg border p-3">
-              <dt className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                {s.icon}
-                {s.label}
-              </dt>
-              <dd className="mt-1 break-words text-sm font-medium">{s.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </section>
-
-      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {/* 价格历史 */}
-        <section aria-label="价格历史" className="bg-card rounded-xl border p-4">
-          <h2 className="mb-2 text-base font-semibold">价格历史</h2>
-          {p.price_snapshots.length > 0 ? (
-            <PriceHistoryChart
-              points={p.price_snapshots}
-              currency={p.currency}
-              snapshots={rateSnapshots}
-            />
-          ) : (
-            <p className="text-muted-foreground py-6 text-center text-sm">暂无价格快照记录</p>
-          )}
-        </section>
-
-        {/* 库存时间线 */}
-        <section aria-label="库存时间线" className="bg-card rounded-xl border p-4">
-          <h2 className="mb-2 text-base font-semibold">库存时间线</h2>
-          {p.stock_snapshots.length > 0 ? (
-            <StockTimeline points={p.stock_snapshots} />
-          ) : (
-            <p className="text-muted-foreground py-6 text-center text-sm">暂无库存快照记录</p>
-          )}
-        </section>
       </div>
 
-      {/* 相似推荐 */}
+      {/* 相似推荐（新站增补，旧站无此模块） */}
       {similar.length > 0 && (
-        <section aria-label="相似套餐推荐" className="mt-5">
-          <h2 className="mb-2 text-base font-semibold">相似套餐</h2>
+        <div>
+          <h2 className="text-slate-900 mb-2 text-base font-bold dark:text-slate-100">相似套餐</h2>
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {similar.map((s) => (
               <li key={s.id} className="min-w-0">
                 <Link
                   href={productHref(s.id, s.name)}
-                  className="bg-card hover:border-ring block h-full rounded-xl border p-3 transition-colors"
+                  className="border-border bg-card hover:border-ring block h-full rounded-xl border p-3 transition-colors"
                 >
                   <p className="text-muted-foreground text-xs">{s.merchant.name}</p>
                   <p className="mt-0.5 break-words text-sm font-medium">{s.name}</p>
                   <p className="mt-1.5 text-sm font-bold tabular-nums">
-                    {currencySymbol(s.currency)}
-                    {s.price.toFixed(2)}
-                    <span className="text-muted-foreground text-xs font-normal">{formatCycle(s.billing_cycle)}</span>
+                    {formatPrice(s.price, s.currency)}
                   </p>
                   <p className="text-muted-foreground mt-0.5 text-xs">
                     {s.location || ""} {s.in_stock ? "· 有货" : "· 缺货"}
@@ -330,10 +346,21 @@ export default async function VpsDetailPage({ params }: PageProps) {
               </li>
             ))}
           </ul>
-        </section>
+        </div>
       )}
 
-      <footer className="text-muted-foreground mt-6 border-t pt-4 text-xs leading-relaxed">
+      <div className="flex flex-wrap items-center gap-3">
+        <Link
+          href="/vps"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
+        >
+          <ArrowLeft aria-hidden className="h-4 w-4" />
+          返回列表
+        </Link>
+        <CompareButton productId={p.id} />
+      </div>
+
+      <footer className="text-muted-foreground text-xs leading-relaxed">
         数据定期同步自各商家官网；价格为商家原币标价，「折年」为同币种按付款周期折算。
         库存与价格以商家页面为准——最近核对于{" "}
         <time dateTime={p.last_checked_at ?? undefined}>{timeAgo(p.last_checked_at)}</time>。

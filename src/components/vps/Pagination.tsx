@@ -1,83 +1,76 @@
 import Link from "next/link";
 
-import type { ListQueryState } from "@/lib/query-state";
-import { queryToString } from "@/lib/query-state";
+import { type ListQueryState, withParams } from "@/lib/query-state";
+import { cn } from "@/lib/utils";
 
-/** URL 驱动的分页（服务端渲染 Link，无额外 JS）。 */
-
-function pageHref(state: ListQueryState, page: number): string {
-  const qs = queryToString({ ...state, page });
-  return `/vps${qs ? `?${qs}` : ""}`;
-}
-
+/**
+ * 底部统计与翻页（1:1 复刻旧站 ProductList.vue 底部条）。
+ * 翻页用 <Link> 而非按钮：爬虫可跟随，且翻页后 URL 可被分享/回退。
+ */
 export function Pagination({
   state,
   total,
+  freshness,
 }: {
   state: ListQueryState;
   total: number;
+  /** 爬虫最近一次成功确认库存的时间（数据新鲜度，AGENTS.md Data Freshness） */
+  freshness?: string | null;
 }) {
-  const pages = Math.max(1, Math.ceil(total / state.size));
-  if (pages <= 1) return null;
+  const totalPages = Math.max(1, Math.ceil(total / state.size));
+  const page = Math.min(state.page, totalPages);
 
-  const current = Math.min(state.page, pages);
-  // 最多显示 5 个页码，超出用省略号
-  const windowStart = Math.max(1, Math.min(current - 2, pages - 4));
-  const windowPages = Array.from({ length: Math.min(5, pages) }, (_, i) => windowStart + i);
+  const navClass = (disabled: boolean) =>
+    cn(
+      "border-border bg-card text-foreground rounded-xl border px-3 py-1 text-xs font-semibold transition-colors",
+      disabled
+        ? "pointer-events-none opacity-40"
+        : "hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800",
+    );
 
   return (
-    <nav aria-label="分页" className="mt-6 flex items-center justify-center gap-1">
-      {current > 1 && (
-        <Link
-          href={pageHref(state, current - 1)}
-          className="border-input hover:bg-muted rounded-md border px-3 py-1.5 text-sm"
-          prefetch={false}
-        >
-          上一页
-        </Link>
-      )}
-      {windowStart > 1 && (
-        <>
-          <PageLink href={pageHref(state, 1)} page={1} active={current === 1} />
-          <span className="text-muted-foreground px-1">…</span>
-        </>
-      )}
-      {windowPages.map((p) => (
-        <PageLink key={p} href={pageHref(state, p)} page={p} active={p === current} />
-      ))}
-      {windowStart + 4 < pages && (
-        <>
-          <span className="text-muted-foreground px-1">…</span>
-          <PageLink href={pageHref(state, pages)} page={pages} active={current === pages} />
-        </>
-      )}
-      {current < pages && (
-        <Link
-          href={pageHref(state, current + 1)}
-          className="border-input hover:bg-muted rounded-md border px-3 py-1.5 text-sm"
-          prefetch={false}
-        >
-          下一页
-        </Link>
-      )}
-    </nav>
-  );
-}
+    <div className="border-border mt-8 flex flex-wrap items-center justify-center gap-3 border-t pt-5 text-sm">
+      <span className="text-xs text-slate-500 sm:text-sm dark:text-slate-400">
+        共{" "}
+        <b className="text-slate-900 font-bold dark:text-slate-100">{total}</b> 个套餐
+      </span>
 
-function PageLink({ href, page, active }: { href: string; page: number; active: boolean }) {
-  return (
-    <Link
-      href={href}
-      aria-current={active ? "page" : undefined}
-      aria-label={`第 ${page} 页`}
-      className={
-        active
-          ? "bg-primary text-primary-foreground rounded-md px-3 py-1.5 text-sm font-medium"
-          : "border-input hover:bg-muted rounded-md border px-3 py-1.5 text-sm"
-      }
-      prefetch={false}
-    >
-      {page}
-    </Link>
+      {freshness && (
+        <>
+          <span className="text-slate-300 dark:text-slate-600">·</span>
+          <span
+            className="text-xs text-slate-400 dark:text-slate-500"
+            title="后端爬虫最近一次成功确认库存的时间"
+          >
+            库存确认于 {freshness}
+          </span>
+        </>
+      )}
+
+      {total > state.size && (
+        <>
+          <span className="text-slate-300 dark:text-slate-600">·</span>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/vps?${withParams(state, { page: page - 1 }, { resetPage: false })}`}
+              aria-disabled={page <= 1}
+              className={navClass(page <= 1)}
+            >
+              上一页
+            </Link>
+            <span className="text-slate-700 px-1 text-xs font-bold dark:text-slate-200">
+              {page} / {totalPages}
+            </span>
+            <Link
+              href={`/vps?${withParams(state, { page: page + 1 }, { resetPage: false })}`}
+              aria-disabled={page >= totalPages}
+              className={navClass(page >= totalPages)}
+            >
+              下一页
+            </Link>
+          </div>
+        </>
+      )}
+    </div>
   );
 }

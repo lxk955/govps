@@ -14,13 +14,43 @@ export function currencySymbol(code: string): string {
   return CURRENCY_SYMBOLS[code] ?? `${code} `;
 }
 
-/** 原币价格展示（不换算币种；跨币种换算属 P5 汇率机制） */
+/** 原币价格展示（不换算币种；跨币种换算属 P5 汇率机制）。
+ *  1:1 对齐旧站 fmtPrice：整数不带小数、非整数补两位、大额加千分位
+ *  （$49 / $49.90 / $1,699）。 */
 export function formatPrice(price: number, currency: string): string {
-  const formatted = price.toLocaleString("zh-CN", {
-    minimumFractionDigits: 2,
+  const formatted = price.toLocaleString("en-US", {
+    minimumFractionDigits: Number.isInteger(price) ? 0 : 2,
     maximumFractionDigits: 2,
   });
   return `${currencySymbol(currency)}${formatted}`;
+}
+
+/** 周期中文简称（旧站 CYCLE_CN：月/季/半年/年/两年/三年；不含斜杠） */
+export function cycleLabel(cycle: string): string {
+  const labels: Record<string, string> = {
+    monthly: "月",
+    quarterly: "季",
+    "semi-annually": "半年",
+    semi_annually: "半年",
+    annually: "年",
+    biennially: "两年",
+    triennially: "三年",
+  };
+  return labels[cycle] ?? cycle;
+}
+
+/** 折算月价（旧站 currentMonthlyEquiv）：按所选周期摊到每月，月付返回 null */
+export function monthlyEquivalent(price: number, cycle: string): string | null {
+  const divisors: Record<string, number> = {
+    quarterly: 3,
+    "semi-annually": 6,
+    semi_annually: 6,
+    annually: 12,
+    biennially: 24,
+    triennially: 36,
+  };
+  const d = divisors[cycle];
+  return d ? (price / d).toFixed(2) : null;
 }
 
 export function formatCycle(cycle: string): string {

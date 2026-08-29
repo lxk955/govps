@@ -10,13 +10,13 @@ export const metadata: Metadata = {
 
 export default function WatchlistPage() {
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-6">
-      <header className="mb-5">
-        <h1 className="text-xl font-bold tracking-tight lg:text-2xl">我的关注</h1>
-        <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-          关注的套餐发生补货或降价时，会按下面的通知偏好发送邮件。
+    <div className="border-border bg-card rounded-xl border p-5 shadow-sm">
+      <div className="mb-5">
+        <h1 className="text-slate-900 mb-1 text-xl font-bold dark:text-slate-100">我的关注</h1>
+        <p className="text-muted-foreground text-sm">
+          关注的套餐到货或降价时，会自动发送邮件通知你。
         </p>
-      </header>
+      </div>
       <WatchlistPanel />
     </div>
   );

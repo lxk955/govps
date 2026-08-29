@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BellRing, Tag } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
-import { BookmarkDialog } from "@/components/bookmark-dialog";
 import { Button } from "@/components/ui/button";
 import { VpsCard } from "@/components/vps/VpsCard";
 import { getEventsSummary, listProducts, type ProductsResponse } from "@/lib/api/endpoints";
@@ -56,23 +55,27 @@ export default async function HomePage() {
 
       <div className="mx-auto w-full max-w-7xl px-4 py-8">
         {/* 动态摘要条（B7）：近 24h 事件计数 */}
+        {/* 实时动态聚合条（1:1 复刻旧站列表页顶部的动态条） */}
         {summary && (summary.drop_count > 0 || summary.restock_count > 0) && (
           <Link
             href="/deals"
-            className="bg-card hover:border-ring mb-8 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border px-4 py-3 text-sm transition-colors"
+            className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/90 to-indigo-50/70 px-3.5 py-2 text-xs text-slate-600 transition-all hover:border-blue-300 dark:border-blue-900 dark:from-blue-950/50 dark:to-indigo-950/40 dark:text-slate-300"
           >
-            <span className="font-medium">近 24 小时动态</span>
-            <span className="inline-flex items-center gap-1.5 text-red-700 dark:text-red-400">
-              <Tag aria-hidden className="h-4 w-4" />
-              <span className="font-semibold tabular-nums">{summary.drop_count}</span> 次降价
+            <span className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-100">
+              📡 实时动态
             </span>
-            <span className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
-              <BellRing aria-hidden className="h-4 w-4" />
-              <span className="font-semibold tabular-nums">{summary.restock_count}</span> 次补货
-            </span>
-            <span className="text-muted-foreground ml-auto inline-flex items-center gap-1 text-xs">
-              查看详情
-              <ArrowRight aria-hidden className="h-3 w-3" />
+            {summary.restock_count > 0 && (
+              <span className="flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400">
+                ⚡ 近 24h 补货 <b className="font-black">{summary.restock_count}</b> 个
+              </span>
+            )}
+            {summary.drop_count > 0 && (
+              <span className="flex items-center gap-1 font-medium text-orange-600 dark:text-orange-400">
+                📉 降价 <b className="font-black">{summary.drop_count}</b> 个
+              </span>
+            )}
+            <span className="ml-auto flex items-center gap-1 font-bold text-blue-600 dark:text-blue-400">
+              查看动态 →
             </span>
           </Link>
         )}
@@ -137,9 +140,8 @@ export default async function HomePage() {
           ))}
         </section>
 
-        <footer className="text-muted-foreground mt-10 flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-xs">
+        <footer className="text-muted-foreground mt-10 border-t pt-4 text-xs">
           <p>数据定期同步自各商家官网，价格库存以商家页面为准。</p>
-          <BookmarkDialog />
         </footer>
       </div>
     </main>

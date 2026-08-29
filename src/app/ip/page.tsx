@@ -3,12 +3,13 @@ import { IpCheckPanel } from "@/components/ip/ip-check-panel";
 export default function IpHomePage() {
   return (
     <>
-      <header className="mb-4">
-        <h1 className="text-xl font-bold tracking-tight lg:text-2xl">IP 检测</h1>
-        <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-          查询 IP 归属、运营商、机房识别与纯净度评分；购买 VPS 前，先看看你与机房之间线路两端的「身份」。
+      <section className="hero">
+        <h1 className="hero__title">IP 归属与威胁情报查询</h1>
+        <p className="hero__lede">
+          输入任意 IPv4 / IPv6 / 域名，或留空直接检测你当前的公网出口：
+          归属地、ISP、ASN、数据中心属性、威胁与代理情报、纯净度评分一次给全。
         </p>
-      </header>
+      </section>
       <IpCheckPanel />
     </>
   );

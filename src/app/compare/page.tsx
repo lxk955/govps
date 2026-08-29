@@ -28,7 +28,7 @@ export default async function ComparePage({
   const ids = parseIds(sp.ids);
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6">
+    <div className="border-border bg-card rounded-xl border p-5 shadow-sm">
       <CompareView initialIds={ids} />
     </div>
   );

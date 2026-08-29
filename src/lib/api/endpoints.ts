@@ -281,8 +281,15 @@ export interface EventsSummary {
   drop_count: number;
 }
 
+/**
+ * 24 小时事件计数，用于首页与列表页的「实时动态」聚合条。
+ * 计数天然滞后（事件按去重窗口累积），无需实时：走 RSC 数据缓存 5 分钟，
+ * 避免每次列表请求都额外打一次后端（AGENTS.md：无需实时的数据应使用缓存）。
+ */
 export function getEventsSummary(hours = 24): Promise<EventsSummary> {
-  return apiFetch<EventsSummary>(`/api/events/summary?hours=${hours}`, { cache: "no-store" });
+  return apiFetch<EventsSummary>(`/api/events/summary?hours=${hours}`, {
+    next: { revalidate: 300 },
+  });
 }
 
 export interface EventItem {

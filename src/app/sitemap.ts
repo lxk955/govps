@@ -2,8 +2,7 @@ import type { MetadataRoute } from "next";
 
 import { listProducts } from "@/lib/api/endpoints";
 import { productHref } from "@/lib/slug";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://govps.xyz";
+import { SITE_URL } from "@/lib/site";
 
 /**
  * 站点地图：静态路由 + 在售产品详情页（取热榜第一页，上限 100 条）。
