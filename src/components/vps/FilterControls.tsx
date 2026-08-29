@@ -62,7 +62,8 @@ export function FilterControls({
   merchants: MerchantOption[];
 }) {
   const router = useRouter();
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  // 硬件配置筛选默认展开：筛选条件直接可见，省去一次点击
+  const [showAdvanced, setShowAdvanced] = useState(true);
   const [priceMin, setPriceMin] = useState(state.min_price?.toString() ?? "");
   const [priceMax, setPriceMax] = useState(state.max_price?.toString() ?? "");
 
