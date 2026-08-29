@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { merchantTitle, sortMerchants } from "@/lib/merchant-notes";
 import { type ListQueryState, withParams } from "@/lib/query-state";
 import { cn } from "@/lib/utils";
 
@@ -179,7 +180,7 @@ export function FilterControls({
 
         {/* 服务商平铺列表项 */}
         <div className="space-y-1 pt-0.5">
-          {merchants.map((m) => {
+          {sortMerchants(merchants).map((m) => {
             const on = selected.includes(m.slug);
             const stock = m.in_stock_count ?? m.count ?? 0;
             return (
@@ -187,7 +188,7 @@ export function FilterControls({
                 key={m.slug}
                 type="button"
                 aria-pressed={on}
-                title={`${m.name} VPS 套餐与库存`}
+                title={merchantTitle(m.slug, m.name)}
                 onClick={() => toggleMerchant(m.slug)}
                 className={cn(
                   "group relative flex w-full cursor-pointer items-center justify-between rounded-xl border px-2.5 py-2 text-left text-xs transition-colors select-none",
