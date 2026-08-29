@@ -81,9 +81,12 @@ function Chip({
 export function ListToolbar({
   state,
   merchants,
+  total,
 }: {
   state: ListQueryState;
   merchants: MerchantOption[];
+  /** 当前筛选结果数，移动端抽屉底部需要展示 */
+  total: number;
 }) {
   const router = useRouter();
   const [kw, setKw] = useState(state.keyword);
@@ -143,7 +146,7 @@ export function ListToolbar({
         </form>
 
         <div className="flex items-center gap-2">
-          <MobileFilterSheet state={state} merchants={merchants} />
+          <MobileFilterSheet state={state} merchants={merchants} total={total} />
           {/* 视图切换（旧站 ViewModeToggle 复刻） */}
           <div
             role="group"

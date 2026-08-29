@@ -107,7 +107,7 @@ export default async function VpsListPage({ searchParams }: PageProps) {
         )}
 
         {/* 顶部操作区：搜索 + 视图切换 + 快捷筛选胶囊 */}
-        <ListToolbar state={state} merchants={merchantOptions} />
+        <ListToolbar state={state} merchants={merchantOptions} total={total} />
         <ActiveFilterChips state={state} merchants={merchantOptions} />
 
         {/* 未登录通知引导横幅 */}
