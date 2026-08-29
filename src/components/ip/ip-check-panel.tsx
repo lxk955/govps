@@ -13,14 +13,16 @@ import { IpReportView } from "./ip-report-view";
  * 样式由板块的 ipcx.css 提供。
  */
 
-function Panel() {
+function Panel({ clientIp }: { clientIp?: string }) {
   const sp = useSearchParams();
   const [result, setResult] = useState<IpCheckResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState(sp.get("q") ?? "");
-  // ?q= 预填目标：详情页「检测机房 IP」入口带商家测试 IP 进来
-  const initialTarget = sp.get("q");
+  // ?q= 预填目标优先（详情页「检测机房 IP」入口带商家测试 IP 进来）；
+  // 否则用服务端读到的访客真实公网 IP。不能留空让后端自己判断——经
+  // Next.js rewrite 转发后后端只看到前端服务的出口 IP。
+  const initialTarget = sp.get("q") ?? clientIp;
 
   const run = useCallback(async (target?: string) => {
     setLoading(true);
@@ -112,10 +114,10 @@ function Panel() {
   );
 }
 
-export function IpCheckPanel() {
+export function IpCheckPanel({ clientIp }: { clientIp?: string } = {}) {
   return (
     <Suspense fallback={<div className="dim mt-[26px]">加载中…</div>}>
-      <Panel />
+      <Panel clientIp={clientIp} />
     </Suspense>
   );
 }

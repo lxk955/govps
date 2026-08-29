@@ -268,23 +268,13 @@ export interface IpCheckResult {
 }
 
 /**
- * IP 检测直连后端，不走 /api rewrite。
- *
- * 原因：后端依靠 Cloudflare 注入的 cf-connecting-ip 识别「留空时检测访客
- * 自己的公网出口」。经 Next.js 服务端 rewrite 转发后该头会丢失，后端只能
- * 看到前端服务（Render）的出口 IP（实测 74.220.48.219，org 为 Render）。
- * 旧站是 FastAPI 单容器直接对外（前端静态文件也由它提供），浏览器直连
- * 后端，没有中间层，所以 IP 一直是对的——这里恢复同样的链路。
- *
- * 未配置时回退相对路径（本地开发经 rewrite 到 localhost:8000）。
+ * 留空 ip 时由后端自行判断客户端出口。注意：经 Next.js rewrite 转发后，
+ * 后端看到的会是前端服务的出口 IP 而非访客 IP，因此调用方（/ip 页面）
+ * 会先在服务端读出真实 IP 再显式传入，不要依赖留空让后端猜。
  */
-const API_PUBLIC_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").trim().replace(/\/+$/, "");
-
 export function checkIp(ip?: string): Promise<IpCheckResult> {
   const qs = ip && ip.trim() ? `?ip=${encodeURIComponent(ip.trim())}` : "";
-  return apiFetch<IpCheckResult>(`${API_PUBLIC_URL}/api/ip/check${qs}`, {
-    cache: "no-store",
-  });
+  return apiFetch<IpCheckResult>(`/api/ip/check${qs}`, { cache: "no-store" });
 }
 
 // ── P3：事件流（B6/B7） ────────────────────────────────────────
