@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { WatchButton } from "@/components/vps/watch-button";
 import type { ProductDetail } from "@/lib/api/endpoints";
 import { cycleLabel, formatPrice } from "@/lib/format";
-import { copyPromoCode, getMerchantPromo } from "@/lib/promos";
 
 /**
  * 详情页付款周期共享状态（1:1 复刻旧站 ProductDetail.vue）。
@@ -85,46 +84,6 @@ export function DetailBuyButton({ product }: { product: ProductDetail }) {
           当前缺货，点击「关注」后到货第一时间邮件提醒你
         </p>
       )}
-    </div>
-  );
-}
-
-/** 优惠码一键复制通告栏（该商家有优惠码时才渲染） */
-export function DetailPromoBar({ slug }: { slug: string }) {
-  const promo = getMerchantPromo(slug);
-  const [copied, setCopied] = useState(false);
-  if (!promo) return null;
-
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200/90 bg-amber-50/80 p-4 dark:border-amber-800 dark:bg-amber-950/40">
-      <div className="flex items-center gap-2 text-sm text-amber-900 dark:text-amber-200">
-        <span aria-hidden className="text-base">
-          🎁
-        </span>
-        <span>
-          该商家当前可用优惠码：
-          <strong className="font-mono text-base font-black text-amber-950 dark:text-amber-100">
-            {promo.code}
-          </strong>
-          （{promo.discount}）
-        </span>
-        {promo.tip && (
-          <span className="hidden text-xs text-amber-700 sm:inline dark:text-amber-400">
-            · {promo.tip}
-          </span>
-        )}
-      </div>
-      <Button
-        type="button"
-        onClick={async () => {
-          await copyPromoCode(promo.code);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2500);
-        }}
-        className="h-auto rounded-lg bg-amber-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-amber-700"
-      >
-        {copied ? "已复制到剪贴板 ✓" : "一键复制优惠码"}
-      </Button>
     </div>
   );
 }

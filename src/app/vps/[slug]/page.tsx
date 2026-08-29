@@ -8,7 +8,6 @@ import {
   DetailBuyButton,
   DetailCycleProvider,
   DetailPriceCard,
-  DetailPromoBar,
 } from "@/components/vps/detail-cycle";
 import { PriceHistoryChart } from "@/components/vps/price-history-chart";
 import {
@@ -228,9 +227,6 @@ export default async function VpsDetailPage({ params }: PageProps) {
 
           <DetailBuyButton product={p} />
         </div>
-
-        {/* 优惠码一键复制通告栏 */}
-        <DetailPromoBar slug={p.merchant.slug} />
 
         {/* 规格与价格概览卡片 */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

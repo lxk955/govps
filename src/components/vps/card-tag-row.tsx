@@ -1,16 +1,11 @@
-"use client";
-
-import { useState } from "react";
-
 import type { ProductListItem } from "@/lib/api/endpoints";
-import { copyPromoCode, getMerchantPromo } from "@/lib/promos";
 import { cn } from "@/lib/utils";
 
 /**
- * 卡片/列表行的标签槽（1:1 复刻旧站第 3 行：优惠码 → 最新补货 → 史低/降价 → 热门）。
+ * 卡片/列表行的标签槽（1:1 复刻旧站第 3 行：最新补货 → 史低/降价 → 热门）。
  *
- * 做成客户端件的原因：优惠码胶囊点击后需写剪贴板并切换为「已复制✓」。
- * 当前 MERCHANT_PROMOS 为空字典，该胶囊不会渲染——与旧站行为保持一致。
+ * 纯展示、无交互，因此保持服务端组件（AGENTS.md：避免不必要的客户端 JS）。
+ * 优惠码胶囊曾在这里占据首位，因优惠码尚未接入而整块移除，待接入时再加回。
  */
 export function CardTagRow({
   product,
@@ -21,8 +16,6 @@ export function CardTagRow({
   variant?: "card" | "row";
 }) {
   const p = product;
-  const [copied, setCopied] = useState(false);
-  const promo = getMerchantPromo(p.merchant?.slug ?? "");
 
   const dropInfo =
     p.price_dropped && p.prev_price != null
@@ -33,13 +26,6 @@ export function CardTagRow({
     ? `热度关注：${p.recommend_reasons.join(" · ")}`
     : "近期用户关注与点击较高";
 
-  const copy = async () => {
-    if (!promo) return;
-    await copyPromoCode(promo.code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-  };
-
   return (
     <div
       className={cn(
@@ -48,21 +34,6 @@ export function CardTagRow({
         variant === "card" ? "h-[22px]" : "min-h-[18px] flex-wrap",
       )}
     >
-      {promo && (
-        <button
-          type="button"
-          onClick={() => void copy()}
-          title={`优惠码: ${promo.code} (${promo.discount}) · 点击一键复制`}
-          className="inline-flex shrink-0 cursor-pointer items-center gap-0.5 rounded border border-amber-200/80 bg-amber-50 px-1.5 py-0.5 font-medium text-amber-800 transition-all hover:border-amber-300 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
-        >
-          {copied ? (
-            <span className="font-bold text-emerald-700 dark:text-emerald-400">已复制✓</span>
-          ) : (
-            <span>🎁 {promo.discount}</span>
-          )}
-        </button>
-      )}
-
       {p.is_recent_restock && p.in_stock && (
         <span
           title="近48小时内最新补货"
