@@ -21,25 +21,33 @@ import { lineInfo, lineTierClass, shortName } from "@/lib/display";
 import { currencySymbol, formatPrice, timeAgo } from "@/lib/format";
 import { testIpFor } from "@/lib/merchant-test-ips";
 import { parseSlugId, productHref } from "@/lib/slug";
+import { ApiError } from "@/lib/api/client";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-async function fetchProduct(slug: string): Promise<ProductDetail | null> {
+type FetchResult =
+  | { ok: true; product: ProductDetail }
+  | { ok: false; status: number };
+
+async function fetchProduct(slug: string): Promise<FetchResult> {
   const id = parseSlugId(slug);
-  if (id == null) return null;
+  if (id == null) return { ok: false, status: 404 };
   try {
-    return await getProductDetail(id);
-  } catch {
-    return null;
+    return { ok: true, product: await getProductDetail(id) };
+  } catch (e) {
+    // 区分「后端确认不存在」与「取数失败」：后者多为免费实例休眠返回的 429，
+    // 若一律落到 notFound() 会让用户误以为套餐已下架。
+    return { ok: false, status: e instanceof ApiError ? e.status : 0 };
   }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const p = await fetchProduct(slug);
-  if (!p) return { title: "套餐不存在" };
+  const res = await fetchProduct(slug);
+  if (!res.ok) return { title: res.status === 404 ? "套餐不存在" : "数据加载失败" };
+  const p = res.product;
 
   const specBits = [
     p.cpu_cores != null ? `${p.cpu_cores}核` : null,
@@ -69,8 +77,28 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function VpsDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const p = await fetchProduct(slug);
-  if (!p) notFound();
+  const res = await fetchProduct(slug);
+  if (!res.ok) {
+    // 后端确认不存在才走 404；其余（休眠 429、网络失败）提示重试，不误报下架
+    if (res.status === 404) notFound();
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-red-100 bg-red-50 p-12 text-center dark:border-red-900 dark:bg-red-950/30">
+        <div className="text-3xl" aria-hidden>
+          📡
+        </div>
+        <p className="text-sm font-medium text-red-600 dark:text-red-400">
+          套餐数据加载失败，通常是数据服务正在启动，请稍后重试。
+        </p>
+        <Link
+          href={`/vps/${slug}`}
+          className="rounded-xl bg-red-600 px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700"
+        >
+          重新加载
+        </Link>
+      </div>
+    );
+  }
+  const p = res.product;
 
   const rateSnapshots = await getRateSnapshots(90)
     .then((r) => r.snapshots)
