@@ -50,8 +50,13 @@ const TONE_ON: Record<string, string> = {
     "border-indigo-500 bg-indigo-50 text-indigo-600 ring-2 ring-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-300 dark:ring-indigo-900/50",
 };
 
+/*
+ * px-2.5（仅移动端）：390px 视口下 4 个胶囊约需 342px，可用 358px，但实测
+ * 第 4 个仍差约 5px 被 flex-wrap 挤到下一行，一组变两行（共 5 排）。收窄
+ * 内边距后四个能排进一行，才符合「按类别三排」的预期；桌面端恢复 px-3。
+ */
 const CHIP_BASE =
-  "shrink-0 flex cursor-pointer items-center gap-1 rounded-xl border px-3 py-1 text-xs font-bold transition-all";
+  "shrink-0 flex cursor-pointer items-center gap-1 rounded-xl border px-2 py-1 text-xs font-bold transition-all sm:px-3";
 const CHIP_OFF =
   "border-border bg-slate-50/70 text-slate-600 hover:border-slate-300 hover:bg-slate-100 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-800";
 
@@ -197,7 +202,7 @@ export function ListToolbar({
        * 各组用 flex-wrap 兜底，避免窄屏横向溢出（AGENTS.md 要求）。
        */}
       <div className="flex flex-col gap-1.5 py-0.5 md:flex-row md:items-center md:gap-2">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
           {QUICK_FILTERS.map((f) => (
             <Chip
               key={f.key}
@@ -212,7 +217,7 @@ export function ListToolbar({
 
         <div aria-hidden className="bg-border hidden h-4 w-px shrink-0 md:block" />
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
           {POPULAR_LOCATIONS.map((loc) => (
             <Chip
               key={loc.name}
@@ -227,7 +232,7 @@ export function ListToolbar({
 
         <div aria-hidden className="bg-border hidden h-4 w-px shrink-0 md:block" />
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
           {LINE_OPTIONS.filter((opt) => QUICK_LINE_KEYS.includes(opt.value)).map((opt) => (
             <Chip
               key={opt.value}
