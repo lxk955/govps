@@ -11,6 +11,7 @@ import { VpsRow } from "@/components/vps/VpsRow";
 import { getEventsSummary, listMerchants, listProducts, type ProductsResponse } from "@/lib/api/endpoints";
 import { timeAgo } from "@/lib/format";
 import { parseListQuery } from "@/lib/query-state";
+import { ROW_ACTIONS_HEAD } from "@/lib/row-layout";
 
 export const metadata: Metadata = {
   title: "VPS 套餐列表",
@@ -198,7 +199,8 @@ export default async function VpsListPage({ searchParams }: PageProps) {
               <div className="hidden w-[168px] shrink-0 lg:block">网络与线路</div>
               <div className="w-[125px] shrink-0 text-right">价格与周期</div>
               <div className="hidden w-16 shrink-0 text-center xl:block">现货状态</div>
-              <div className="w-[144px] shrink-0 text-right">操作</div>
+              {/* 列宽须与内容行 RowBuyZone 的 ROW_ACTIONS_ROW 一致，否则标题与内容错位 */}
+              <div className={`${ROW_ACTIONS_HEAD} shrink-0 text-right`}>操作</div>
             </div>
             {items.map((p) => (
               <VpsRow key={p.id} product={p} />

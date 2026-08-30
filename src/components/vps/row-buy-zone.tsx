@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { WatchButton } from "@/components/vps/watch-button";
 import { watchProduct, type ProductListItem, type WatchPrefs } from "@/lib/api/endpoints";
 import { cycleLabel, currencySymbol, formatPrice, monthlyEquivalent } from "@/lib/format";
+import { ROW_ACTIONS_ROW } from "@/lib/row-layout";
 
 /**
  * 行形态的价格 / 状态 / 操作三段（1:1 复刻旧站 ProductRow.vue 右半部分）。
@@ -128,12 +129,11 @@ export function RowBuyZone({
       </span>
 
       {/*
-        操作：移动端贴右侧，桌面端固定 176px 列。
-        宽度须容纳最宽组合：关注胶囊 76px + 间距 8px + 「到货提醒」约 84px
-        （缺货时文案比「购买」长不少）。原 144px 是按 36px 图标定的，关注按钮
-        换成旧站的 76px 胶囊后装不下，多出约 24px 会向左溢出压住状态标签。
+        操作：移动端贴右侧，桌面端列宽取自 ROW_ACTIONS_ROW——必须与列表表头
+        （ROW_ACTIONS_HEAD）一致，否则标题与内容错位。
+        宽度须容纳最宽组合：关注胶囊 76px + 间距 8px + 右侧按钮 88px。
       */}
-      <div className="flex shrink-0 items-center justify-end gap-2 sm:w-[176px]">
+      <div className={`flex shrink-0 items-center justify-end gap-2 ${ROW_ACTIONS_ROW}`}>
         <WatchButton
           productId={p.id}
           hydrate={watchHydrate}
