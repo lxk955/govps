@@ -64,7 +64,7 @@ export interface ProductsResponse {
 export function getRateSnapshots(
   days = 90,
 ): Promise<{ base: string; days: number; since: string; snapshots: Record<string, Record<string, number>> }> {
-  return apiFetch(`/api/rates/snapshots?days=${days}`, { cache: "no-store" });
+  return apiFetch(`/api/rates/snapshots?days=${days}`, { next: { revalidate: 300 } });
 }
 
 /**
@@ -177,7 +177,9 @@ export function listProducts(params: ProductListParams): Promise<ProductsRespons
 }
 
 export function listMerchants(): Promise<MerchantSummary[]> {
-  return apiFetch<MerchantSummary[]>("/api/products/merchants", { cache: "no-store" });
+  return apiFetch<MerchantSummary[]>("/api/products/merchants", {
+    next: { revalidate: 60 },
+  });
 }
 
 // ── P2：IP 检测域（B11/B12） ────────────────────────────────────

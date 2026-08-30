@@ -149,3 +149,52 @@ def test_min_bw_keeps_unmetered(client, db):
     names = {item["name"] for item in body["items"]}
     assert "unmetered" in names
     assert "metered" not in names
+
+
+def test_product_detail_caps_snapshots_to_recent_window(client, db):
+    """详情只回近 90 天、最多 200 个快照，且保持时间正序。"""
+    from datetime import datetime, timedelta, timezone
+
+    from app.routers.products import SNAPSHOT_MAX_POINTS
+
+    m = _merchant(db)
+    p = Product(
+        merchant_id=m.id,
+        external_id="hist-1",
+        name="hist",
+        price=Decimal("10"),
+        purchase_url="https://test.example/h",
+        in_stock=True,
+    )
+    db.add(p)
+    db.flush()
+
+    now = datetime.now(timezone.utc)
+    # 250 个近窗快照 + 1 个 120 天前的旧点（应被窗口滤掉）
+    db.add_all(
+        [
+            PriceSnapshot(
+                product_id=p.id,
+                price=Decimal(str(i)),
+                currency="USD",
+                checked_at=now - timedelta(hours=i),
+            )
+            for i in range(250)
+        ]
+    )
+    db.add(
+        PriceSnapshot(
+            product_id=p.id,
+            price=Decimal("999"),
+            currency="USD",
+            checked_at=now - timedelta(days=120),
+        )
+    )
+    db.commit()
+
+    detail = client.get(f"/api/products/{p.id}").json()
+    snaps = detail["price_snapshots"]
+    assert len(snaps) == SNAPSHOT_MAX_POINTS
+    times = [s["checked_at"] for s in snaps]
+    assert times == sorted(times)
+    assert all(s["price"] != 999.0 for s in snaps)
