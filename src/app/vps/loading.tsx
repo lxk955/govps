@@ -40,7 +40,7 @@ export default function Loading() {
         </div>
 
         {/* 卡片网格占位：列宽规则与真实列表一致 */}
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(312px,100%),1fr))] gap-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(260px,100%),1fr))] gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}

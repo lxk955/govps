@@ -173,8 +173,14 @@ export default async function VpsListPage({ searchParams }: PageProps) {
             </div>
           </div>
         ) : view === "card" ? (
-          /* 卡片视图：列宽随容器自适应（旧站 .card-grid 同款规则） */
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(312px,100%),1fr))] gap-4">
+          /*
+           * 卡片视图：列宽随容器自适应。
+           * 下限由 312px 降到 280px：312px 时 1280px 视口只排得下 2 列（卡片被
+           * 拉到 463px），1920px 下仍是 3 列（410px），大屏空间被浪费。降到
+           * 280px 后 1280px 排 3 列、1920px 排 4 列，单卡约 300px——与首页精选
+           * 位的 295~303px 相当，内容不会被挤坏。
+           */
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(260px,100%),1fr))] gap-4">
             {items.map((p) => (
               <VpsCard key={p.id} product={p} />
             ))}
