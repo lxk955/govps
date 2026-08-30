@@ -49,6 +49,13 @@ def detect_current_revision(inspector) -> str | None:
         ),
         ("0005_request_rate_events", lambda i: i.has_table("request_rate_events")),
         ("0006_page_views", lambda i: i.has_table("page_views")),
+        (
+            "0007_snapshot_checked_indexes",
+            lambda i: any(
+                idx["name"] == "ix_price_snapshots_product_checked"
+                for idx in i.get_indexes("price_snapshots")
+            ),
+        ),
     ]
     reached: str | None = None
     for revision_id, present in stages:

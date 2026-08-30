@@ -78,43 +78,21 @@ def init_db():
     # 事件去重与通知。停机期间下架的商品在重启后立即被纠正）
     try:
         from .database import SessionLocal
-        from .models import Product
         from .services.scan import run_scan
-        from sqlalchemy import select
 
         with SessionLocal() as db:
             if not settings.SKIP_STARTUP_SCAN:
                 result = run_scan(db)
                 print(f"[startup] scan done: {result['summary']}")
 
-            # 统一将已有历史机房与线路标签规范化，并设置精选推荐款
-            from .crawler.base import normalize_line_tags, normalize_location
-            all_prods = db.scalars(select(Product)).all()
-            for p in all_prods:
-                if p.location:
-                    norm = normalize_location(p.location)
-                    if norm and norm != p.location:
-                        p.location = norm
-                p.line_tags = normalize_line_tags(f"{p.name} {p.location or ''}", p.line_tags)
+            # 只补缺失聚合键（旧库升级 / 测试直插）。机房规范化、精选 SKU、
+            # 全量评分由 run_scan 收尾负责，避免每次冷启动扫全表。
+            from .services.materialize import fill_missing_static
 
-                # 全网最热门 5 大精选推荐款（只增不减，避免覆盖运营手动调整）
-                m_slug = p.merchant.slug if p.merchant else ""
-                if (
-                    (m_slug == "dedione" and p.name == "LAX.VPS.CN2.1C1G10G-Annual")
-                    or (m_slug == "zgocloud" and "Los Angeles AMD Optimised" in p.name and float(p.price) == 52.0)
-                    or (m_slug == "dmit" and any(k in p.name for k in ["PVM.LAX.Pro.WEE", "PVM.LAX.EB.WEE", "PVM.TYO.Pro.Pocket"]))
-                ):
-                    p.recommended = True
+            filled = fill_missing_static(db)
             db.commit()
-
-            # P1 物化列回填：旧库升级后首启时补齐聚合键/搜索文本/评分
-            # （正常路径由 run_scan 收尾刷新；此处保证未扫描前列表即可用）
-            from .services.materialize import refresh_derived_fields
-
-            refreshed = refresh_derived_fields(db)
-            db.commit()
-            if refreshed:
-                print(f"[startup] materialized fields refreshed: {refreshed}")
+            if filled:
+                print(f"[startup] missing spec_key filled: {filled}")
     except Exception as err:
         print(f"[startup] merchant sync warning: {err}")
 

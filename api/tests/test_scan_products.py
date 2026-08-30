@@ -151,6 +151,31 @@ def test_min_bw_keeps_unmetered(client, db):
     assert "metered" not in names
 
 
+def test_list_products_accepts_null_spec_key(client, db):
+    """分组键回退不能用 func.concat：SQLite 无此函数时列表会 500。"""
+    m = _merchant(db)
+    p = Product(
+        merchant_id=m.id,
+        external_id="nospec",
+        name="no spec key",
+        price=Decimal("10"),
+        purchase_url="https://test.example/n",
+        in_stock=True,
+        spec_key=None,
+    )
+    db.add(p)
+    db.commit()
+
+    resp = client.get("/api/products")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert any(item["id"] == p.id for item in body["items"])
+
+    merchants = client.get("/api/products/merchants")
+    assert merchants.status_code == 200
+    assert any(x["slug"] == "testshop" for x in merchants.json())
+
+
 def test_product_detail_caps_snapshots_to_recent_window(client, db):
     """详情只回近 90 天、最多 200 个快照，且保持时间正序。"""
     from datetime import datetime, timedelta, timezone

@@ -76,7 +76,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function VpsDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const res = await fetchProduct(slug);
+  const productPromise = fetchProduct(slug);
+  const ratesPromise = getRateSnapshots(90)
+    .then((r) => r.snapshots)
+    .catch((): Record<string, Record<string, number>> => ({}));
+
+  const res = await productPromise;
   if (!res.ok) {
     // 后端确认不存在才走 404；其余（休眠 429、网络失败）提示重试，不误报下架
     if (res.status === 404) notFound();
@@ -99,18 +104,16 @@ export default async function VpsDetailPage({ params }: PageProps) {
   }
   const p = res.product;
 
-  const rateSnapshots = await getRateSnapshots(90)
-    .then((r) => r.snapshots)
-    .catch(() => ({}));
-
-  // 相似推荐：同机房优先，回退同商家；排除自身，取前 4
-  let similar = (
-    await listProducts({
+  // 汇率不依赖产品，与相似套餐并行；产品返回后立刻开始相似查询
+  const [rateSnapshots, similarFirst] = await Promise.all([
+    ratesPromise,
+    listProducts({
       ...(p.location ? { location: [p.location] } : {}),
       merchant: [p.merchant.slug],
       size: 6,
-    }).catch(() => ({ total: 0, items: [] }))
-  ).items.filter((x) => x.id !== p.id);
+    }).catch(() => ({ total: 0, items: [] })),
+  ]);
+  let similar = similarFirst.items.filter((x) => x.id !== p.id);
   if (similar.length < 3 && p.location) {
     const byMerchant = await listProducts({
       merchant: [p.merchant.slug],
