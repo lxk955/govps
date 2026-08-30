@@ -4,7 +4,7 @@ import { CompareButton } from "@/components/compare/compare-button";
 import { CardBuyZone } from "@/components/vps/card-buy-zone";
 import { CardTagRow } from "@/components/vps/card-tag-row";
 import { WatchButton } from "@/components/vps/watch-button";
-import type { ProductListItem } from "@/lib/api/endpoints";
+import type { ProductListItem, WatchPrefs } from "@/lib/api/endpoints";
 import { lineInfo, lineTierClass, shortName } from "@/lib/display";
 import { productHref } from "@/lib/slug";
 import { cn } from "@/lib/utils";
@@ -33,10 +33,16 @@ function fmtPort(mbps: number | null | undefined): string {
 export function VpsCard({
   product,
   watchHydrate = false,
+  unwatchPrefs,
+  onUnwatched,
 }: {
   product: ProductListItem;
   /** 挂载后查询真实关注状态（关注页用；列表网格不逐个查询） */
   watchHydrate?: boolean;
+  /** 转发给 WatchButton：取关时随撤销事件带上原偏好（关注页用） */
+  unwatchPrefs?: WatchPrefs;
+  /** 转发给 WatchButton：取关后回调（关注页用于刷新列表） */
+  onUnwatched?: () => void;
 }) {
   const p = product;
   const line = lineInfo(p);
@@ -65,7 +71,13 @@ export function VpsCard({
           </span>
           <div className="flex shrink-0 items-center gap-0.5">
             <CompareButton productId={p.id} size="xs" />
-            <WatchButton productId={p.id} size="xs" hydrate={watchHydrate} />
+            <WatchButton
+              productId={p.id}
+              size="xs"
+              hydrate={watchHydrate}
+              unwatchPrefs={unwatchPrefs}
+              onUnwatched={onUnwatched}
+            />
           </div>
         </div>
 

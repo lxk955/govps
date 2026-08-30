@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Loader2, RotateCcw, Star, X } from "lucide-react";
 
@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { VpsCard } from "@/components/vps/VpsCard";
 import {
   getWatchlist,
-  unwatchProduct,
   watchProduct,
   type WatchlistItem,
   type WatchPrefs,
@@ -22,6 +21,16 @@ export function WatchlistPanel() {
   const { user } = useAuth();
   const [items, setItems] = useState<WatchlistItem[] | null>(null);
   const [error, setError] = useState(false);
+  /**
+   * 卡片偏好行改过开关后，父级 items 不会自动刷新（避免每次切换都重拉列表）。
+   * 这里记下被改动的偏好，供右上角心形取关时带上——撤销要还原的是用户最后一
+   * 次设置的值，而不是列表加载时的旧值。
+   */
+  const [prefsOverride, setPrefsOverride] = useState<Record<number, WatchPrefs>>({});
+
+  const handlePrefsChange = useCallback((productId: number, prefs: WatchPrefs) => {
+    setPrefsOverride((prev) => ({ ...prev, [productId]: prefs }));
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -102,8 +111,19 @@ export function WatchlistPanel() {
       <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-4">
         {items.map((w) => (
           <div key={w.id} className="flex min-w-0 flex-col gap-1">
-            <VpsCard product={w.product} watchHydrate />
-            <WatchPrefsBar item={w} onChanged={load} />
+            <VpsCard
+              product={w.product}
+              watchHydrate
+              unwatchPrefs={
+                prefsOverride[w.product.id] ?? {
+                  notify_restock: w.notify_restock,
+                  notify_price_drop: w.notify_price_drop,
+                  min_drop_percent: w.min_drop_percent,
+                }
+              }
+              onUnwatched={load}
+            />
+            <WatchPrefsBar item={w} onPrefsChange={handlePrefsChange} />
           </div>
         ))}
       </div>
@@ -174,10 +194,11 @@ function UndoZone({ onUndoDone }: { onUndoDone: () => Promise<void> }) {
 /** 卡片下方的通知偏好行（1:1 复刻旧站卡下开关；降幅阈值为新站增补）。 */
 function WatchPrefsBar({
   item,
-  onChanged,
+  onPrefsChange,
 }: {
   item: WatchlistItem;
-  onChanged: () => Promise<void>;
+  /** 偏好保存后回传最新值，供父级记录（心形取关撤销时按此还原） */
+  onPrefsChange: (productId: number, prefs: WatchPrefs) => void;
 }) {
   const p = item.product;
   const [prefs, setPrefs] = useState({
@@ -185,7 +206,6 @@ function WatchPrefsBar({
     notify_price_drop: item.notify_price_drop,
     min_drop_percent: item.min_drop_percent,
   });
-  const savedRef = useRef(prefs);
   const [saving, setSaving] = useState(false);
 
   const save = useCallback(
@@ -193,27 +213,18 @@ function WatchPrefsBar({
       setSaving(true);
       try {
         await watchProduct(p.id, next);
-        savedRef.current = next;
+        onPrefsChange(p.id, next);
       } finally {
         setSaving(false);
       }
     },
-    [p.id],
+    [p.id, onPrefsChange],
   );
 
   const togglePref = (key: "notify_restock" | "notify_price_drop") => {
     const next = { ...prefs, [key]: !prefs[key] };
     setPrefs(next);
     void save(next);
-  };
-
-  const unwatch = async () => {
-    const removedPrefs = { ...savedRef.current };
-    await unwatchProduct(p.id).catch(() => {});
-    window.dispatchEvent(
-      new CustomEvent("govps:unwatch", { detail: { productId: p.id, prefs: removedPrefs } }),
-    );
-    await onChanged();
   };
 
   return (
@@ -261,15 +272,6 @@ function WatchPrefsBar({
         </label>
       )}
       {saving && <Loader2 aria-hidden className="h-3 w-3 animate-spin" />}
-      <Button
-        type="button"
-        variant="ghost"
-        onClick={() => void unwatch()}
-        disabled={saving}
-        className="hover:text-rose-700 dark:text-rose-400 h-auto p-0 text-xs text-rose-600 hover:bg-transparent"
-      >
-        取消关注
-      </Button>
     </div>
   );
 }

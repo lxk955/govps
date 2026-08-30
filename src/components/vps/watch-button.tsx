@@ -10,6 +10,7 @@ import {
   getWatchStatus,
   unwatchProduct,
   watchProduct,
+  type WatchPrefs,
 } from "@/lib/api/endpoints";
 import { cn } from "@/lib/utils";
 
@@ -28,11 +29,20 @@ export function WatchButton({
   productId,
   hydrate = false,
   size = "sm",
+  unwatchPrefs,
+  onUnwatched,
 }: {
   productId: number;
   /** 挂载后查询真实状态（详情页） */
   hydrate?: boolean;
   size?: "sm" | "icon" | "xs";
+  /**
+   * 取关时随 govps:unwatch 事件带上的「原通知偏好」，用于撤销时还原。
+   * 仅关注页传入——该页撤销区依赖此事件弹出撤销条。
+   */
+  unwatchPrefs?: WatchPrefs;
+  /** 取关成功后的回调（关注页用于重新拉取列表） */
+  onUnwatched?: () => void;
 }) {
   const { user } = useAuth();
   const router = useRouter();
@@ -65,6 +75,15 @@ export function WatchButton({
       if (watching) {
         await unwatchProduct(productId);
         setWatching(false);
+        // 取关后把原偏好交给撤销区，误点可在 6s 内连通知偏好一起还原
+        if (unwatchPrefs) {
+          window.dispatchEvent(
+            new CustomEvent("govps:unwatch", {
+              detail: { productId, prefs: unwatchPrefs },
+            }),
+          );
+        }
+        onUnwatched?.();
       } else {
         await watchProduct(productId, {
           notify_restock: true,
@@ -78,7 +97,7 @@ export function WatchButton({
     } finally {
       setBusy(false);
     }
-  }, [user, watching, productId, router, pathname]);
+  }, [user, watching, productId, router, pathname, unwatchPrefs, onUnwatched]);
 
   // xs：卡片头部 24px 专属槽内的紧凑形态（1:1 复刻旧站卡片头部关注按钮）
   if (size === "xs") {
