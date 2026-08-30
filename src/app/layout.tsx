@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { AuthProvider } from "@/components/auth-provider";
 import { BookmarkDialog } from "@/components/bookmark-dialog";
+import { CompareBar } from "@/components/compare/compare-bar";
 import { BottomNav } from "@/components/bottom-nav";
 import { HeaderAuth } from "@/components/header-auth";
 import { HeaderNav } from "@/components/header-nav";
@@ -84,6 +85,7 @@ export default function RootLayout({
             </footer>
 
             <BottomNav />
+            <CompareBar />
             <PageViewTracker />
           </AuthProvider>
         </ThemeProvider>

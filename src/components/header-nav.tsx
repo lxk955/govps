@@ -3,22 +3,30 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { useCompareIds } from "@/lib/compare-store";
+
 /**
  * 主导航（1:1 复刻旧站 App.vue 胶囊式导航与激活态着色）。
  *
  * 标签沿用旧站四项：产品 / 动态 / IP 检测 / 我的关注。
  * 「产品」指向 /vps——新站比旧站多出一个首页（含精选位与 SEO 入口），
  * 入口保留在站点 Logo 上，不占用导航位以免偏离旧站排版。
+ *
+ * 「对比」为新增项：对比功能此前只有「加入对比」按钮而无任何入口，
+ * 用户加入后找不到查看位置，故在此补一个常驻入口并显示已选数量。
  */
 const NAV_ITEMS = [
   { href: "/vps", label: "产品" },
   { href: "/deals", label: "动态" },
   { href: "/ip", label: "IP 检测", prefix: true },
   { href: "/watchlist", label: "我的关注" },
+  { href: "/compare", label: "对比" },
 ] as const;
 
 export function HeaderNav() {
   const pathname = usePathname();
+  const { ids, ready } = useCompareIds();
+  const compareCount = ready ? ids.length : 0;
 
   return (
     /*
@@ -47,6 +55,11 @@ export function HeaderNav() {
             }`}
           >
             {item.label}
+            {item.href === "/compare" && compareCount > 0 && (
+              <span className="ml-1 rounded-full bg-blue-600 px-1.5 py-px text-[10px] font-bold text-white tabular-nums">
+                {compareCount}
+              </span>
+            )}
           </Link>
         );
       })}
