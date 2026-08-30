@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import { WatchButton } from "@/components/vps/watch-button";
-import { watchProduct, type ProductListItem } from "@/lib/api/endpoints";
+import { watchProduct, type ProductListItem, type WatchPrefs } from "@/lib/api/endpoints";
 import { cycleLabel, currencySymbol, formatPrice, monthlyEquivalent } from "@/lib/format";
 
 /**
@@ -15,7 +15,23 @@ import { cycleLabel, currencySymbol, formatPrice, monthlyEquivalent } from "@/li
  * 三段合一的原因：购买链接随所选付款周期变化，状态与操作需与价格共享同一状态。
  * 桌面端外层 `sm:contents` 让三段直接参与父级 flex 行布局（旧站同款写法）。
  */
-export function RowBuyZone({ product }: { product: ProductListItem }) {
+export function RowBuyZone({
+  product,
+  unwatchPrefs,
+  onUnwatched,
+  watchHydrate = false,
+}: {
+  product: ProductListItem;
+  /** 转发给 WatchButton：取关时随撤销事件带上原偏好（关注页列表视图用） */
+  unwatchPrefs?: WatchPrefs;
+  /** 转发给 WatchButton：取关后回调（关注页用于刷新列表） */
+  onUnwatched?: () => void;
+  /**
+   * 挂载后查询真实关注状态。产品页列表不逐个查询（条目多且多为未关注）；
+   * 关注页必须开启——该页条目全部已关注，不查询会错误显示成未关注的空心形。
+   */
+  watchHydrate?: boolean;
+}) {
   const p = product;
   const { user } = useAuth();
   const router = useRouter();
@@ -113,7 +129,13 @@ export function RowBuyZone({ product }: { product: ProductListItem }) {
 
       {/* 操作：移动端贴右侧，桌面端固定 144px 列 */}
       <div className="flex shrink-0 items-center justify-end gap-2 sm:w-[144px]">
-        <WatchButton productId={p.id} size="icon" />
+        <WatchButton
+          productId={p.id}
+          size="icon"
+          hydrate={watchHydrate}
+          unwatchPrefs={unwatchPrefs}
+          onUnwatched={onUnwatched}
+        />
         {p.in_stock ? (
           <Button
             asChild

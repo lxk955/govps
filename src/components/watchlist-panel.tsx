@@ -2,18 +2,23 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, RotateCcw, Star, X } from "lucide-react";
+import { LayoutGrid, List, Loader2, RotateCcw, Star, X } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { VpsCard } from "@/components/vps/VpsCard";
+import { VpsRow } from "@/components/vps/VpsRow";
+import { cn } from "@/lib/utils";
 import {
   getWatchlist,
   watchProduct,
   type WatchlistItem,
   type WatchPrefs,
 } from "@/lib/api/endpoints";
+
+/** 关注页视图偏好的本地存储键 */
+const VIEW_KEY = "govps_watchlist_view";
 
 /** 关注管理面板：通知开关、降幅阈值、取关 + 撤销（方案 P4 交付物「取关撤销」）。 */
 
@@ -31,6 +36,30 @@ export function WatchlistPanel() {
   const handlePrefsChange = useCallback((productId: number, prefs: WatchPrefs) => {
     setPrefsOverride((prev) => ({ ...prev, [productId]: prefs }));
   }, []);
+
+  /*
+   * 视图偏好存 localStorage：关注页是客户端取数，没有 URL 状态可依托，
+   * 因此不像产品页那样用 ?view= 参数（后者为 RSC 服务端取数，参数可分享）。
+   * 读取放在 effect 以保证 SSR 首屏与水合一致，写失败（隐私模式）静默忽略。
+   */
+  const [view, setView] = useState<"card" | "list">("card");
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(VIEW_KEY);
+      if (saved === "list" || saved === "card") setView(saved);
+    } catch {
+      /* 隐私模式：保持默认卡片视图 */
+    }
+  }, []);
+
+  const changeView = (v: "card" | "list") => {
+    setView(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* 忽略写入失败 */
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -105,24 +134,73 @@ export function WatchlistPanel() {
     );
   }
 
+  /** 条目当前的通知偏好：优先取被改动过的覆盖值（撤销时按最后设置还原） */
+  const prefsOf = (w: WatchlistItem): WatchPrefs =>
+    prefsOverride[w.product.id] ?? {
+      notify_restock: w.notify_restock,
+      notify_price_drop: w.notify_price_drop,
+      min_drop_percent: w.min_drop_percent,
+    };
+
   return (
     <>
-      {/* 卡片视图（1:1 复刻旧站 Watchlist.vue 的 card-grid + 卡下通知开关） */}
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-4">
+      {/* 视图切换：md 以上显示，与产品页口径一致（窄屏行信息密度低，不如卡片） */}
+      <div className="mb-3 hidden justify-end md:flex">
+        <div
+          role="group"
+          aria-label="视图模式"
+          className="border-border flex items-center gap-0.5 rounded-xl border bg-slate-50/70 p-0.5 dark:bg-slate-800/60"
+        >
+          {(
+            [
+              ["card", "卡片视图", LayoutGrid],
+              ["list", "列表视图", List],
+            ] as const
+          ).map(([v, label, Icon]) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => changeView(v)}
+              aria-pressed={view === v}
+              aria-label={label}
+              title={label}
+              className={cn(
+                "cursor-pointer rounded-lg px-2 py-1 transition-colors",
+                view === v
+                  ? "bg-card text-blue-600 shadow-sm dark:text-blue-400"
+                  : "text-slate-500 hover:text-slate-700 dark:text-slate-400",
+              )}
+            >
+              <Icon aria-hidden className="h-4 w-4" />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div
+        className={
+          view === "card"
+            ? "grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-4"
+            : "flex flex-col gap-3"
+        }
+      >
         {items.map((w) => (
           <div key={w.id} className="flex min-w-0 flex-col gap-1">
-            <VpsCard
-              product={w.product}
-              watchHydrate
-              unwatchPrefs={
-                prefsOverride[w.product.id] ?? {
-                  notify_restock: w.notify_restock,
-                  notify_price_drop: w.notify_price_drop,
-                  min_drop_percent: w.min_drop_percent,
-                }
-              }
-              onUnwatched={load}
-            />
+            {view === "card" ? (
+              <VpsCard
+                product={w.product}
+                watchHydrate
+                unwatchPrefs={prefsOf(w)}
+                onUnwatched={load}
+              />
+            ) : (
+              <VpsRow
+                product={w.product}
+                watchHydrate
+                unwatchPrefs={prefsOf(w)}
+                onUnwatched={load}
+              />
+            )}
             <WatchPrefsBar item={w} onPrefsChange={handlePrefsChange} />
           </div>
         ))}

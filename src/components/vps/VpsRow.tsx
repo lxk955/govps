@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { CardTagRow } from "@/components/vps/card-tag-row";
 import { RowBuyZone } from "@/components/vps/row-buy-zone";
-import type { ProductListItem } from "@/lib/api/endpoints";
+import type { ProductListItem, WatchPrefs } from "@/lib/api/endpoints";
 import { lineInfo, lineTierClass, shortName } from "@/lib/display";
 import { productHref } from "@/lib/slug";
 
@@ -23,7 +23,20 @@ function fmtPort(mbps: number): string {
   return mbps >= 1000 ? `${(mbps / 1000).toFixed(mbps % 1000 === 0 ? 0 : 1)}Gbps` : `${mbps}Mbps`;
 }
 
-export function VpsRow({ product }: { product: ProductListItem }) {
+export function VpsRow({
+  product,
+  unwatchPrefs,
+  onUnwatched,
+  watchHydrate = false,
+}: {
+  product: ProductListItem;
+  /** 转发给行内 WatchButton：取关时随撤销事件带上原偏好（关注页列表视图用） */
+  unwatchPrefs?: WatchPrefs;
+  /** 转发给行内 WatchButton：取关后回调（关注页用于刷新列表） */
+  onUnwatched?: () => void;
+  /** 挂载后查询真实关注状态（关注页必须开启，否则已关注条目显示成空心形） */
+  watchHydrate?: boolean;
+}) {
   const p = product;
   const line = lineInfo(p);
 
@@ -116,7 +129,12 @@ export function VpsRow({ product }: { product: ProductListItem }) {
       </div>
 
       {/* 价格 + 状态 + 操作 */}
-      <RowBuyZone product={p} />
+      <RowBuyZone
+        product={p}
+        unwatchPrefs={unwatchPrefs}
+        onUnwatched={onUnwatched}
+        watchHydrate={watchHydrate}
+      />
     </div>
   );
 }
