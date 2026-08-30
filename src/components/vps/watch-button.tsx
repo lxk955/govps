@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bookmark, BookmarkCheck } from "lucide-react";
+import { Heart } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,10 @@ import { cn } from "@/lib/utils";
  * - 未登录：跳转 /login?next=当前路径，登录后回到原位
  * - 已登录：点击即关注（默认通知偏好），再次点击取关
  * - hydrate=true 时挂载后拉取真实关注状态（详情页用；列表网格不逐个查询）
+ *
+ * 图标用 ❤️ 心形而非书签：旧站「我的关注」即心形（见 ListToolbar 关于
+ * 「❤️ 我的关注」胶囊的说明），此前误用 lucide Bookmark，语义与旧站不一致。
+ * 未关注为灰色描边，已关注为红色实心（fill-current 填充同一 currentColor）。
  */
 
 export function WatchButton({
@@ -87,13 +91,12 @@ export function WatchButton({
         aria-pressed={watching}
         disabled={busy || user === undefined}
         onClick={() => void toggle()}
-        className={cn("h-6 w-6 shrink-0", watching && "text-blue-600 dark:text-blue-400")}
+        className={cn("h-6 w-6 shrink-0", watching && "text-rose-500 dark:text-rose-400")}
       >
-        {watching ? (
-          <BookmarkCheck aria-hidden className="h-3.5 w-3.5" />
-        ) : (
-          <Bookmark aria-hidden className="text-slate-400 h-3.5 w-3.5" />
-        )}
+        <Heart
+          aria-hidden
+          className={cn("h-3.5 w-3.5", watching ? "fill-current" : "text-slate-400")}
+        />
       </Button>
     );
   }
@@ -108,13 +111,9 @@ export function WatchButton({
         aria-pressed={watching}
         disabled={busy || user === undefined}
         onClick={() => void toggle()}
-        className="h-9 w-9 shrink-0"
+        className={cn("h-9 w-9 shrink-0", watching && "text-rose-500 dark:text-rose-400")}
       >
-        {watching ? (
-          <BookmarkCheck className="text-sky-700 dark:text-sky-400 h-4 w-4" />
-        ) : (
-          <Bookmark className="h-4 w-4" />
-        )}
+        <Heart className={cn("h-4 w-4", watching && "fill-current")} />
       </Button>
     );
   }
@@ -126,9 +125,9 @@ export function WatchButton({
       aria-pressed={watching}
       disabled={busy || user === undefined}
       onClick={() => void toggle()}
-      className={cn("shrink-0 gap-1.5", watching && "text-sky-700 dark:text-sky-400")}
+      className={cn("shrink-0 gap-1.5", watching && "text-rose-500 dark:text-rose-400")}
     >
-      {watching ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
+      <Heart className={cn("h-3.5 w-3.5", watching && "fill-current")} />
       {watching ? "已关注" : "关注"}
     </Button>
   );

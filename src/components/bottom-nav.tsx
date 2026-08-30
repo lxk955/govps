@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Bookmark, Globe, LayoutGrid } from "lucide-react";
+import { Activity, Globe, Heart, LayoutGrid } from "lucide-react";
 
 /**
  * 移动端底部导航（sm 以下显示，与顶部 HeaderNav 互补）。
@@ -18,7 +18,7 @@ const NAV_ITEMS = [
   { href: "/vps", label: "产品", icon: LayoutGrid },
   { href: "/deals", label: "动态", icon: Activity },
   { href: "/ip", label: "IP 检测", icon: Globe, prefix: true },
-  { href: "/watchlist", label: "我的关注", icon: Bookmark },
+  { href: "/watchlist", label: "我的关注", icon: Heart },
 ] as const;
 
 export function BottomNav() {
