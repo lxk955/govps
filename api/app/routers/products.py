@@ -8,6 +8,7 @@ from ..database import get_db
 from ..deps import get_optional_user, verify_task_token
 from ..models import (
     AffClick,
+    ExchangeRate,
     Merchant,
     NotifyEvent,
     PriceSnapshot,
@@ -79,9 +80,21 @@ def _line_filter_sql(values: list[str]):
 
 
 def _yearly_price_sql_expr():
-    """折算年付价 SQL 表达式，与 schemas.yearly_price 查表逻辑一致。
+    """折算年付价并换算为 USD 的 SQL 表达式（排序、价格区间过滤共用）。
 
-    周期写法先归一化（下划线→连字符）再查表；PostgreSQL 中 round(val, 2) 必须为 Numeric 类型。"""
+    两步：先按付款周期折算年付价（与 schemas.yearly_price 同款因子），再按汇率
+    换算为 USD（USD 金额 = 原币金额 ÷ units_per_usd）。
+
+    换算不可省略：跨币种直接比较原币数值会失真，例如 55（CNY）实际约 8 美元，
+    却会被排在 35.88（USD）之后。价格区间过滤同理——min_price/max_price 是美元
+    口径，不换算则非 USD 产品几乎不可能落在区间内。
+
+    汇率缺失时 COALESCE 退化为 1，即按原币数值比较：不精确，但不会报错，
+    也不会让缺汇率的产品被整体排除（汇率现由启动兜底与扫描日更保证）。
+
+    周期写法先归一化（下划线→连字符）再查表；
+    PostgreSQL 中 round(val, 2) 的参数必须为 Numeric 类型。
+    """
     cycle = func.replace(func.coalesce(Product.billing_cycle, "annually"), "_", "-")
     factor = case(
         (cycle == "monthly", cast(12.0, Numeric(10, 4))),
@@ -91,8 +104,16 @@ def _yearly_price_sql_expr():
         (cycle == "triennially", cast(1.0 / 3.0, Numeric(10, 4))),
         else_=cast(1.0, Numeric(10, 4)),
     )
-    product_price_num = cast(Product.price, Numeric(10, 2))
-    return func.round(cast(product_price_num * factor, Numeric(10, 2)), 2)
+    # 该币种兑美元汇率（每美元所需原币单位数），USD 恒为 1
+    rate = (
+        select(ExchangeRate.units_per_usd)
+        .where(ExchangeRate.code == Product.currency)
+        .scalar_subquery()
+    )
+    product_price_num = cast(Product.price, Numeric(10, 4))
+    yearly = product_price_num * factor
+    usd = yearly / func.coalesce(rate, cast(1.0, Numeric(16, 8)))
+    return func.round(cast(usd, Numeric(12, 2)), 2)
 
 
 def _group_key_sql_expr():
