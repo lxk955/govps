@@ -131,7 +131,6 @@ export function RowBuyZone({
       <div className="flex shrink-0 items-center justify-end gap-2 sm:w-[144px]">
         <WatchButton
           productId={p.id}
-          size="icon"
           hydrate={watchHydrate}
           unwatchPrefs={unwatchPrefs}
           onUnwatched={onUnwatched}

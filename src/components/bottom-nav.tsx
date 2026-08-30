@@ -15,13 +15,32 @@ import { Activity, Globe, LayoutGrid } from "lucide-react";
  * 标签与 HeaderNav 保持一致，仅呈现方式不同（图标 + 文字）。
  */
 const NAV_ITEMS = [
-  { href: "/vps", label: "产品", icon: LayoutGrid, emoji: null },
-  { href: "/deals", label: "动态", icon: Activity, emoji: null },
-  { href: "/ip", label: "IP 检测", icon: Globe, emoji: null, prefix: true },
-  // 关注入口用与关注按钮一致的 ❤️，避免同一语义出现两种图形。
-  // emoji 是彩色字符、不随激活态变色，激活仍由文字颜色体现。
-  { href: "/watchlist", label: "我的关注", icon: null, emoji: "❤️" },
+  { href: "/vps", label: "产品", icon: LayoutGrid },
+  { href: "/deals", label: "动态", icon: Activity },
+  { href: "/ip", label: "IP 检测", icon: Globe, prefix: true },
+  // 关注入口用与关注按钮同款的心形（icon 为 null 时渲染 HeartIcon）
+  { href: "/watchlist", label: "我的关注", icon: null },
 ] as const;
+
+/** 与关注按钮同款的心形（旧站 Heroicons heart）：激活时实心、否则空心描边。 */
+function HeartIcon({ filled, className }: { filled: boolean; className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      className={className}
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+      />
+    </svg>
+  );
+}
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -53,9 +72,7 @@ export function BottomNav() {
                 {Icon ? (
                   <Icon className="h-5 w-5" aria-hidden />
                 ) : (
-                  <span aria-hidden className="text-[17px] leading-none">
-                    {item.emoji}
-                  </span>
+                  <HeartIcon filled={active} className="h-5 w-5" />
                 )}
                 <span>{item.label}</span>
               </Link>

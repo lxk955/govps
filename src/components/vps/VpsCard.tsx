@@ -73,7 +73,6 @@ export function VpsCard({
             <CompareButton productId={p.id} size="xs" />
             <WatchButton
               productId={p.id}
-              size="xs"
               hydrate={watchHydrate}
               unwatchPrefs={unwatchPrefs}
               onUnwatched={onUnwatched}
