@@ -43,7 +43,9 @@ function Panel({ clientIp }: { clientIp?: string }) {
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    run(query.trim() || undefined);
+    // 留空时回落到访客自己的 IP，不能传 undefined 让后端自行判断——
+    // 经 Next.js rewrite 转发后后端只看到前端服务的出口 IP。
+    run(query.trim() || clientIp);
   };
 
   return (
@@ -108,7 +110,12 @@ function Panel({ clientIp }: { clientIp?: string }) {
           正在查询…
         </div>
       ) : (
-        result && <IpReportView r={result} />
+        result && (
+          <IpReportView
+            r={result}
+            isSelf={Boolean(clientIp) && result.ip === clientIp}
+          />
+        )
       )}
     </>
   );

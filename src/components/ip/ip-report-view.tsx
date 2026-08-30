@@ -38,14 +38,33 @@ function KV({ k, v }: { k: string; v: React.ReactNode }) {
   );
 }
 
-export function IpReportView({ r }: { r: IpCheckResult }) {
+export function IpReportView({
+  r,
+  isSelf = false,
+}: {
+  r: IpCheckResult;
+  /**
+   * 结果 IP 是否为访客自己的公网 IP。
+   * 不能靠 query_target 与 ip 是否相等来判断——查询域名时二者本就不同，
+   * 而直接输入一个 IP 时二者相等，会把「查别人的 IP」误判成自己的。
+   */
+  isSelf?: boolean;
+}) {
   return (
     <div className="flex flex-col gap-4">
       {/* 概要卡 */}
       <section className="bg-card rounded-xl border p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-muted-foreground text-xs">你的公网 IP{r.query_target !== r.ip ? `（查询目标 ${r.query_target}）` : ""}</p>
+            <p className="text-muted-foreground text-xs">
+              {isSelf
+                ? "你的公网 IP"
+                : // 查询域名时 query_target 与解析后的 ip 不同，标出原始输入；
+                  // 直接输入 IP 时二者相同，不再重复展示同一个值
+                  r.query_target !== r.ip
+                  ? `指定查询 · ${r.query_target}`
+                  : "指定查询的 IP"}
+            </p>
             <p className="mt-1 break-all text-2xl font-bold tabular-nums">
               {r.flag} {r.ip}
             </p>
