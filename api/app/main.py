@@ -29,6 +29,14 @@ app.include_router(go.router)
 app.include_router(ipcheck.router)
 app.include_router(track.router)
 
+# 非实时只读 GET：短缓存。库存/价格/关注/鉴权一律走默认 no-store。
+_API_CACHE_GET: dict[str, str] = {
+    "/api/products/merchants": "public, max-age=60, stale-while-revalidate=120",
+    "/api/events/summary": "public, max-age=60, stale-while-revalidate=240",
+    "/api/rates": "public, max-age=300, stale-while-revalidate=600",
+    "/api/rates/snapshots": "public, max-age=300, stale-while-revalidate=600",
+}
+
 
 @app.on_event("startup")
 def init_db():
@@ -87,11 +95,20 @@ def init_db():
 
 
 @app.middleware("http")
-async def no_store_api_cache(request, call_next):
-    """API 响应一律禁止缓存：库存/价格数据时效性敏感，
-    防止浏览器启发式缓存或前置 CDN（如 Cloudflare 橙云）返回陈旧的库存状态。"""
+async def api_cache_control(request, call_next):
+    """库存/价格接口禁止缓存；商家计数、事件摘要、汇率可短缓存。
+
+    全站 /api/* 默认 no-store，避免 Cloudflare 把缺货/涨价回成旧状态
+    （AGENTS.md Data Freshness）。商家列表与 24h 计数不是实时库存，
+    允许短 max-age，减轻 Render 冷启动后的重复回源。
+    """
     response = await call_next(request)
-    if request.url.path.startswith("/api/"):
+    if not request.url.path.startswith("/api/"):
+        return response
+    path = request.url.path.rstrip("/") or "/"
+    if request.method == "GET" and path in _API_CACHE_GET:
+        response.headers["Cache-Control"] = _API_CACHE_GET[path]
+    else:
         response.headers["Cache-Control"] = "no-store"
     return response
 

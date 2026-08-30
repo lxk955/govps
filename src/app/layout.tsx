@@ -19,7 +19,6 @@ export const metadata: Metadata = {
   },
   description:
     "多商家 VPS 套餐聚合：库存监控、降价提醒、线路对比与购买推荐，数据定期同步自各商家官网。",
-  alternates: { canonical: "/" },
 };
 
 export const viewport: Viewport = {

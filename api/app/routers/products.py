@@ -133,6 +133,11 @@ CYCLE_ORDER = {
     "triennially": 6,
 }
 
+# 详情页价格/库存曲线：只回近 90 天、最多 200 个点（时间正序，供折线图）。
+# 扫描只在值变化时写快照，200 点通常覆盖数月；超出窗口的点仍留在库里供以后做保留策略。
+SNAPSHOT_WINDOW_DAYS = 90
+SNAPSHOT_MAX_POINTS = 200
+
 
 def _get_product_price_options(
     p: Product, extra_options: list[dict] | None = None
@@ -162,6 +167,18 @@ def _get_product_price_options(
     res = list(seen.values())
     res.sort(key=lambda x: CYCLE_ORDER.get(x["billing_cycle"], 99))
     return res
+
+
+def _recent_snapshots(db: Session, model, product_id: int):
+    """详情曲线用：近窗口内最新 N 点，返回时间正序。"""
+    since = datetime.now(timezone.utc) - timedelta(days=SNAPSHOT_WINDOW_DAYS)
+    rows = db.scalars(
+        select(model)
+        .where(model.product_id == product_id, model.checked_at >= since)
+        .order_by(model.checked_at.desc())
+        .limit(SNAPSHOT_MAX_POINTS)
+    ).all()
+    return list(reversed(rows))
 
 
 def group_members(db: Session, product: Product) -> list[Product]:
@@ -613,19 +630,11 @@ def product_detail(product_id: int, db: Session = Depends(get_db)):
         data.update(hot_score=h_s, deal_score=d_s, popularity_score=pop_s, recommend_reasons=reasons)
     data["price_snapshots"] = [
         {"price": float(s.price), "checked_at": s.checked_at.isoformat()}
-        for s in db.scalars(
-            select(PriceSnapshot)
-            .where(PriceSnapshot.product_id == p.id)
-            .order_by(PriceSnapshot.checked_at)
-        )
+        for s in _recent_snapshots(db, PriceSnapshot, p.id)
     ]
     data["stock_snapshots"] = [
         {"in_stock": s.in_stock, "checked_at": s.checked_at.isoformat()}
-        for s in db.scalars(
-            select(StockSnapshot)
-            .where(StockSnapshot.product_id == p.id)
-            .order_by(StockSnapshot.checked_at)
-        )
+        for s in _recent_snapshots(db, StockSnapshot, p.id)
     ]
     # P5：USD 换算价只加不改
     _attach_converted(data, current_rates_map(db))

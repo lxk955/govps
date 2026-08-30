@@ -14,23 +14,25 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  // 推荐位：精选优先；冷启动（无精选）回退为在售热榜（方案 P3 回退策略）
-  let featured: ProductsResponse = await listProducts({ recommended: true, size: 8 }).catch(
-    () => ({ total: 0, items: [] }),
-  );
+  // 精选与动态条并行；精选为空时再回退热榜（P3 冷启动策略，无法与精选并行）
+  const [featuredSeed, summary] = await Promise.all([
+    listProducts({ recommended: true, size: 8 }).catch(
+      (): ProductsResponse => ({ total: 0, items: [] }),
+    ),
+    getEventsSummary(24).catch(() => null),
+  ]);
+  let featured = featuredSeed;
   if (featured.items.length === 0) {
-    featured = await listProducts({ in_stock: true, sort: "hot", size: 8 }).catch(() => ({
-      total: 0,
-      items: [],
-    }));
+    featured = await listProducts({ in_stock: true, sort: "hot", size: 8 }).catch(
+      (): ProductsResponse => ({ total: 0, items: [] }),
+    );
   }
-  const summary = await getEventsSummary(24).catch(() => null);
 
   return (
-    <main>
-      {/* Hero */}
+    <>
+      {/* Hero：版心跟全站 layout（max-w-[1600px]）对齐，不再套一层 main / max-w-7xl */}
       <section className="border-b">
-        <div className="mx-auto flex w-full max-w-7xl flex-col items-start gap-4 px-4 py-12 lg:py-16">
+        <div className="flex flex-col items-start gap-4 py-12 lg:py-16">
           <h1 className="max-w-2xl text-2xl leading-snug font-bold tracking-tight text-balance lg:text-4xl lg:leading-tight">
             盯住每一家 VPS 商家的<span className="text-sky-700 dark:text-sky-400">降价</span>与
             <span className="text-emerald-700 dark:text-emerald-400">补货</span>
@@ -53,7 +55,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <div className="mx-auto w-full max-w-7xl px-4 py-8">
+      <div className="py-8">
         {/* 动态摘要条（B7）：近 24h 事件计数 */}
         {/* 实时动态聚合条（1:1 复刻旧站列表页顶部的动态条） */}
         {summary && (summary.drop_count > 0 || summary.restock_count > 0) && (
@@ -144,6 +146,6 @@ export default async function HomePage() {
           <p>数据定期同步自各商家官网，价格库存以商家页面为准。</p>
         </footer>
       </div>
-    </main>
+    </>
   );
 }

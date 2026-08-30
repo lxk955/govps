@@ -27,11 +27,9 @@ export default async function VpsListPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const state = parseListQuery(sp);
 
-  let data: ProductsResponse | null = null;
-  let error: string | null = null;
-  const merchants = await listMerchants().catch(() => []);
-  try {
-    data = await listProducts({
+  const [merchants, productResult, summary] = await Promise.all([
+    listMerchants().catch(() => []),
+    listProducts({
       merchant: state.merchant,
       location: state.location,
       line: state.line,
@@ -50,10 +48,16 @@ export default async function VpsListPage({ searchParams }: PageProps) {
       lowest_price: state.lowest_price,
       recent_restock: state.recent_restock,
       recommended: state.recommended,
-    });
-  } catch (e) {
-    error = e instanceof Error ? e.message : "列表加载失败";
-  }
+    })
+      .then((data) => ({ data, error: null as string | null }))
+      .catch((e) => ({
+        data: null as ProductsResponse | null,
+        error: e instanceof Error ? e.message : "列表加载失败",
+      })),
+    getEventsSummary(24).catch(() => null),
+  ]);
+  const data = productResult.data;
+  const error = productResult.error;
 
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -64,7 +68,6 @@ export default async function VpsListPage({ searchParams }: PageProps) {
     in_stock_count: m.in_stock_count,
   }));
 
-  const summary = await getEventsSummary(24).catch(() => null);
   const view = state.view ?? "card";
 
   // 数据新鲜度：页内产品最近一次被爬虫成功确认的时间（AGENTS.md Data Freshness）
