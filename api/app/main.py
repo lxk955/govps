@@ -49,6 +49,31 @@ def init_db():
     except Exception as e:
         print(f"[startup] DB migration notice: {e}")
 
+    # 汇率兜底：表为空时拉一次。cron 若未配置 update-rates，部署后也能立即有
+    # 换算价，不至于长期缺失（非 USD 价格将一直显示原币且无法比价）。
+    # 已有汇率则不动——沿用旧值，与 update_rates「断源保留旧值」的语义一致；
+    # 日更由 scan 收尾的 maybe_update_rates 负责，这里只兜「从来没有」。
+    try:
+        from sqlalchemy import select
+
+        from .config import settings as _s
+        from .database import SessionLocal
+        from .models import ExchangeRate
+        from .services.rates import update_rates
+
+        with SessionLocal() as db:
+            # 不能用 current_rates_map(db) 判空：它总会 setdefault 一个 USD 基准
+            # （见 rates.current_rates_map），永远非空。这里直接查是否已有非 USD
+            # 的真实汇率行——没有就说明从未成功拉过汇率。
+            has_real_rate = db.scalar(
+                select(ExchangeRate.code).where(ExchangeRate.code != "USD").limit(1)
+            )
+            if has_real_rate is None and not _s.SKIP_AUTO_RATES:
+                res = update_rates(db)
+                print(f"[startup] exchange rates bootstrapped: {res}")
+    except Exception as e:
+        print(f"[startup] exchange rate bootstrap notice: {e}")
+
     # 启动时全量扫描（复用 run_scan，与定时任务行为一致：含消失商品标记缺货、
     # 事件去重与通知。停机期间下架的商品在重启后立即被纠正）
     try:

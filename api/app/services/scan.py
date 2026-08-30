@@ -15,6 +15,7 @@ from ..crawler.base import RawProduct, make_client, normalize_line_tags, normali
 from ..crawler.registry import CRAWLERS
 from ..models import (
     EventType,
+    ExchangeRateSnapshot,
     Merchant,
     NotifyEvent,
     PriceSnapshot,
@@ -23,6 +24,7 @@ from ..models import (
 )
 from .materialize import fill_static_fields, refresh_derived_fields
 from .notify import dispatch_event
+from .rates import update_rates
 
 
 def effective_interval_minutes(merchant: Merchant | None, crawler) -> int:
@@ -182,6 +184,29 @@ def upsert_product(db: Session, merchant: Merchant, raw: RawProduct) -> tuple[Pr
     return p, events
 
 
+def maybe_update_rates(db: Session) -> dict:
+    """扫描收尾时的汇率日更：每天只有首次调用真正请求汇率源。
+
+    scan 由 cron 每 5 分钟调用一次，若每次都拉汇率，一天就是近 300 次请求——
+    对免费源既不必要也不礼貌。这里以「当日是否已有快照」作闸门：快照表
+    unique(code, date)，同日重复写入本就会覆盖同一行，所以当天第二次起的
+    调用直接跳过即可。这样运维只需配 scan 这一个 cron，汇率也能保持日更。
+    """
+    if settings.SKIP_AUTO_RATES:
+        return {"skipped": "auto rate fetch disabled"}
+    today = datetime.now(timezone.utc).date()
+    has_today = db.scalar(
+        select(ExchangeRateSnapshot.id).where(ExchangeRateSnapshot.date == today).limit(1)
+    )
+    if has_today is not None:
+        return {"skipped": "today's snapshot already exists"}
+    try:
+        return update_rates(db)
+    except Exception as e:
+        # 汇率失败不影响扫描结果本身；下一次扫描会隐式重试
+        return {"error": str(e)[:200]}
+
+
 def run_scan(db: Session, force: bool = False) -> dict:
     """全量扫描入口。P7 分级调度：非 force 时仅抓取「已到期」的商家
     （now - last_success_at ≥ 抓取间隔；从未成功抓取过视为已到期）。
@@ -264,6 +289,14 @@ def run_scan(db: Session, force: bool = False) -> dict:
     # 扫描收尾：按既有公式全量刷新评分/理由等物化列（refactor-plan §2 #1）。
     # 关注数/点击数等时变信号每扫描周期刷新一次，列表请求不再逐条实时计算。
     refreshed = refresh_derived_fields(db)
+
+    # 汇率日更：运维只配 scan 这一个 cron 时，汇率也不会长期过期
+    rates = maybe_update_rates(db)
     db.commit()
 
-    return {"ok": True, "summary": summary, "materialized": refreshed}
+    return {
+        "ok": True,
+        "summary": summary,
+        "materialized": refreshed,
+        "rates": rates,
+    }

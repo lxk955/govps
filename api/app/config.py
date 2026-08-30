@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     EXCHANGE_RATE_MAX_DEVIATION: float = 0.5
     # 启动全量扫描开关：默认设为 True，避免服务启动时阻塞在 7 家商家外部爬取导致健康检查超时
     SKIP_STARTUP_SCAN: bool = True
+    # 自动汇率抓取开关：启动时兜底拉取与扫描收尾的日更都会请求外部汇率源。
+    # 测试环境置 True 以满足「常规测试禁网」，也避免污染汇率用例的 fixture；
+    # 汇率本身的逻辑由 tests/test_rates.py 用隔离数据单独覆盖。
+    SKIP_AUTO_RATES: bool = False
 
     @property
     def cors_origin_list(self) -> list[str]:
