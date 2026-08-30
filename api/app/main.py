@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from .config import settings
-from .routers import auth, events, go, ipcheck, products, rates, tasks, watchlist
+from .routers import auth, events, go, ipcheck, products, rates, tasks, track, watchlist
 
 app = FastAPI(title="VPS 雷达 API", version="0.1.0")
 
@@ -27,6 +27,7 @@ app.include_router(watchlist.router)
 app.include_router(tasks.router)
 app.include_router(go.router)
 app.include_router(ipcheck.router)
+app.include_router(track.router)
 
 
 @app.on_event("startup")

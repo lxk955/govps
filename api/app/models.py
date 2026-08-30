@@ -246,6 +246,42 @@ class AffClick(Base):
     )
 
 
+class PageView(Base):
+    """页面访问记录（PV/UV 统计）。
+
+    前端在路由变化时上报，用于回答「各页面真实访问量」这类问题（例如首页是否
+    值得保留）。与 AffClick 的区别：后者记录购买跳转意向，本表记录浏览行为。
+
+    route 是归一化后的路由（/vps/93-xxx → /vps/[slug]），按页面聚合时用它；
+    path 保留原始路径用于排查。
+
+    session_id 由前端 sessionStorage 生成，是统计独立访客（UV）与跳出率的依据。
+    不依赖 IP 区分访客：请求经 Next.js rewrite 转发后，后端拿到的可能是前端服务
+    的出口 IP（详见 services/client_ip 的说明），同一 IP 会覆盖大量真实访客。
+    """
+
+    __tablename__ = "page_views"
+    __table_args__ = (
+        # 按页面 + 时间范围统计 PV
+        Index("ix_page_views_route_created", "route", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    route: Mapped[str] = mapped_column(String(120), index=True)
+    path: Mapped[str] = mapped_column(String(255))
+    product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("products.id"), nullable=True, index=True
+    )
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    referrer: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ua: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    session_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+
+
 class RequestRateEvent(Base):
     """IP 限流滑动窗口事件（P7 #10）：旧实现为进程内 deque，多 worker / 重启即失效；
     迁移为 DB 计数后窗口跨进程连续。表体量由 services/rate_limit 的周期清理约束在

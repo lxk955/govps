@@ -5,6 +5,7 @@ import { BookmarkDialog } from "@/components/bookmark-dialog";
 import { BottomNav } from "@/components/bottom-nav";
 import { HeaderAuth } from "@/components/header-auth";
 import { HeaderNav } from "@/components/header-nav";
+import { PageViewTracker } from "@/components/page-view-tracker";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SITE_URL } from "@/lib/site";
@@ -84,6 +85,7 @@ export default function RootLayout({
             </footer>
 
             <BottomNav />
+            <PageViewTracker />
           </AuthProvider>
         </ThemeProvider>
       </body>

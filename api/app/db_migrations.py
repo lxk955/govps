@@ -48,6 +48,7 @@ def detect_current_revision(inspector) -> str | None:
             lambda i: "crawl_interval_minutes" in _column_names(i, "merchants"),
         ),
         ("0005_request_rate_events", lambda i: i.has_table("request_rate_events")),
+        ("0006_page_views", lambda i: i.has_table("page_views")),
     ]
     reached: str | None = None
     for revision_id, present in stages:

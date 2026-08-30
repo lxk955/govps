@@ -16,7 +16,7 @@ from sqlalchemy import create_engine, inspect, text
 from app.database import Base
 from app.db_migrations import alembic_config, detect_current_revision, run_migrations
 
-HEAD = "0005_request_rate_events"
+HEAD = "0006_page_views"
 EXPECTED_TABLES = set(Base.metadata.tables.keys())  # 全部业务模型表
 
 
@@ -154,7 +154,7 @@ def test_downgrade_chain_executes_cleanly_through_all_versions(tmp_path):
     cfg = alembic_config()
     cfg.set_main_option("sqlalchemy.url", url)
 
-    # 1. 先升至最新 head (0005)
+    # 1. 先升至最新 head (0006)
     command.upgrade(cfg, "head")
     eng = create_engine(url)
     try:
