@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Globe, Heart, LayoutGrid } from "lucide-react";
+import { Activity, Globe, LayoutGrid } from "lucide-react";
 
 /**
  * 移动端底部导航（sm 以下显示，与顶部 HeaderNav 互补）。
@@ -15,10 +15,12 @@ import { Activity, Globe, Heart, LayoutGrid } from "lucide-react";
  * 标签与 HeaderNav 保持一致，仅呈现方式不同（图标 + 文字）。
  */
 const NAV_ITEMS = [
-  { href: "/vps", label: "产品", icon: LayoutGrid },
-  { href: "/deals", label: "动态", icon: Activity },
-  { href: "/ip", label: "IP 检测", icon: Globe, prefix: true },
-  { href: "/watchlist", label: "我的关注", icon: Heart },
+  { href: "/vps", label: "产品", icon: LayoutGrid, emoji: null },
+  { href: "/deals", label: "动态", icon: Activity, emoji: null },
+  { href: "/ip", label: "IP 检测", icon: Globe, emoji: null, prefix: true },
+  // 关注入口用与关注按钮一致的 ❤️，避免同一语义出现两种图形。
+  // emoji 是彩色字符、不随激活态变色，激活仍由文字颜色体现。
+  { href: "/watchlist", label: "我的关注", icon: null, emoji: "❤️" },
 ] as const;
 
 export function BottomNav() {
@@ -48,7 +50,13 @@ export function BottomNav() {
                     : "font-medium text-slate-500 dark:text-slate-400"
                 }`}
               >
-                <Icon className="h-5 w-5" aria-hidden />
+                {Icon ? (
+                  <Icon className="h-5 w-5" aria-hidden />
+                ) : (
+                  <span aria-hidden className="text-[17px] leading-none">
+                    {item.emoji}
+                  </span>
+                )}
                 <span>{item.label}</span>
               </Link>
             </li>

@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Heart } from "lucide-react";
-
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,10 +18,22 @@ import { cn } from "@/lib/utils";
  * - 已登录：点击即关注（默认通知偏好），再次点击取关
  * - hydrate=true 时挂载后拉取真实关注状态（详情页用；列表网格不逐个查询）
  *
- * 图标用 ❤️ 心形而非书签：旧站「我的关注」即心形（见 ListToolbar 关于
- * 「❤️ 我的关注」胶囊的说明），此前误用 lucide Bookmark，语义与旧站不一致。
- * 未关注为灰色描边，已关注为红色实心（fill-current 填充同一 currentColor）。
+ * 图标用旧站的 emoji 心形：已关注 ❤️、未关注 ♡（见 ListToolbar 关于
+ * 「❤️ 我的关注」胶囊的说明）。
+ *
+ * 两者有意不同：❤️ 是彩色 emoji，自带红色、不受 currentColor 影响；♡ 是文本
+ * 符号，可被 text-slate-400 染成灰色以示未选中。若未关注也用彩色 emoji
+ * （如 🤍），在白底卡片上几乎看不见。
  */
+
+/** 关注标识：已关注 ❤️（彩色 emoji），未关注 ♡（可着色的文本符号）。 */
+function HeartMark({ watching, className }: { watching: boolean; className?: string }) {
+  return (
+    <span aria-hidden className={cn("leading-none", className)}>
+      {watching ? "❤️" : "♡"}
+    </span>
+  );
+}
 
 export function WatchButton({
   productId,
@@ -112,9 +122,9 @@ export function WatchButton({
         onClick={() => void toggle()}
         className={cn("h-6 w-6 shrink-0", watching && "text-rose-500 dark:text-rose-400")}
       >
-        <Heart
-          aria-hidden
-          className={cn("h-3.5 w-3.5", watching ? "fill-current" : "text-slate-400")}
+        <HeartMark
+          watching={watching}
+          className={cn("text-[13px]", !watching && "text-slate-400")}
         />
       </Button>
     );
@@ -132,7 +142,10 @@ export function WatchButton({
         onClick={() => void toggle()}
         className={cn("h-9 w-9 shrink-0", watching && "text-rose-500 dark:text-rose-400")}
       >
-        <Heart className={cn("h-4 w-4", watching && "fill-current")} />
+        <HeartMark
+          watching={watching}
+          className={cn("text-base", !watching && "text-slate-400")}
+        />
       </Button>
     );
   }
@@ -146,7 +159,10 @@ export function WatchButton({
       onClick={() => void toggle()}
       className={cn("shrink-0 gap-1.5", watching && "text-rose-500 dark:text-rose-400")}
     >
-      <Heart className={cn("h-3.5 w-3.5", watching && "fill-current")} />
+      <HeartMark
+        watching={watching}
+        className={cn("text-[13px]", !watching && "text-slate-400")}
+      />
       {watching ? "已关注" : "关注"}
     </Button>
   );

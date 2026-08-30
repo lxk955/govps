@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from .config import settings
-from .routers import auth, events, go, ipcheck, products, rates, tasks, track, watchlist
+from .routers import auth, events, go, ipcheck, products, rates, stats, tasks, track, watchlist
 
 app = FastAPI(title="VPS 雷达 API", version="0.1.0")
 
@@ -28,6 +28,7 @@ app.include_router(tasks.router)
 app.include_router(go.router)
 app.include_router(ipcheck.router)
 app.include_router(track.router)
+app.include_router(stats.router)
 
 # 非实时只读 GET：短缓存。库存/价格/关注/鉴权一律走默认 no-store。
 _API_CACHE_GET: dict[str, str] = {
