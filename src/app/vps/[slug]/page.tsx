@@ -120,16 +120,12 @@ export default async function VpsDetailPage({ params }: PageProps) {
   }
   similar = similar.slice(0, 4);
 
-  // 旧站逻辑：优先用商家机房测试 IP——购买页域名通常是商家官网，
-  // 并不代表机房出口线路；都没有时回退到域名。
-  let host = testIpFor(p.merchant.slug, p.location) ?? "";
-  if (!host) {
-    try {
-      host = new URL(p.purchase_url).hostname;
-    } catch {
-      /* 购买链接异常时不展示 IP 检测入口 */
-    }
-  }
+  /*
+   * 只认精确匹配的机房测试 IP（testIpFor 已不做跨机房回退）。
+   * 不再回退到购买页域名：官网域名通常不是机房出口，拿它测出的纯净度与该套餐
+   * 所在机房无关，等同于错误数据。按「宁缺毋错」，取不到就不展示检测入口。
+   */
+  const host = testIpFor(p.merchant.slug, p.location);
 
   const line = lineInfo(p);
   const short = shortName(p);
