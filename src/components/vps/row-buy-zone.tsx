@@ -127,8 +127,13 @@ export function RowBuyZone({
         {p.in_stock ? "有货" : "缺货"}
       </span>
 
-      {/* 操作：移动端贴右侧，桌面端固定 144px 列 */}
-      <div className="flex shrink-0 items-center justify-end gap-2 sm:w-[144px]">
+      {/*
+        操作：移动端贴右侧，桌面端固定 176px 列。
+        宽度须容纳最宽组合：关注胶囊 76px + 间距 8px + 「到货提醒」约 84px
+        （缺货时文案比「购买」长不少）。原 144px 是按 36px 图标定的，关注按钮
+        换成旧站的 76px 胶囊后装不下，多出约 24px 会向左溢出压住状态标签。
+      */}
+      <div className="flex shrink-0 items-center justify-end gap-2 sm:w-[176px]">
         <WatchButton
           productId={p.id}
           hydrate={watchHydrate}
