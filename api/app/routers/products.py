@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import Integer, Numeric, and_, case, cast, exists, func, not_, or_, select, String
+from sqlalchemy import Integer, Numeric, and_, case, cast, exists, func, literal, not_, or_, select, String
 from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
@@ -97,8 +97,11 @@ def _yearly_price_sql_expr():
 
 def _group_key_sql_expr():
     """聚合分组键表达式。物化列缺失的行（如测试直插、未回填旧数据）退化为
-    行级唯一键，保证不与其他行误聚合——等价于旧行为「每行独立元组」。"""
-    return func.coalesce(Product.spec_key, func.concat("u:", cast(Product.id, String)))
+    行级唯一键，保证不与其他行误聚合——等价于旧行为「每行独立元组」。
+
+    用 String.concat / ||，不用 func.concat：后者在 SQLite 3.44 之前不存在。
+    """
+    return func.coalesce(Product.spec_key, literal("u:").concat(cast(Product.id, String)))
 
 
 def _attach_converted(item: dict, rates: dict[str, float]) -> None:

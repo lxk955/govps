@@ -114,6 +114,7 @@ class Product(Base):
 
 class StockSnapshot(Base):
     __tablename__ = "stock_snapshots"
+    __table_args__ = (Index("ix_stock_snapshots_product_checked", "product_id", "checked_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
@@ -123,6 +124,7 @@ class StockSnapshot(Base):
 
 class PriceSnapshot(Base):
     __tablename__ = "price_snapshots"
+    __table_args__ = (Index("ix_price_snapshots_product_checked", "product_id", "checked_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)

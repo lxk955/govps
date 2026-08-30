@@ -11,7 +11,7 @@ import json
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from ..models import AffClick, NotifyEvent, Product, Watchlist
 from .scoring import _product_search_text, calculate_scores_and_reasons, spec_group_key
@@ -128,7 +128,11 @@ def refresh_derived_fields(db: Session) -> int:
 def fill_missing_static(db: Session) -> int:
     """仅为缺失聚合键/搜索文本的行补齐（启动回填旧库用；正常扫描路径已实时维护）。"""
     n = 0
-    for p in db.scalars(select(Product).where(Product.spec_key.is_(None))).all():
+    for p in db.scalars(
+        select(Product)
+        .options(joinedload(Product.merchant))
+        .where(Product.spec_key.is_(None))
+    ).all():
         fill_static_fields(p)
         n += 1
     if n:
