@@ -35,7 +35,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
-    healthCheckPath: /robots.txt
+    healthCheckPath: /keepalive
     envVars:
       - key: NODE_ENV
         value: production

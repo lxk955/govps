@@ -1,0 +1,26 @@
+# Render Free Web 15 分钟无入站流量会休眠。定时打前端源站 /keepalive。
+# GitHub 的 schedule 可能晚几分钟，所以 10 分钟一次；更稳的是 cron-job.org 打同一 URL。
+#
+# 仓库 Secrets 可选：
+#   KEEPALIVE_URL = https://govps-web.onrender.com/keepalive
+# 用 onrender.com 而不是自定义域：橙云若缓存了这条路径，源站收不到请求。
+name: Frontend keepalive
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Next.js origin
+        env:
+          KEEPALIVE_URL: ${{ secrets.KEEPALIVE_URL }}
+        run: |
+          set -euo pipefail
+          base="${KEEPALIVE_URL:-https://vps.govps.xyz/keepalive}"
+          url="${base}?t=$(date +%s)"
+          echo "GET $url"
+          curl -fsS -o /dev/null -w "status=%{http_code} time=%{time_total}\n" --max-time 60 "$url"
