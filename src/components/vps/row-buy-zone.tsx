@@ -140,10 +140,15 @@ export function RowBuyZone({
           unwatchPrefs={unwatchPrefs}
           onUnwatched={onUnwatched}
         />
+        {/*
+          两个按钮必须同宽：操作区是 justify-end 靠右排列，右侧按钮宽度不同会让
+          左边的关注按钮位置随之漂移，各行对不齐。88px 取最宽文案「到货提醒」
+          （4 字约 56px + 左右内边距 28px = 84px）并留 4px 余量。
+        */}
         {p.in_stock ? (
           <Button
             asChild
-            className="h-auto rounded-lg bg-blue-600 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+            className="h-auto w-[88px] rounded-lg bg-blue-600 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
           >
             <a href={purchaseUrl} target="_blank" rel="nofollow sponsored noopener">
               购买
@@ -156,7 +161,7 @@ export function RowBuyZone({
             disabled={busy || notifying}
             onClick={() => void restockNotify()}
             title="关注此套餐，补货后第一时间邮件提醒你"
-            className="hover:border-rose-300 hover:text-rose-500 h-auto rounded-lg px-3.5 py-1.5 text-sm font-medium"
+            className="hover:border-rose-300 hover:text-rose-500 h-auto w-[88px] rounded-lg px-3.5 py-1.5 text-sm font-medium"
           >
             {notifying ? "已开启 ✓" : "到货提醒"}
           </Button>
