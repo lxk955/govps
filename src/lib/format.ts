@@ -4,7 +4,7 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: "$",
   EUR: "€",
   CNY: "¥",
-  CAD: "C$",
+  CAD: "CA$",
   GBP: "£",
   JPY: "JP¥",
   HKD: "HK$",
