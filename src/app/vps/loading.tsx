@@ -1,51 +1,28 @@
 /**
- * 列表页骨架屏（App Router 约定文件）。
- *
- * 列表页是 RSC 每请求回源（no-store），后端免费实例冷启动可能耗时数十秒，
- * 没有 fallback 时用户看到的是整页白屏。这里用与真实布局同构的占位块，
- * 让首屏立刻有内容、避免布局跳变（CLS）。
- *
- * 无障碍：容器标记 aria-busy 并给出 sr-only 状态文本；骨架块是纯装饰结构，
- * 用 aria-hidden 移出无障碍树，避免屏幕阅读器播报无意义的占位元素。
+ * 列表页骨架屏：筛选/翻页的 RSC 导航期间立即显示，消除「点了没反应」。
+ * 结构与页面同构（桌面侧栏 + 工具条 + 卡片网格），加载完成后视觉跳动最小。
  */
-export default function Loading() {
+export default function VpsLoading() {
   return (
-    <div className="flex gap-6" aria-busy="true">
-      <p role="status" className="sr-only">
-        正在加载套餐列表…
-      </p>
-
-      {/* 桌面端侧栏筛选占位 */}
-      <aside aria-hidden="true" className="hidden w-60 shrink-0 lg:block">
-        <div className="border-border bg-card space-y-2.5 rounded-2xl border p-3.5 shadow-sm">
-          <div className="h-4 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-          <div className="h-9 w-full animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
-          {Array.from({ length: 7 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-8 w-full animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800"
-            />
-          ))}
-        </div>
+    <div className="flex gap-6" aria-busy="true" aria-label="加载中">
+      {/* 桌面侧栏骨架 */}
+      <aside className="sticky top-20 hidden max-h-[calc(100dvh-6rem)] w-60 shrink-0 self-start space-y-3.5 lg:block">
+        <div className="bg-muted h-12 animate-pulse rounded-xl" />
+        <div className="bg-muted h-64 animate-pulse rounded-2xl" />
+        <div className="bg-muted h-48 animate-pulse rounded-2xl" />
       </aside>
 
-      <section
-        aria-hidden="true"
-        className="border-border bg-card min-w-0 flex-1 lg:rounded-2xl lg:border lg:p-5"
-      >
-        {/* 顶部工具栏占位 */}
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <div className="h-9 w-full max-w-xs animate-pulse rounded-xl bg-slate-100 sm:w-64 dark:bg-slate-800" />
-          <div className="h-8 w-40 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+      <section className="min-w-0 flex-1">
+        {/* 工具条 + 筛选胶囊行 */}
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="bg-muted h-9 flex-1 animate-pulse rounded-xl" />
+          <div className="bg-muted h-9 w-24 shrink-0 animate-pulse rounded-xl" />
         </div>
 
-        {/* 卡片网格占位：列宽规则与真实列表一致 */}
+        {/* 卡片网格：与列表页卡片视图同列宽节奏 */}
         <div className="grid grid-cols-[repeat(auto-fill,minmax(min(260px,100%),1fr))] gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="border-border h-56 animate-pulse rounded-2xl border bg-slate-100 dark:bg-slate-800"
-            />
+          {Array.from({ length: 9 }, (_, i) => (
+            <div key={i} className="bg-muted h-72 animate-pulse rounded-2xl" />
           ))}
         </div>
       </section>
