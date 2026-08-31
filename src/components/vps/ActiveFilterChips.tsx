@@ -1,25 +1,16 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-
 import type { MerchantOption } from "@/components/vps/FilterControls";
-import { LINE_OPTIONS, type ListQueryState, withParams } from "@/lib/query-state";
+import { useListData } from "@/components/vps/list-data-context";
+import { LINE_OPTIONS } from "@/lib/query-state";
 
 /**
  * 已激活筛选条件标签栏（1:1 复刻旧站 ProductList.vue 第 3 行）：
  * 「已选条件：」前缀 + 可单独叉掉的标签 + 一键清空。
  */
-export function ActiveFilterChips({
-  state,
-  merchants,
-}: {
-  state: ListQueryState;
-  merchants: MerchantOption[];
-}) {
-  const router = useRouter();
-  const go = (patch: Partial<ListQueryState>) => {
-    router.push(`/vps?${withParams(state, patch)}`);
-  };
+export function ActiveFilterChips({ merchants }: { merchants: MerchantOption[] }) {
+  const { state, apply, reset } = useListData();
+  const go = apply;
 
   type Tag = { key: string; label: string; remove: () => void };
   const tags: Tag[] = [];
@@ -106,7 +97,7 @@ export function ActiveFilterChips({
       ))}
       <button
         type="button"
-        onClick={() => router.push("/vps")}
+        onClick={reset}
         className="ml-1 cursor-pointer text-xs font-bold text-rose-600 transition-colors hover:text-rose-700 dark:text-rose-400"
       >
         清空全部

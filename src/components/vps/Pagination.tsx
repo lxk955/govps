@@ -1,22 +1,20 @@
+"use client";
+
 import Link from "next/link";
 
-import { type ListQueryState, withParams } from "@/lib/query-state";
+import { useListData } from "@/components/vps/list-data-context";
+import { withParams } from "@/lib/query-state";
 import { cn } from "@/lib/utils";
 
 /**
  * 底部统计与翻页（1:1 复刻旧站 ProductList.vue 底部条）。
- * 翻页用 <Link> 而非按钮：爬虫可跟随，且翻页后 URL 可被分享/回退。
+ * 翻页保留 <Link> href：爬虫可跟随、可新标签打开；左键点击拦截走 store
+ * （缓存命中瞬时，未命中加载态），不再触发 RSC 导航。
  */
-export function Pagination({
-  state,
-  total,
-  freshness,
-}: {
-  state: ListQueryState;
-  total: number;
-  /** 爬虫最近一次成功确认库存的时间（数据新鲜度，AGENTS.md Data Freshness） */
-  freshness?: string | null;
-}) {
+export function Pagination({ freshness }: { freshness?: string | null }) {
+  const { state, data, apply } = useListData();
+  const total = data?.total ?? 0;
+
   const totalPages = Math.max(1, Math.ceil(total / state.size));
   const page = Math.min(state.page, totalPages);
 
@@ -27,6 +25,11 @@ export function Pagination({
         ? "pointer-events-none opacity-40"
         : "hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800",
     );
+
+  const goPage = (page: number) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    apply({ page }, { resetPage: false });
+  };
 
   return (
     <div className="border-border mt-8 flex flex-wrap items-center justify-center gap-3 border-t pt-5 text-sm">
@@ -53,6 +56,7 @@ export function Pagination({
           <div className="flex items-center gap-2">
             <Link
               href={`/vps?${withParams(state, { page: page - 1 }, { resetPage: false })}`}
+              onClick={page > 1 ? goPage(page - 1) : undefined}
               aria-disabled={page <= 1}
               className={navClass(page <= 1)}
             >
@@ -63,6 +67,7 @@ export function Pagination({
             </span>
             <Link
               href={`/vps?${withParams(state, { page: page + 1 }, { resetPage: false })}`}
+              onClick={page < totalPages ? goPage(page + 1) : undefined}
               aria-disabled={page >= totalPages}
               className={navClass(page >= totalPages)}
             >
