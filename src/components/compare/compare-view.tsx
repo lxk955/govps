@@ -233,16 +233,6 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
                   </td>
                 ))}
               </Row>
-              <Row label="推荐指数">
-                {loaded.map((p) => (
-                  <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3 tabular-nums">
-                    {p.hot_score != null ? p.hot_score : "—"}
-                    {p.recommend_reasons.length > 0 && (
-                      <p className="text-muted-foreground mt-0.5 text-xs break-words">{p.recommend_reasons[0]}</p>
-                    )}
-                  </td>
-                ))}
-              </Row>
               <Row label="购买">
                 {loaded.map((p) => (
                   <td key={p.id} className="bg-card border-r border-t p-2 pb-3 last:border-r-0 sm:p-3 sm:pb-4">
