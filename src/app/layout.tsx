@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { AuthProvider } from "@/components/auth-provider";
@@ -7,6 +8,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { HeaderAuth } from "@/components/header-auth";
 import { HeaderNav } from "@/components/header-nav";
 import { PageViewTracker } from "@/components/page-view-tracker";
+import { RouteProgress } from "@/components/route-progress";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SITE_URL } from "@/lib/site";
@@ -87,6 +89,10 @@ export default function RootLayout({
             <BottomNav />
             <CompareBar />
             <PageViewTracker />
+            {/* 全局路由加载进度条：useSearchParams 须包 Suspense，避免静态预渲染 CSR bailout */}
+            <Suspense fallback={null}>
+              <RouteProgress />
+            </Suspense>
           </AuthProvider>
         </ThemeProvider>
       </body>
