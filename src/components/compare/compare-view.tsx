@@ -83,6 +83,12 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
             最多对比 {COMPARE_MAX} 款；不同币种/付款周期的「原价」不可直接横比，
             跨套餐比较请以「折年 ≈ USD」为准（换算口径见页尾）。
           </p>
+          {/* 3 款及以上在窄屏放不下，提示可横向滑动（2 款时刚好放得下，无需提示） */}
+          {loaded.length >= 3 && (
+            <p className="text-muted-foreground mt-1.5 text-xs sm:hidden">
+              ← 左右滑动查看全部 {loaded.length} 款
+            </p>
+          )}
         </div>
         {loaded.length > 0 && (
           <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={clearAll}>
@@ -110,18 +116,29 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
         </div>
       ) : (
         <div className="overflow-x-auto pb-2">
-          <table className="w-full min-w-[42rem] border-separate border-spacing-0 text-left">
+          {/*
+            不在 table 上设 min-w：那会连「只有 2 款」也撑到固定宽度，
+            白白多出横向滚动。宽度交给各列自己的 min-width 控制——
+            首列 80px（min-w-20）+ 每款 144px（min-w-36）：
+              2 款 = 368px < 390px 视口 → 无需滚动（移动端最常见的用法）
+              3–4 款 = 512 / 656px → 横向滑动，首列 sticky 保证始终知道在看哪一项。
+          */}
+          {/*
+            table-fixed：列宽由下方 w-* 决定，不被长套餐名撑开。
+            只写 min-w 不够——那只是下限，长产品名仍会把列顶宽，导致 2 款也要滚动。
+          */}
+          <table className="w-full table-fixed border-separate border-spacing-0 text-left">
             <caption className="sr-only">VPS 套餐对比表</caption>
             <thead>
               <tr>
-                <th scope="col" className="bg-background sticky left-0 z-10 w-28 min-w-24 p-2 align-bottom">
+                <th scope="col" className="bg-background sticky left-0 z-10 w-20 min-w-20 p-1.5 align-bottom sm:w-24 sm:p-2">
                   <span className="text-muted-foreground text-xs font-normal">对比项</span>
                 </th>
                 {loaded.map((p) => (
-                  <th key={p.id} scope="col" className="min-w-44 p-2 align-bottom">
-                    <div className="bg-card rounded-t-xl border border-b-0 p-3">
+                  <th key={p.id} scope="col" className="w-36 p-1.5 align-bottom sm:w-44 sm:p-2">
+                    <div className="bg-card rounded-t-xl border border-b-0 p-2 sm:p-3">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-muted-foreground text-xs">{p.merchant.name}</p>
+                        <p className="text-muted-foreground truncate text-xs">{p.merchant.name}</p>
                         <button
                           type="button"
                           aria-label={`移除 ${p.name}`}
@@ -133,7 +150,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
                       </div>
                       <Link
                         href={productHref(p.id, p.name)}
-                        className="mt-0.5 block break-words text-sm font-semibold hover:text-sky-700 hover:underline dark:hover:text-sky-400"
+                        className="mt-0.5 block break-words text-xs font-semibold hover:text-sky-700 hover:underline sm:text-sm dark:hover:text-sky-400"
                       >
                         {p.name}
                       </Link>
@@ -145,7 +162,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
             <tbody className="text-sm">
               <Row label="价格（原币标价）" hint="各套餐自身标价，币种/周期不同不可直接横比">
                 {loaded.map((p) => (
-                  <td key={p.id} className="bg-card border-r border-t p-3 last:border-r-0">
+                  <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3">
                     <span className="font-bold tabular-nums">
                       {currencySymbol(p.currency)}{p.price.toFixed(2)}
                     </span>
@@ -157,14 +174,14 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
               </Row>
               <Row label="折年价（原币）">
                 {loaded.map((p) => (
-                  <td key={p.id} className="bg-card border-r border-t p-3 last:border-r-0 tabular-nums">
+                  <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3 tabular-nums">
                     {currencySymbol(p.currency)}{p.price_yearly.toFixed(2)}<span className="text-muted-foreground text-xs">/年</span>
                   </td>
                 ))}
               </Row>
               <Row label="折年 ≈ USD" hint="跨套餐可比口径；换算汇率见页尾说明">
                 {loaded.map((p) => (
-                  <td key={p.id} className="bg-card border-r border-t p-3 last:border-r-0">
+                  <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3">
                     {p.currency !== "USD" && p.price_yearly_converted != null ? (
                       <span className="font-bold text-sky-800 tabular-nums dark:text-sky-300">
                         ${p.price_yearly_converted.toFixed(2)}<span className="text-muted-foreground text-xs font-normal">/年</span>
@@ -179,7 +196,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
               </Row>
               <Row label="库存">
                 {loaded.map((p) => (
-                  <td key={p.id} className="bg-card border-r border-t p-3 last:border-r-0">
+                  <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3">
                     {p.in_stock ? (
                       <Badge className="gap-1 bg-emerald-600 text-white hover:bg-emerald-600">有货</Badge>
                     ) : (
@@ -190,7 +207,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
               </Row>
               <Row label="CPU / 内存 / 硬盘">
                 {loaded.map((p) => (
-                  <td key={p.id} className="bg-card border-r border-t p-3 last:border-r-0 tabular-nums">
+                  <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3 tabular-nums">
                     {[p.cpu_cores != null ? `${p.cpu_cores}C` : null, p.ram_gb != null ? `${p.ram_gb}G` : null, p.disk_gb != null ? `${p.disk_gb}G` : null]
                       .filter(Boolean)
                       .join(" / ") || "—"}
@@ -199,7 +216,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
               </Row>
               <Row label="月流量 / 带宽">
                 {loaded.map((p) => (
-                  <td key={p.id} className="bg-card border-r border-t p-3 last:border-r-0 tabular-nums">
+                  <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3 tabular-nums">
                     {p.bandwidth_gb == null ? "—" : p.bandwidth_gb < 0 ? "不限" : `${p.bandwidth_gb.toLocaleString("zh-CN")}G`}
                     <span className="text-muted-foreground"> / </span>
                     {p.port_mbps != null ? `${p.port_mbps}M` : "—"}
@@ -208,7 +225,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
               </Row>
               <Row label="机房 / 线路">
                 {loaded.map((p) => (
-                  <td key={p.id} className="bg-card border-r border-t p-3 last:border-r-0">
+                  <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3">
                     <p>{p.location || "—"}</p>
                     {p.line_tags.length > 0 && (
                       <p className="text-muted-foreground mt-0.5 text-xs break-words">{p.line_tags.join(" / ")}</p>
@@ -218,7 +235,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
               </Row>
               <Row label="推荐指数">
                 {loaded.map((p) => (
-                  <td key={p.id} className="bg-card border-r border-t p-3 last:border-r-0 tabular-nums">
+                  <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3 tabular-nums">
                     {p.hot_score != null ? p.hot_score : "—"}
                     {p.recommend_reasons.length > 0 && (
                       <p className="text-muted-foreground mt-0.5 text-xs break-words">{p.recommend_reasons[0]}</p>
@@ -228,7 +245,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
               </Row>
               <Row label="购买">
                 {loaded.map((p) => (
-                  <td key={p.id} className="bg-card border-r border-t p-3 pb-4 last:border-r-0">
+                  <td key={p.id} className="bg-card border-r border-t p-2 pb-3 last:border-r-0 sm:p-3 sm:pb-4">
                     {p.in_stock ? (
                       <a
                         href={`/go/${p.id}?src=compare`}
@@ -278,9 +295,17 @@ function Row({
 }) {
   return (
     <tr>
-      <th scope="row" className="bg-background sticky left-0 z-10 p-2 align-top text-xs font-normal">
+      <th scope="row" className="bg-background sticky left-0 z-10 p-1.5 align-top text-xs font-normal sm:p-2">
         <span className="text-muted-foreground">{label}</span>
-        {hint && <span className="text-muted-foreground/70 mt-0.5 block text-[10px] leading-snug">{hint}</span>}
+        {/*
+          行内说明窄屏隐藏：80px 的首列放不下，会挤成好几行把行高撑大。
+          该信息（不同币种/周期不可直接横比）在页面顶部的说明里已完整给出。
+        */}
+        {hint && (
+          <span className="text-muted-foreground/70 mt-0.5 hidden text-[10px] leading-snug sm:block">
+            {hint}
+          </span>
+        )}
       </th>
       {children}
     </tr>
