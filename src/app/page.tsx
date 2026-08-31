@@ -123,7 +123,7 @@ export default async function HomePage() {
               desc: "纯净度评分、WebRTC/DNS 泄露与浏览器指纹",
             },
             {
-              href: "/deals?hours=168",
+              href: "/deals?type=PRICE_DROP&hours=168",
               title: "一周降价榜",
               desc: "近 168 小时降幅最大的套餐排行",
             },

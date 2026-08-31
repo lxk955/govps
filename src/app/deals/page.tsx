@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { DealsRangeSelect } from "@/components/deals/deals-range-select";
 import { WatchButton } from "@/components/vps/watch-button";
-import { getEvents, type EventItem } from "@/lib/api/endpoints";
+import { getEvents, getEventsSummary, type EventItem, type EventsSummary } from "@/lib/api/endpoints";
 import { lineInfo, lineTierClass, shortName } from "@/lib/display";
 import { cycleLabel, formatPrice, timeAgo } from "@/lib/format";
 import { productHref } from "@/lib/slug";
@@ -28,15 +28,21 @@ function first(v: string | string[] | undefined): string | undefined {
 
 export default async function DealsPage({ searchParams }: PageProps) {
   const sp = await searchParams;
-  const type = first(sp.type) === "RESTOCK" ? "RESTOCK" : "PRICE_DROP";
+  // 默认展示补货动态；仅显式传 type=PRICE_DROP 时才是降价榜
+  const type = first(sp.type) === "PRICE_DROP" ? "PRICE_DROP" : "RESTOCK";
   const hoursRaw = Number(first(sp.hours));
   const hours = WINDOWS.includes(hoursRaw) ? hoursRaw : 24;
   const isDrop = type === "PRICE_DROP";
 
   let items: EventItem[] = [];
+  let summary: EventsSummary | null = null;
   let error = false;
   try {
-    items = (await getEvents(type, hours)).items;
+    // 汇总计数（两个榜单的角标）走 5 分钟缓存，失败不阻塞主列表
+    [items, summary] = await Promise.all([
+      getEvents(type, hours).then((r) => r.items),
+      getEventsSummary(hours).catch(() => null),
+    ]);
   } catch {
     error = true;
   }
@@ -58,21 +64,45 @@ export default async function DealsPage({ searchParams }: PageProps) {
               href={`/deals?type=PRICE_DROP&hours=${hours}`}
               aria-current={isDrop ? "page" : undefined}
               className={cn(
-                "rounded-md px-3 py-1.5 transition-colors",
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors",
                 isDrop ? "bg-orange-500 text-white" : "text-slate-500 hover:text-slate-700 dark:text-slate-400",
               )}
             >
               降价榜
+              {summary && (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 text-[10px] font-bold leading-4 tabular-nums",
+                    isDrop
+                      ? "bg-white/25 text-white"
+                      : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
+                  )}
+                >
+                  {summary.drop_count}
+                </span>
+              )}
             </Link>
             <Link
               href={`/deals?type=RESTOCK&hours=${hours}`}
               aria-current={!isDrop ? "page" : undefined}
               className={cn(
-                "rounded-md px-3 py-1.5 transition-colors",
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors",
                 !isDrop ? "bg-emerald-600 text-white" : "text-slate-500 hover:text-slate-700 dark:text-slate-400",
               )}
             >
               补货动态
+              {summary && (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 text-[10px] font-bold leading-4 tabular-nums",
+                    !isDrop
+                      ? "bg-white/25 text-white"
+                      : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
+                  )}
+                >
+                  {summary.restock_count}
+                </span>
+              )}
             </Link>
           </div>
           <DealsRangeSelect type={type} hours={hours} />
