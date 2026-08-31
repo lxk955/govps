@@ -42,16 +42,17 @@ export function onAuthExpired(cb: () => void): () => void {
 }
 
 /**
- * 解析请求基址：
- * - 浏览器端：相对路径走同域（经 /api/* rewrite，无 CORS）
- * - 服务端（RSC）：直连 API_ORIGIN。此前还原公网域名自呼自身再 rewrite，
- *   每次取数都绕 Cloudflare 进出两段边缘往返；直连砍掉这段固定开销，
- *   筛选/翻页等高频导航显著提速（rewrite 仍保留服务浏览器端请求）。
+ * 解析请求基址：浏览器端相对路径走同域；RSC 在服务端执行，fetch 不支持相对路径，
+ * 从请求头还原同源绝对地址后仍经自身 /api/* rewrite 转发（服务端转发，无 CORS），
+ * 业务代码依旧只写相对路径。
  */
 async function resolveBaseUrl(): Promise<string> {
   if (typeof window !== "undefined") return "";
-  const { apiOrigin } = await import("@/lib/api-origin");
-  return apiOrigin();
+  const { headers } = await import("next/headers");
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
 }
 
 /**
