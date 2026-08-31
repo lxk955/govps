@@ -4,8 +4,6 @@
  * 本模块同时被 RSC（解析）与 Client 组件（增删改）引用，保持单一口径。
  */
 
-import type { ProductListParams } from "@/lib/api/endpoints";
-
 /**
  * 支持的排序值（URL 上的 ?sort=）。列表页目前没有排序 UI（与旧站一致），
  * 仅通过 URL 参数生效，因此这里只保留合法值的单一定义用于解析与类型约束，
@@ -123,32 +121,4 @@ export function withParams(
   opts: { resetPage?: boolean } = {},
 ): string {
   return queryToString({ ...current, ...patch, ...(opts.resetPage === false ? {} : { page: 1 }) });
-}
-
-/**
- * 筛选状态 → /api/products 查询参数。
- * RSC 首屏取数（page.tsx）与客户端 SWR store（list-data-context）共用，
- * 保证两条取数路径的参数口径完全一致。
- */
-export function toProductParams(state: ListQueryState): ProductListParams {
-  return {
-    merchant: state.merchant.length > 0 ? state.merchant : undefined,
-    location: state.location.length > 0 ? state.location : undefined,
-    line: state.line.length > 0 ? state.line : undefined,
-    keyword: state.keyword || undefined,
-    sort: state.sort === "hot" ? undefined : state.sort,
-    page: state.page,
-    size: state.size,
-    min_price: state.min_price,
-    max_price: state.max_price,
-    min_cpu: state.min_cpu,
-    min_ram: state.min_ram,
-    min_bw: state.min_bw,
-    min_port: state.min_port,
-    in_stock: state.in_stock,
-    price_drop: state.price_drop,
-    lowest_price: state.lowest_price,
-    recent_restock: state.recent_restock,
-    recommended: state.recommended,
-  };
 }

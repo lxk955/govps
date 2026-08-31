@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import type { MerchantOption } from "@/components/vps/FilterControls";
-import { useListData } from "@/components/vps/list-data-context";
 import { merchantTitle, sortMerchants } from "@/lib/merchant-notes";
-import { LINE_OPTIONS, type ListQueryState } from "@/lib/query-state";
+import { LINE_OPTIONS, type ListQueryState, withParams } from "@/lib/query-state";
 import { cn } from "@/lib/utils";
 
 /**
@@ -142,14 +142,24 @@ const NUM_OPTIONS = {
   ],
 };
 
-export function MobileFilterContent({ merchants }: { merchants: MerchantOption[] }) {
-  const { state, apply } = useListData();
+export function MobileFilterContent({
+  state,
+  merchants,
+}: {
+  state: ListQueryState;
+  merchants: MerchantOption[];
+}) {
+  const router = useRouter();
   const [priceMin, setPriceMin] = useState(state.min_price?.toString() ?? "");
   const [priceMax, setPriceMax] = useState(state.max_price?.toString() ?? "");
 
   // 点选即生效后 state 会变化，同步回本地输入值
   useEffect(() => setPriceMin(state.min_price?.toString() ?? ""), [state.min_price]);
   useEffect(() => setPriceMax(state.max_price?.toString() ?? ""), [state.max_price]);
+
+  const apply = (patch: Partial<ListQueryState>) => {
+    router.push(`/vps?${withParams(state, patch)}`);
+  };
 
   const toggleIn = (key: "merchant" | "line", value: string) => {
     const cur = state[key];

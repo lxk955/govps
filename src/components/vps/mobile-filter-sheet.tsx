@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { SlidersHorizontal } from "lucide-react";
 
 import { MobileFilterContent } from "@/components/vps/mobile-filter-content";
 import type { MerchantOption } from "@/components/vps/FilterControls";
-import { useListData } from "@/components/vps/list-data-context";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { type ListQueryState } from "@/lib/query-state";
+import { type ListQueryState, withParams } from "@/lib/query-state";
 
 /**
  * 移动端筛选抽屉（对应旧站 Teleport 的底部 Drawer）。
@@ -22,11 +22,18 @@ import { type ListQueryState } from "@/lib/query-state";
 
 const SPEC_KEYS = ["min_ram", "min_cpu", "min_port", "min_bw", "min_price", "max_price"] as const;
 
-export function MobileFilterSheet({ merchants }: { merchants: MerchantOption[] }) {
-  const [open, setOpen] = useState(false);
-  const { state, apply, data } = useListData();
+export function MobileFilterSheet({
+  state,
+  merchants,
+  total,
+}: {
+  state: ListQueryState;
+  merchants: MerchantOption[];
   /** 当前筛选条件下的套餐总数，用于底部按钮 */
-  const total = data?.total ?? 0;
+  total: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
 
   const activeCount =
     state.merchant.length +
@@ -34,16 +41,18 @@ export function MobileFilterSheet({ merchants }: { merchants: MerchantOption[] }
     SPEC_KEYS.filter((k) => state[k] !== undefined).length;
 
   const clearAll = () => {
-    apply({
-      merchant: [],
-      line: [],
-      min_ram: undefined,
-      min_cpu: undefined,
-      min_port: undefined,
-      min_bw: undefined,
-      min_price: undefined,
-      max_price: undefined,
-    });
+    router.push(
+      `/vps?${withParams(state, {
+        merchant: [],
+        line: [],
+        min_ram: undefined,
+        min_cpu: undefined,
+        min_port: undefined,
+        min_bw: undefined,
+        min_price: undefined,
+        max_price: undefined,
+      })}`,
+    );
   };
 
   return (
@@ -89,7 +98,7 @@ export function MobileFilterSheet({ merchants }: { merchants: MerchantOption[] }
         </div>
 
         <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-4">
-          <MobileFilterContent merchants={merchants} />
+          <MobileFilterContent state={state} merchants={merchants} />
         </div>
 
         <div className="border-border border-t p-3">

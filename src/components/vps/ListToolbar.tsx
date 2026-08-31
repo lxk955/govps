@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { LayoutGrid, List, Search, X } from "lucide-react";
 
 import { MobileFilterSheet } from "@/components/vps/mobile-filter-sheet";
 import type { MerchantOption } from "@/components/vps/FilterControls";
-import { useListData } from "@/components/vps/list-data-context";
-import { LINE_OPTIONS, type ListQueryState } from "@/lib/query-state";
+import { LINE_OPTIONS, type ListQueryState, withParams } from "@/lib/query-state";
 import { cn } from "@/lib/utils";
 
 /**
@@ -83,14 +83,23 @@ function Chip({
   );
 }
 
-export function ListToolbar({ merchants }: { merchants: MerchantOption[] }) {
-  const { state, apply, data } = useListData();
+export function ListToolbar({
+  state,
+  merchants,
+  total,
+}: {
+  state: ListQueryState;
+  merchants: MerchantOption[];
+  /** 当前筛选结果数，移动端抽屉底部需要展示 */
+  total: number;
+}) {
+  const router = useRouter();
   const [kw, setKw] = useState(state.keyword);
 
   useEffect(() => setKw(state.keyword), [state.keyword]);
 
   const go = (patch: Partial<ListQueryState>) => {
-    apply(patch);
+    router.push(`/vps?${withParams(state, patch)}`);
   };
 
   const toggleIn = (key: "location" | "line", value: string) => {
@@ -101,9 +110,6 @@ export function ListToolbar({ merchants }: { merchants: MerchantOption[] }) {
   const setView = (view: "card" | "list") => go({ view });
 
   const submitKeyword = () => go({ keyword: kw });
-
-  /** 当前筛选结果数，移动端抽屉底部需要展示 */
-  const total = data?.total ?? 0;
 
   return (
     <div className="mb-5 flex flex-col gap-3">
@@ -145,7 +151,7 @@ export function ListToolbar({ merchants }: { merchants: MerchantOption[] }) {
         </form>
 
         <div className="flex items-center gap-2">
-          <MobileFilterSheet merchants={merchants} />
+          <MobileFilterSheet state={state} merchants={merchants} total={total} />
           {/*
            * 视图切换仅 md 及以上显示：小屏只给卡片视图。列表（表格）形态在
            * 窄屏下需要横向滚动，体验不如卡片；少一个出错的交互面也更稳。

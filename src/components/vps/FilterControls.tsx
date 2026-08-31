@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { merchantTitle, sortMerchants } from "@/lib/merchant-notes";
-import { type ListQueryState } from "@/lib/query-state";
+import { type ListQueryState, withParams } from "@/lib/query-state";
 import { cn } from "@/lib/utils";
-import { useListData } from "@/components/vps/list-data-context";
 
 /**
  * 桌面端侧栏筛选（1:1 复刻旧站 components/FilterBar.vue）：
@@ -55,15 +55,21 @@ function NumSelect({
 }
 
 export function FilterControls({
+  state,
   merchants,
 }: {
+  state: ListQueryState;
   merchants: MerchantOption[];
 }) {
-  const { state, apply } = useListData();
+  const router = useRouter();
   // 硬件配置筛选默认展开：筛选条件直接可见，省去一次点击
   const [showAdvanced, setShowAdvanced] = useState(true);
   const [priceMin, setPriceMin] = useState(state.min_price?.toString() ?? "");
   const [priceMax, setPriceMax] = useState(state.max_price?.toString() ?? "");
+
+  const apply = (patch: Partial<ListQueryState>) => {
+    router.push(`/vps?${withParams(state, patch)}`);
+  };
 
   const selected = state.merchant;
   const toggleMerchant = (slug: string) => {
