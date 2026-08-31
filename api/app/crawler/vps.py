@@ -261,8 +261,8 @@ def _check_stock_by_pid(client: httpx.Client, pid: str) -> bool | None:
 class VPSCrawler(MerchantCrawler):
     slug = "vps"
     name = "V.PS"
-    # P7 分级调度默认值（分钟）：见 docs/refactor-plan.md §10 P7 频率配置表
-    default_interval_minutes = 60
+    # P7 分级调度默认值（分钟）：2026-08-31 起运营决策全商家统一 5 分钟
+    default_interval_minutes = 5
     website = "https://v.ps"
     aff_url_template = "{url}"
 

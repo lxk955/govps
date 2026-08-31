@@ -212,8 +212,8 @@ PRESET_66YUN_PRODUCTS: list[RawProduct] = [
 class SixSixYunCrawler(MerchantCrawler):
     slug = "66yun"
     name = "66云"
-    # P7 分级调度默认值（分钟）：见 docs/refactor-plan.md §10 P7 频率配置表
-    default_interval_minutes = 30
+    # P7 分级调度默认值（分钟）：2026-08-31 起运营决策全商家统一 5 分钟
+    default_interval_minutes = 5
     website = "https://666clouds.com"
     aff_url_template = "https://666clouds.com/cart.php?a=add&pid={pid}"
 

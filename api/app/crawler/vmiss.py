@@ -188,8 +188,8 @@ def _fetch_stockvps(client: httpx.Client) -> dict[str, bool]:
 class VmissCrawler(MerchantCrawler):
     slug = "vmiss"
     name = "VMiss"
-    # P7 分级调度默认值（分钟）：见 docs/refactor-plan.md §10 P7 频率配置表
-    default_interval_minutes = 30
+    # P7 分级调度默认值（分钟）：2026-08-31 起运营决策全商家统一 5 分钟
+    default_interval_minutes = 5
     website = "https://www.vmiss.com"
     # 返利：WHMCS 标准 aff.php，带 pid 直达套餐（同 DMIT 模式；上线前请实测确认跳转）
     aff_url_template = "https://app.vmiss.com/aff.php?aff=6324&pid={pid}"

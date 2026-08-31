@@ -12,8 +12,8 @@ from .whmcs import GroupPage, crawl_groups
 class DediOneCrawler(MerchantCrawler):
     slug = "dedione"
     name = "DediOne"
-    # P7 分级调度默认值（分钟）：见 docs/refactor-plan.md §10 P7 频率配置表
-    default_interval_minutes = 60
+    # P7 分级调度默认值（分钟）：2026-08-31 起运营决策全商家统一 5 分钟
+    default_interval_minutes = 5
     website = "https://dedione.com"
     aff_url_template = None
 

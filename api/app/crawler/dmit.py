@@ -286,8 +286,8 @@ def _merge(primary: list[RawProduct], *backups: list[RawProduct]) -> list[RawPro
 class DmitCrawler(MerchantCrawler):
     slug = "dmit"
     name = "DMIT"
-    # P7 分级调度默认值（分钟）：见 docs/refactor-plan.md §10 P7 频率配置表
-    default_interval_minutes = 10
+    # P7 分级调度默认值（分钟）：2026-08-31 起运营决策全商家统一 5 分钟
+    default_interval_minutes = 5
     website = "https://www.dmit.io"
     # 返利链接：DMIT 标准 WHMCS aff.php，带 pid 直达具体套餐。
     aff_url_template = "https://www.dmit.io/aff.php?aff=23928&pid={pid}"

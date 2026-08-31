@@ -15,7 +15,8 @@ class Settings(BaseSettings):
     SCAN_TIMEOUT: float = 20.0
     # P7 分级调度：全局兜底抓取间隔（分钟）；商家列 crawl_interval_minutes 优先，
     # 其次 adapter 的 default_interval_minutes，最后此全局值。env 可覆盖。
-    CRAWL_INTERVAL_MINUTES: int = 15
+    # 2026-08-31 运营决策：全商家统一 5 分钟（与 cron 触发周期一致，即每轮全量）。
+    CRAWL_INTERVAL_MINUTES: int = 5
     # P7 邮件异步 worker：进程内后台线程消费 pending NotifyLog
     NOTIFY_WORKER_ENABLED: bool = True
     NOTIFY_WORKER_INTERVAL_SECONDS: int = 10

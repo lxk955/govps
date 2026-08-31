@@ -30,8 +30,8 @@ _PERIOD_PRIORITY = ["annually", "semi-annually", "quarterly", "monthly"]
 class BandwagonCrawler(MerchantCrawler):
     slug = "bandwagon"
     name = "BandwagonHost"
-    # P7 分级调度默认值（分钟）：见 docs/refactor-plan.md §10 P7 频率配置表
-    default_interval_minutes = 15
+    # P7 分级调度默认值（分钟）：2026-08-31 起运营决策全商家统一 5 分钟
+    default_interval_minutes = 5
     website = "https://bwh81.net"
     # 搬瓦工官方推荐返利模板 (aff=83019)
     aff_url_template = "https://bwh81.net/aff.php?aff=83019&a=add&pid={pid}"
