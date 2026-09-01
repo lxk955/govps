@@ -68,7 +68,10 @@ export function BookmarkDialog() {
 
   const share = async () => {
     try {
-      await navigator.share({ title: "GoVPS - VPS 库存与降价监控", url: SITE_URL });
+      await navigator.share({
+        title: "GoVPS · VPS雷达 - VPS 库存与降价监控",
+        url: SITE_URL,
+      });
     } catch {
       /* 用户取消分享：无需处理 */
     }
@@ -91,7 +94,7 @@ export function BookmarkDialog() {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>收藏 GoVPS</DialogTitle>
+          <DialogTitle>收藏 GoVPS · VPS雷达</DialogTitle>
           <DialogDescription>
             VPS 库存与降价信息随时在变，把 GoVPS 加入书签，第一时间看到降价与补货。
           </DialogDescription>

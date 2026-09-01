@@ -65,11 +65,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     description,
     alternates: { canonical: productHref(p.id, p.name) },
     openGraph: {
-      title: `${p.name} - ${p.merchant.name} | GoVPS`,
+      title: `${p.name} - ${p.merchant.name} | GoVPS · VPS雷达`,
       description,
       type: "website",
       url: productHref(p.id, p.name),
-      siteName: "GoVPS",
+      siteName: "GoVPS · VPS雷达",
     },
   };
 }

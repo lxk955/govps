@@ -17,8 +17,8 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "GoVPS - VPS 库存与降价监控",
-    template: "%s | GoVPS",
+    default: "GoVPS · VPS雷达 - VPS 库存与降价监控",
+    template: "%s | GoVPS · VPS雷达",
   },
   description:
     "多商家 VPS 套餐聚合：库存监控、降价提醒、线路对比与购买推荐，数据定期同步自各商家官网。",
@@ -61,7 +61,13 @@ export default function RootLayout({
                     <line x1="3" y1="12" x2="6" y2="12" />
                     <line x1="18" y1="12" x2="21" y2="12" />
                   </svg>
-                  GoVPS
+                  {/* 主名 + 旧站中文名并列：域名品牌为主，「雷达」延续旧站心智 */}
+                  <span className="flex flex-col leading-none">
+                    <span>GoVPS</span>
+                    <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                      VPS雷达
+                    </span>
+                  </span>
                 </Link>
                 <HeaderNav />
                 <div className="ml-auto flex shrink-0 items-center gap-2.5 text-sm sm:gap-3">
@@ -78,7 +84,7 @@ export default function RootLayout({
                 main 的 padding 保护不到它之后的页脚，实测会被 fixed 标签栏压住 56px。 */}
             <footer className="border-border px-4 pb-24 pt-6 text-center text-xs text-slate-400 sm:pb-6 dark:text-slate-500">
               <div className="mb-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-                <span>GoVPS · 库存与价格数据来自各商家官网公开页面，仅供参考</span>
+                <span>GoVPS · VPS雷达 · 库存与价格数据来自各商家官网公开页面，仅供参考</span>
                 <BookmarkDialog />
               </div>
               <p className="mt-1">

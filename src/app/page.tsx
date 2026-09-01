@@ -7,7 +7,8 @@ import { VpsCard } from "@/components/vps/VpsCard";
 import { getEventsSummary, listProducts, type ProductsResponse } from "@/lib/api/endpoints";
 
 export const metadata: Metadata = {
-  title: "GoVPS - VPS 库存与降价监控",
+  // absolute：绕开 layout 的 title.template，避免品牌名在首页标题里出现两次
+  title: { absolute: "GoVPS · VPS雷达 - VPS 库存与降价监控" },
   description:
     "多商家 VPS 套餐聚合：库存监控、降价提醒、线路对比与购买推荐。精选高性价比套餐，降价补货第一时间掌握。",
   alternates: { canonical: "/" },

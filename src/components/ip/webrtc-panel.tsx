@@ -96,7 +96,7 @@ export function WebrtcPanel() {
   }, []);
 
   useEffect(() => {
-    document.title = "WebRTC 泄露检测 | GoVPS";
+    document.title = "WebRTC 泄露检测 | GoVPS · VPS雷达";
   }, []);
 
   const hasLeak =
