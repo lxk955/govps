@@ -61,10 +61,11 @@ export default function RootLayout({
                     <line x1="3" y1="12" x2="6" y2="12" />
                     <line x1="18" y1="12" x2="21" y2="12" />
                   </svg>
-                  {/* 主名 + 旧站中文名并列：域名品牌为主，「雷达」延续旧站心智 */}
-                  <span className="flex flex-col leading-none">
+                  {/* 主名 + 旧站中文名：同行胶囊标签。
+                      此前是 10px 小字竖排，字号与字重都压不住，观感廉价 */}
+                  <span className="flex items-center gap-1.5">
                     <span>GoVPS</span>
-                    <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                    <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold tracking-tight text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
                       VPS雷达
                     </span>
                   </span>

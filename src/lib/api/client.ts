@@ -58,10 +58,16 @@ async function resolveBaseUrl(): Promise<string> {
 /**
  * Render 免费实例空闲后会休眠，唤醒窗口内请求被边缘直接拒绝：
  * 429 + x-render-routing: hibernate-rate-limited，body 为纯文本（非 JSON）。
- * 仅对幂等 GET 退避重试，覆盖冷启动抖动；非 GET 重试可能造成重复写入。
+ *
+ * 退避时长必须匹配冷启动量级：免费实例唤醒实测 5~30s，原先只退避
+ * 600/1200ms（累计 1.8s）必然抢在实例就绪前放弃，用户每次都看到 429。
+ * 现改为阶梯退避累计约 8s（第 0.8 / 2.3 / 4.8 / 8.3s 各重试一次），
+ * 覆盖多数冷启动；再久就不宜让 RSC 继续阻塞，交给页面提示刷新重试。
+ *
+ * 仅对幂等 GET 退避重试；非 GET 重试可能造成重复写入。
  */
 const RETRY_STATUS = new Set([429, 502, 503]);
-const RETRY_DELAYS_MS = [600, 1200];
+const RETRY_DELAYS_MS = [800, 1500, 2500, 3500];
 
 function shouldRetry(res: Response, method?: string): boolean {
   return (method ?? "GET").toUpperCase() === "GET" && RETRY_STATUS.has(res.status);
