@@ -33,3 +33,5 @@ __pycache__/
 .pytest_cache/
 *.db
 playwright-cli/
+.playwright-cli/
+.codebuddy/
