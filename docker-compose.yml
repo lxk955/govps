@@ -1,0 +1,83 @@
+services:
+  # 1. FastAPI 后端服务（处理数据库、定时抓取、异步发信、业务评分）
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: govps-api
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:////app/data/govps.db
+      - SKIP_STARTUP_SCAN=true
+      - NOTIFY_WORKER_ENABLED=true
+      - CRAWL_INTERVAL_MINUTES=5
+      - TASK_TOKEN=${TASK_TOKEN:-change-me}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - MAIL_FROM=${MAIL_FROM:-GoVPS · VPS雷达 <notify@govps.xyz>}
+      - PUBLIC_API_URL=${SITE_URL:-https://govps.xyz}
+      - CORS_ORIGINS=${SITE_URL:-https://govps.xyz},http://localhost:3000
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - govps-net
+
+  # 2. Next.js 前端服务（App Router 服务端渲染与同域 API 反向代理）
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: govps-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - API_ORIGIN=http://api:8000
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/robots.txt"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - govps-net
+
+  # 3. Caddy 反向代理网关（负责 HTTPS、HTTP/2/3、静态资源缓存与端口暴露）
+  caddy:
+    image: caddy:2-alpine
+    container_name: govps-caddy
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - SITE_DOMAIN=${SITE_DOMAIN:-localhost}
+    networks:
+      - govps-net
+
+networks:
+  govps-net:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:

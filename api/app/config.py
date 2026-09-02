@@ -4,10 +4,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    DATABASE_URL: str = "sqlite:///./vps_scout.db"
+    DATABASE_URL: str = "sqlite:///./data/govps.db"
     TASK_TOKEN: str = "change-me"
     RESEND_API_KEY: str = ""
-    MAIL_FROM: str = "VPS 雷达 <notify@govps.xyz>"
+    MAIL_FROM: str = "GoVPS · VPS雷达 <notify@govps.xyz>"
     PUBLIC_API_URL: str = "http://localhost:8000"
     CORS_ORIGINS: str = "http://localhost:5173"
     EVENT_DEDUP_MINUTES: int = 30

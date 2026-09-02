@@ -32,6 +32,9 @@ __pycache__/
 .venv/
 .pytest_cache/
 *.db
+*.db-shm
+*.db-wal
+/data/
 playwright-cli/
 .playwright-cli/
 .codebuddy/
