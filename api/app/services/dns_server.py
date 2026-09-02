@@ -104,8 +104,8 @@ def handle_dns_packet(data: bytes, addr: tuple[str, int]) -> bytes | None:
             resp.answer.append(ns)
         # 其余类型（如 AAAA）返回空 Answer，状态为 NOERROR，以允许快速 fallback
 
-    # 2. 匹配 ns1.govps.xyz 与 nsl.govps.xyz 自身权威解析
-    elif qname in (f"ns1.{settings.SITE_DOMAIN}".lower(), f"nsl.{settings.SITE_DOMAIN}".lower()):
+    # 2. 匹配 ns1.govps.xyz 自身权威解析
+    elif qname == f"ns1.{settings.SITE_DOMAIN}".lower():
         if qtype in (dns.rdatatype.A, dns.rdatatype.ANY):
             rr = dns.rrset.from_text(q.name, 300, dns.rdataclass.IN, dns.rdatatype.A, SERVER_IP)
             resp.answer.append(rr)
