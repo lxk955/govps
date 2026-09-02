@@ -56,6 +56,7 @@ def detect_current_revision(inspector) -> str | None:
                 for idx in i.get_indexes("price_snapshots")
             ),
         ),
+        ("0008_dns_leak_hits", lambda i: i.has_table("dns_leak_hits")),
     ]
     reached: str | None = None
     for revision_id, present in stages:

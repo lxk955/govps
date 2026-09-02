@@ -1,11 +1,16 @@
 import asyncio
+from datetime import datetime, timedelta, timezone
 import re
 import socket
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 import httpx
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
 
+from ..database import get_db
+from ..models import DnsLeakHit
 from ..services.client_ip import client_ip
 
 router = APIRouter(prefix="/api/ip", tags=["ipcheck"])
@@ -136,15 +141,67 @@ for _cc in _AFRINIC_CC:
     _RIR_BY_CC[_cc] = "AFRINIC"
 
 
-@router.get("/dns-leak/results")
-def dns_leak_results(token: str = Query(default="", max_length=64)):
-    """DNS 泄露检测回收接口（开发基座）。
+_RESOLVER_GEO_CACHE: dict[str, str] = {}
 
-    完整实现需要：govps.xyz 配置 *.dnstest.govps.xyz 通配子域指向可编程权威 DNS，
-    权威侧记录每个 token 命中的 resolver IP 后，本接口返回：
-      {"configured": True, "resolvers": [{"resolver": "...", "country": "..."}]}
-    未部署前恒定返回 configured=False，前端据此展示部署指引。"""
-    return {"configured": False, "resolvers": [], "token": token}
+
+async def _lookup_resolver_geo(ip: str) -> str:
+    if ip in _RESOLVER_GEO_CACHE:
+        return _RESOLVER_GEO_CACHE[ip]
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            r = await client.get(
+                f"http://ip-api.com/json/{ip}?lang=zh-CN&fields=status,country,regionName,isp,asname"
+            )
+            if r.status_code == 200:
+                d = r.json()
+                if d.get("status") == "success":
+                    country = d.get("country") or ""
+                    region = d.get("regionName") or ""
+                    isp = d.get("isp") or d.get("asname") or ""
+                    geo = f"{country} {region} {isp}".strip()
+                    _RESOLVER_GEO_CACHE[ip] = geo
+                    return geo
+    except Exception:
+        pass
+    _RESOLVER_GEO_CACHE[ip] = "公网递归解析器"
+    return "公网递归解析器"
+
+
+@router.get("/dns-leak/results")
+async def dns_leak_results(
+    token: str = Query(default="", max_length=64),
+    db: Session = Depends(get_db),
+):
+    """DNS 泄露检测回收接口。
+
+    读取权威 DNS 记录器记录的发出 *.dnstest.govps.xyz 查询的递归服务器 IP，
+    并解析各服务器的运营商与地理位置归属。
+    """
+    token = token.strip()
+    if not token:
+        return {"configured": True, "resolvers": [], "token": ""}
+
+    # 查出 10 分钟内匹配该 token 的所有 resolver_ip
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
+    stmt = (
+        select(DnsLeakHit.resolver_ip)
+        .where(
+            or_(
+                DnsLeakHit.token == token,
+                DnsLeakHit.token.startswith(token),
+            ),
+            DnsLeakHit.created_at >= cutoff,
+        )
+        .distinct()
+    )
+    raw_ips = db.scalars(stmt).all()
+
+    resolvers = []
+    for rip in raw_ips:
+        geo = await _lookup_resolver_geo(rip)
+        resolvers.append({"resolver": rip, "country": geo})
+
+    return {"configured": True, "resolvers": resolvers, "token": token}
 
 
 @router.get("/check")

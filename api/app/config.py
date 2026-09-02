@@ -5,6 +5,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     DATABASE_URL: str = "sqlite:///./data/govps.db"
+    SITE_DOMAIN: str = "govps.xyz"
+    SERVER_IP: str = "43.173.89.152"
     TASK_TOKEN: str = "change-me"
     RESEND_API_KEY: str = ""
     MAIL_FROM: str = "GoVPS · VPS雷达 <notify@govps.xyz>"

@@ -16,7 +16,7 @@ from sqlalchemy import create_engine, inspect, text
 from app.database import Base
 from app.db_migrations import alembic_config, detect_current_revision, run_migrations
 
-HEAD = "0007_snapshot_checked_indexes"
+HEAD = "0008_dns_leak_hits"
 EXPECTED_TABLES = set(Base.metadata.tables.keys())  # 全部业务模型表
 
 

@@ -74,6 +74,27 @@ services:
     networks:
       - govps-net
 
+  # 4. 可编程权威 DNS 服务（用于 DNS 泄露检测）
+  dns:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: govps-dns
+    restart: unless-stopped
+    user: "0"
+    command: ["python", "-m", "app.services.dns_server"]
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:////app/data/govps.db
+      - SITE_DOMAIN=${SITE_DOMAIN:-govps.xyz}
+      - SERVER_IP=43.173.89.152
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    networks:
+      - govps-net
+
 networks:
   govps-net:
     driver: bridge

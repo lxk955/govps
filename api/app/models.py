@@ -300,3 +300,24 @@ class RequestRateEvent(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True
     )
+
+
+class DnsLeakHit(Base):
+    """DNS 泄露检测命中记录。
+
+    记录来自递归解析器（Resolver）对 *.dnstest.<domain> 的查询请求。
+    """
+
+    __tablename__ = "dns_leak_hits"
+    __table_args__ = (
+        Index("ix_dns_leak_hits_token_created", "token", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token: Mapped[str] = mapped_column(String(64), index=True)
+    resolver_ip: Mapped[str] = mapped_column(String(64), index=True)
+    query_name: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+
