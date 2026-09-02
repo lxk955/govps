@@ -1,6 +1,6 @@
 # GoVPS Caddy 反代配置
 # 自动支持 HTTPS、HTTP/2、HTTP/3、Zstd/Gzip 压缩与静态资源强缓存
-{$SITE_DOMAIN:localhost} {
+{$SITE_DOMAIN:govps.xyz} {
     encode zstd gzip
 
     # 基础安全响应头

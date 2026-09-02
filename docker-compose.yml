@@ -70,7 +70,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     environment:
-      - SITE_DOMAIN=${SITE_DOMAIN:-localhost}
+      - SITE_DOMAIN=${SITE_DOMAIN:-govps.xyz}
     networks:
       - govps-net
 

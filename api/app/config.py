@@ -8,8 +8,8 @@ class Settings(BaseSettings):
     TASK_TOKEN: str = "change-me"
     RESEND_API_KEY: str = ""
     MAIL_FROM: str = "GoVPS · VPS雷达 <notify@govps.xyz>"
-    PUBLIC_API_URL: str = "http://localhost:8000"
-    CORS_ORIGINS: str = "http://localhost:5173"
+    PUBLIC_API_URL: str = "https://govps.xyz"
+    CORS_ORIGINS: str = "https://govps.xyz,http://localhost:3000"
     EVENT_DEDUP_MINUTES: int = 30
     DAILY_MAIL_CAP: int = 10
     SCAN_TIMEOUT: float = 20.0
