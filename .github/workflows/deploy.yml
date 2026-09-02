@@ -43,10 +43,12 @@ jobs:
     name: Deploy to Silicon Valley VPS
     needs: [test]
     runs-on: ubuntu-latest
-    if: "${{ secrets.VPS_HOST != '' }}"
     steps:
       - name: SSH Deploy to VPS
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        if: env.VPS_HOST != ''
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME || 'root' }}
