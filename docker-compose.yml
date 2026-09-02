@@ -89,6 +89,8 @@ services:
       - DATABASE_URL=sqlite:////app/data/govps.db
       - SITE_DOMAIN=${SITE_DOMAIN:-govps.xyz}
       - SERVER_IP=43.173.89.152
+    healthcheck:
+      disable: true
     ports:
       - "53:53/udp"
       - "53:53/tcp"
