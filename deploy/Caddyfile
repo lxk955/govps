@@ -1,6 +1,8 @@
-# GoVPS Caddy 反代配置
-# 自动支持 HTTPS、HTTP/2、HTTP/3、Zstd/Gzip 压缩与静态资源强缓存
-{$SITE_DOMAIN:govps.xyz} {
+# GoVPS Caddy 反代配置（专为 Cloudflare 小黄云优化）
+# 1. 无论是 Cloudflare Flexible 还是 Full 模式均可完美直通，彻底杜绝重定向死循环（ERR_TOO_MANY_REDIRECTS）
+# 2. 自动提取 Cloudflare CF-Connecting-IP 传递真实访客 IP
+
+http://{$SITE_DOMAIN:govps.xyz}, http://www.{$SITE_DOMAIN:govps.xyz}, http://localhost {
     encode zstd gzip
 
     # 基础安全响应头
@@ -10,7 +12,7 @@
         Referrer-Policy strict-origin-when-cross-origin
     }
 
-    # Next.js 静态资源边缘强缓存（带 hash，1 年强缓存）
+    # Next.js 静态资源强缓存（带 hash，1 年强缓存）
     @static {
         path /_next/static/*
         path /favicon.ico
@@ -21,8 +23,36 @@
     # 反向代理至 Next.js 容器
     reverse_proxy web:3000 {
         header_up Host {host}
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {header.CF-Connecting-IP}
+        header_up X-Forwarded-For {header.CF-Connecting-IP}
+        header_up X-Forwarded-Proto https
+    }
+}
+
+https://{$SITE_DOMAIN:govps.xyz}, https://www.{$SITE_DOMAIN:govps.xyz} {
+    tls internal
+    encode zstd gzip
+
+    # 基础安全响应头
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+
+    # Next.js 静态资源强缓存
+    @static {
+        path /_next/static/*
+        path /favicon.ico
+        path /robots.txt
+    }
+    header @static Cache-Control "public, max-age=31536000, immutable"
+
+    # 反向代理至 Next.js 容器
+    reverse_proxy web:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {header.CF-Connecting-IP}
+        header_up X-Forwarded-For {header.CF-Connecting-IP}
+        header_up X-Forwarded-Proto https
     }
 }

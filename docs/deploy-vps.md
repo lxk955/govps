@@ -109,14 +109,29 @@ docker compose up -d --build
 
 ---
 
-## 第四步：域名与 Cloudflare 解析
+## 第四步：Cloudflare 小黄云（DNS + CDN + SSL）完美配置
 
-1. 打开 Cloudflare 控制台，添加一条 **A 记录**：
-   - **名称**：`@`（或 `vps`）
-   - **内容**：你的 VPS 公网 IP
-   - **代理状态**：点亮（Proxied 灰云或黄云均可）
-2. 在 Cloudflare 的 **SSL/TLS** 设置中：
-   - 加密模式建议选择 **Full**（或 Full Strict）。Caddy 会全自动为你申请 Let's Encrypt 证书并完成 HTTPS 终结。
+本套方案已针对 Cloudflare 小黄云代理（Proxied）进行深度优化，**彻底杜绝重定向死循环（ERR_TOO_MANY_REDIRECTS）并由 Cloudflare 全权托管 SSL 与 CDN**：
+
+1. **DNS 解析（点亮小黄云）**：
+   - 进入 Cloudflare 域名 `govps.xyz` 的 **DNS -> Records**；
+   - 添加 **A 记录**：
+     - **Name**：`@`
+     - **IPv4 address**：你的 VPS 公网 IP
+     - **Proxy status**：**点亮小黄云（Proxied）** 🟠
+   - （可选）添加 **CNAME 记录**：`www` 指向 `govps.xyz`，同样点亮小黄云。
+
+2. **SSL/TLS 加密模式设置**：
+   - 进入 Cloudflare 左侧菜单 **SSL/TLS -> Overview**；
+   - 将加密模式选为 **Full**（或 **Flexible** 均可，Caddy 已双端口支持，零配置直通）；
+   - 进入 **SSL/TLS -> Edge Certificates**：
+     - 打开 **Always Use HTTPS**（开启后访客输入 http:// 自动在 Cloudflare 边缘跳 https://）；
+     - 打开 **Automatic HTTPS Rewrites**；
+     - 最低 TLS 版本选择 **TLS 1.2** 或 **TLS 1.3**。
+
+3. **CDN 缓存与极速体验**：
+   - 静态资源（`/_next/static/*`、图标、robots）会自动命中 Cloudflare 全球 Anycast 节点；
+   - 访客看到的 SSL 证书由 Cloudflare 官方签发，VPS 端无需申请任何外部证书。
 
 ---
 
