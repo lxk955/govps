@@ -18,8 +18,8 @@ services:
       - MAIL_FROM=${MAIL_FROM:-GoVPS · VPS雷达 <notify@govps.xyz>}
       - PUBLIC_API_URL=${SITE_URL:-https://govps.xyz}
       - CORS_ORIGINS=${SITE_URL:-https://govps.xyz},http://localhost:3000
-    expose:
-      - "8000"
+    ports:
+      - "127.0.0.1:8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 15s
