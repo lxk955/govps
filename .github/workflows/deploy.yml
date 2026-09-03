@@ -66,28 +66,7 @@ jobs:
             git reset --hard origin/main
 
             echo "==> Local SQLite snapshot before rebuild/migrate..."
-            python3 - <<'PY'
-            import gzip, sqlite3
-            from pathlib import Path
-            src = Path("/opt/govps/data/govps.db")
-            if not src.exists():
-                print("no db yet, skip local snapshot")
-                raise SystemExit(0)
-            tmp = Path("/tmp/govps-pre-migrate.db")
-            out = Path("/opt/govps/data/govps-pre-migrate.db.gz")
-            src_conn = sqlite3.connect(f"file:{src}?mode=ro", uri=True)
-            dst_conn = sqlite3.connect(tmp)
-            try:
-                src_conn.backup(dst_conn)
-            finally:
-                dst_conn.close()
-                src_conn.close()
-            with tmp.open("rb") as fin, gzip.open(out, "wb", compresslevel=6) as fout:
-                while chunk := fin.read(1024 * 1024):
-                    fout.write(chunk)
-            tmp.unlink(missing_ok=True)
-            print(f"wrote {out} ({out.stat().st_size} bytes)")
-            PY
+            python3 "${DEPLOY_PATH}/scripts/snapshot-sqlite.py"
 
             echo "==> Building and starting containers..."
             docker compose up -d --build --remove-orphans
