@@ -35,6 +35,15 @@ const nextConfig: NextConfig = {
       { source: "/go/:path*", destination: `${API_ORIGIN}/go/:path*` },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/vps",
+        destination: "/",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
