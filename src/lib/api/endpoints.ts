@@ -58,7 +58,19 @@ export interface ProductsResponse {
   items: ProductListItem[];
 }
 
-// ── P5：多币种与汇率 ───────────────────────────────────────────
+export interface CurrentRatesResponse {
+  base: string;
+  rates: {
+    code: string;
+    units_per_usd: number;
+    source: string;
+    updated_at: string | null;
+  }[];
+}
+
+export function getCurrentRates(): Promise<CurrentRatesResponse> {
+  return apiFetch<CurrentRatesResponse>("/api/rates", { next: { revalidate: 300 } });
+}
 
 /** {iso_date: {code: units_per_usd}}，历史价格换算按日期匹配 */
 export function getRateSnapshots(

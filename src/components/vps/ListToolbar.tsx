@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { LayoutGrid, List, Loader2, Search, X } from "lucide-react";
 
 import { MobileFilterSheet } from "@/components/vps/mobile-filter-sheet";
+import { SortSelect } from "@/components/vps/SortSelect";
 import type { MerchantOption } from "@/components/vps/FilterControls";
 import { LINE_OPTIONS, type ListQueryState, withParams } from "@/lib/query-state";
 import { cn } from "@/lib/utils";
@@ -180,7 +181,8 @@ export function ListToolbar({
           )}
         </form>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <SortSelect state={state} onChange={(sort) => go({ sort, page: 1 })} />
           <MobileFilterSheet state={state} merchants={merchants} total={total} />
           {/*
            * 视图切换仅 md 及以上显示：小屏只给卡片视图。列表（表格）形态在

@@ -11,6 +11,14 @@
  */
 export type SortValue = "hot" | "deal" | "popularity" | "price_asc" | "price_desc" | "updated";
 
+export const SORT_OPTIONS: readonly { value: SortValue; label: string }[] = [
+  { value: "hot", label: "综合推荐" },
+  { value: "price_asc", label: "价格：从低到高" },
+  { value: "price_desc", label: "价格：从高到低" },
+  { value: "deal", label: "性价比优先" },
+  { value: "updated", label: "最近更新" },
+] as const;
+
 /** 线路筛选分类（与后端 LINE_FILTERS 的 key 对齐） */
 export const LINE_OPTIONS = [
   { value: "cn2_gia", label: "CN2 GIA" },

@@ -4,10 +4,11 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { useAuth } from "@/components/auth-provider";
+import { useCurrency } from "@/components/currency-provider";
 import { Button } from "@/components/ui/button";
 import { WatchButton } from "@/components/vps/watch-button";
 import { watchProduct, type ProductListItem, type WatchPrefs } from "@/lib/api/endpoints";
-import { cycleLabel, currencySymbol, formatPrice, monthlyEquivalent } from "@/lib/format";
+import { cycleLabel, currencySymbol, monthlyEquivalent } from "@/lib/format";
 import { ROW_ACTIONS_ROW } from "@/lib/row-layout";
 
 /**
@@ -77,13 +78,16 @@ export function RowBuyZone({
     }
   };
 
+  const { convert } = useCurrency();
+  const priceInfo = convert(current.price, current.currency);
+
   return (
     <div className="flex items-center justify-between gap-3 sm:contents">
       {/* 价格：桌面固定 125px 右对齐 */}
       <div className="min-w-0 text-left sm:w-[125px] sm:shrink-0 sm:text-right">
         <div className="flex items-baseline justify-start gap-1 sm:justify-end">
           <span className="text-foreground text-base font-bold">
-            {formatPrice(current.price, current.currency)}
+            {priceInfo.displayPrice}
           </span>
           {options.length <= 1 && (
             <span className="text-xs text-slate-400 dark:text-slate-500">
@@ -91,6 +95,11 @@ export function RowBuyZone({
             </span>
           )}
         </div>
+        {priceInfo.isConverted && (
+          <div className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight" title={priceInfo.rateNotice}>
+            原 {priceInfo.originalPrice}
+          </div>
+        )}
 
         {options.length > 1 && (
           <div className="mt-0.5 flex justify-start sm:justify-end">
@@ -100,11 +109,15 @@ export function RowBuyZone({
               aria-label={`${p.name} 付款周期`}
               className="border-border bg-muted text-foreground cursor-pointer rounded border py-0.5 pr-1 pl-1 text-[11px] font-semibold transition-colors focus:border-blue-500 focus:bg-white focus:outline-none dark:focus:bg-slate-900"
             >
-              {options.map((opt, i) => (
-                <option key={`${opt.billing_cycle}-${opt.price}`} value={i}>
-                  {cycleLabel(opt.billing_cycle)}付 · {formatPrice(opt.price, opt.currency)}
-                </option>
-              ))}
+              {options.map((opt, i) => {
+                const optInfo = convert(opt.price, opt.currency);
+                return (
+                  <option key={`${opt.billing_cycle}-${opt.price}`} value={i}>
+                    {cycleLabel(opt.billing_cycle)}付 · {optInfo.displayPrice}
+                    {optInfo.isConverted ? ` (原 ${optInfo.originalPrice})` : ""}
+                  </option>
+                );
+              })}
             </select>
           </div>
         )}

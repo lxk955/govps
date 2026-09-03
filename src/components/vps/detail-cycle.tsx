@@ -4,8 +4,9 @@ import { createContext, useContext, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { WatchButton } from "@/components/vps/watch-button";
+import { useCurrency } from "@/components/currency-provider";
 import type { ProductDetail } from "@/lib/api/endpoints";
-import { cycleLabel, formatPrice } from "@/lib/format";
+import { cycleLabel } from "@/lib/format";
 
 /**
  * 详情页付款周期共享状态（1:1 复刻旧站 ProductDetail.vue）。
@@ -91,19 +92,26 @@ export function DetailBuyButton({ product }: { product: ProductDetail }) {
 /** 概览卡之一：当前在售价格 + 付款周期切换（价格与周期均取自共享 Context） */
 export function DetailPriceCard() {
   const { options, idx, setIdx } = useCycle();
+  const { convert } = useCurrency();
   const cur = options[idx] ?? options[0];
+  const priceInfo = convert(cur.price, cur.currency);
 
   return (
     <div className="border-border bg-card flex flex-col justify-between rounded-2xl border p-5 shadow-sm">
       <div>
         <div className="text-xs font-medium text-slate-400 dark:text-slate-500">当前在售价格</div>
         <div className="text-slate-900 mt-1 text-2xl font-black dark:text-slate-100">
-          {formatPrice(cur.price, cur.currency)}
+          {priceInfo.displayPrice}
           <span className="text-xs font-normal text-slate-400 dark:text-slate-500">
             {" "}
             / {cycleLabel(cur.billing_cycle)}
           </span>
         </div>
+        {priceInfo.isConverted && (
+          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500" title={priceInfo.rateNotice}>
+            原 {priceInfo.originalPrice}
+          </div>
+        )}
       </div>
       {options.length > 1 && (
         <div className="mt-3">
@@ -113,11 +121,15 @@ export function DetailPriceCard() {
             aria-label="付款周期"
             className="border-border bg-muted text-foreground w-full cursor-pointer rounded-xl border px-2.5 py-1.5 text-xs font-bold transition-colors focus:border-blue-500 focus:bg-white focus:outline-none dark:focus:bg-slate-900"
           >
-            {options.map((opt, i) => (
-              <option key={`${opt.billing_cycle}-${opt.price}`} value={i}>
-                {cycleLabel(opt.billing_cycle)}付 · {formatPrice(opt.price, opt.currency)}
-              </option>
-            ))}
+            {options.map((opt, i) => {
+              const optInfo = convert(opt.price, opt.currency);
+              return (
+                <option key={`${opt.billing_cycle}-${opt.price}`} value={i}>
+                  {cycleLabel(opt.billing_cycle)}付 · {optInfo.displayPrice}
+                  {optInfo.isConverted ? ` (原 ${optInfo.originalPrice})` : ""}
+                </option>
+              );
+            })}
           </select>
         </div>
       )}

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import type { MerchantOption } from "@/components/vps/FilterControls";
 import { merchantTitle, sortMerchants } from "@/lib/merchant-notes";
-import { LINE_OPTIONS, type ListQueryState, withParams } from "@/lib/query-state";
+import { LINE_OPTIONS, SORT_OPTIONS, type ListQueryState, withParams } from "@/lib/query-state";
 import { cn } from "@/lib/utils";
 
 /**
@@ -185,6 +185,31 @@ export function MobileFilterContent({
 
   return (
     <div>
+      {/* 0. 排序方式 */}
+      <Section
+        title="排序方式"
+        hint={
+          <span className="text-muted-foreground text-xs font-normal">
+            {SORT_OPTIONS.find((o) => o.value === state.sort)?.label || "综合推荐"}
+          </span>
+        }
+      >
+        <div className="flex flex-wrap gap-2 pt-1">
+          {SORT_OPTIONS.map((opt) => {
+            const active = state.sort === opt.value;
+            return (
+              <Chip
+                key={opt.value}
+                active={active}
+                onClick={() => apply({ sort: opt.value, page: 1 })}
+              >
+                {opt.label}
+              </Chip>
+            );
+          })}
+        </div>
+      </Section>
+
       {/* 1. 服务商（默认展开） */}
       <Section
         title="服务商"

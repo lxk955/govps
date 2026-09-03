@@ -4,9 +4,10 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { useAuth } from "@/components/auth-provider";
+import { useCurrency } from "@/components/currency-provider";
 import { Button } from "@/components/ui/button";
 import { watchProduct, type ProductListItem } from "@/lib/api/endpoints";
-import { cycleLabel, currencySymbol, formatPrice, monthlyEquivalent } from "@/lib/format";
+import { cycleLabel, currencySymbol, monthlyEquivalent } from "@/lib/format";
 
 /**
  * 卡片底部价格与购买区（1:1 复刻旧站 ProductCard.vue 第 4 段）。
@@ -61,14 +62,27 @@ export function CardBuyZone({ product }: { product: ProductListItem }) {
     }
   };
 
+  const { convert } = useCurrency();
+  const priceInfo = convert(current.price, current.currency);
+
   return (
     <div className="border-border mt-auto flex items-end justify-between gap-2 border-t pt-3">
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-1">
-          <span className="text-foreground text-xl leading-none font-bold">
-            {formatPrice(current.price, current.currency)}
-          </span>
-          <span className="text-xs text-slate-400 dark:text-slate-500">/ {cycleCn}</span>
+        <div className="flex flex-col">
+          <div className="flex items-baseline gap-1">
+            <span className="text-foreground text-xl leading-none font-bold">
+              {priceInfo.displayPrice}
+            </span>
+            <span className="text-xs text-slate-400 dark:text-slate-500">/ {cycleCn}</span>
+          </div>
+          {priceInfo.isConverted && (
+            <span
+              className="text-[10.5px] font-normal text-slate-400 dark:text-slate-500 mt-0.5 leading-tight"
+              title={priceInfo.rateNotice}
+            >
+              原 {priceInfo.originalPrice}
+            </span>
+          )}
         </div>
 
         {/* 周期下拉 / 折算月价（保持高度一致，避免卡片错位） */}
@@ -80,11 +94,15 @@ export function CardBuyZone({ product }: { product: ProductListItem }) {
               aria-label={`${p.name} 付款周期`}
               className="border-border bg-muted text-foreground cursor-pointer rounded-lg border py-0.5 pr-2 pl-1.5 text-xs font-semibold transition-colors focus:border-blue-500 focus:bg-white focus:outline-none dark:focus:bg-slate-900"
             >
-              {options.map((opt, i) => (
-                <option key={`${opt.billing_cycle}-${opt.price}`} value={i}>
-                  {cycleLabel(opt.billing_cycle)}付 · {formatPrice(opt.price, opt.currency)}
-                </option>
-              ))}
+              {options.map((opt, i) => {
+                const optInfo = convert(opt.price, opt.currency);
+                return (
+                  <option key={`${opt.billing_cycle}-${opt.price}`} value={i}>
+                    {cycleLabel(opt.billing_cycle)}付 · {optInfo.displayPrice}
+                    {optInfo.isConverted ? ` (原 ${optInfo.originalPrice})` : ""}
+                  </option>
+                );
+              })}
             </select>
           ) : monthly ? (
             <span className="text-[11px] text-slate-400 dark:text-slate-500">

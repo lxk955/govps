@@ -10,8 +10,11 @@ import { HeaderNav } from "@/components/header-nav";
 import { PageViewTracker } from "@/components/page-view-tracker";
 import { RouteProgress } from "@/components/route-progress";
 import { ScrollToTop } from "@/components/scroll-to-top";
+import { CurrencyProvider } from "@/components/currency-provider";
+import { CurrencyToggle } from "@/components/currency-toggle";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { getCurrentRates } from "@/lib/api/endpoints";
 import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
@@ -83,57 +86,67 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const ratesData = await getCurrentRates().catch(() => null);
+  const ratesMap: Record<string, number> = {};
+  if (ratesData?.rates) {
+    for (const r of ratesData.rates) {
+      ratesMap[r.code] = r.units_per_usd;
+    }
+  }
+
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body className="bg-background text-foreground flex min-h-dvh flex-col antialiased">
         <ThemeProvider>
           <AuthProvider>
-            <header className="bg-card/90 border-border sticky top-0 z-20 border-b backdrop-blur">
-              <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center gap-3 px-4 sm:gap-6">
-                <Link
-                  href="/"
-                  className="flex shrink-0 items-center gap-2 text-lg font-bold text-blue-600 dark:text-blue-400"
-                >
-                  {/* 旧站雷达标识（App.vue 同款 20/24 描边图形） */}
-                  <svg
-                    aria-hidden
-                    className="h-5 w-5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
+            <CurrencyProvider initialRates={ratesMap}>
+              <header className="bg-card/90 border-border sticky top-0 z-20 border-b backdrop-blur">
+                <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center gap-3 px-4 sm:gap-6">
+                  <Link
+                    href="/"
+                    className="flex shrink-0 items-center gap-2 text-lg font-bold text-blue-600 dark:text-blue-400"
                   >
-                    <circle cx="12" cy="12" r="9" />
-                    <circle cx="12" cy="12" r="4" />
-                    <line x1="12" y1="3" x2="12" y2="6" />
-                    <line x1="12" y1="18" x2="12" y2="21" />
-                    <line x1="3" y1="12" x2="6" y2="12" />
-                    <line x1="18" y1="12" x2="21" y2="12" />
-                  </svg>
-                  {/* 主名 + 旧站中文名：同行胶囊标签。
-                      此前是 10px 小字竖排，字号与字重都压不住，观感廉价 */}
-                  <span className="flex items-center gap-1.5">
-                    <span>GoVPS</span>
-                    <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold tracking-tight text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
-                      VPS雷达
+                    {/* 旧站雷达标识（App.vue 同款 20/24 描边图形） */}
+                    <svg
+                      aria-hidden
+                      className="h-5 w-5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <circle cx="12" cy="12" r="9" />
+                      <circle cx="12" cy="12" r="4" />
+                      <line x1="12" y1="3" x2="12" y2="6" />
+                      <line x1="12" y1="18" x2="12" y2="21" />
+                      <line x1="3" y1="12" x2="6" y2="12" />
+                      <line x1="18" y1="12" x2="21" y2="12" />
+                    </svg>
+                    {/* 主名 + 旧站中文名：同行胶囊标签。
+                        此前是 10px 小字竖排，字号与字重都压不住，观感廉价 */}
+                    <span className="flex items-center gap-1.5">
+                      <span>GoVPS</span>
+                      <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold tracking-tight text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
+                        VPS雷达
+                      </span>
                     </span>
-                  </span>
-                </Link>
-                <HeaderNav />
-                <div className="ml-auto flex shrink-0 items-center gap-2.5 text-sm sm:gap-3">
-                  <BookmarkDialog />
-                  <HeaderAuth />
-                  <ThemeToggle />
+                  </Link>
+                  <HeaderNav />
+                  <div className="ml-auto flex shrink-0 items-center gap-1.5 text-sm sm:gap-2.5">
+                    <CurrencyToggle />
+                    <BookmarkDialog />
+                    <HeaderAuth />
+                    <ThemeToggle />
+                  </div>
                 </div>
-              </div>
-            </header>
+              </header>
 
-            <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6">{children}</main>
+              <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6">{children}</main>
 
             {/* 窄屏底部留出标签栏净空（pb-24）。留白必须加在页脚而非 main 上：
                 main 的 padding 保护不到它之后的页脚，实测会被 fixed 标签栏压住 56px。 */}
@@ -155,6 +168,7 @@ export default function RootLayout({
             <Suspense fallback={null}>
               <RouteProgress />
             </Suspense>
+            </CurrencyProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
