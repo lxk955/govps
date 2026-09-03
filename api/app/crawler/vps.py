@@ -329,6 +329,7 @@ class VPSCrawler(MerchantCrawler):
                     bandwidth_gb=p.bandwidth_gb,
                     port_mbps=p.port_mbps,
                     from_preset=True,
+                    stock_verified=True,
                 )
             )
         return results

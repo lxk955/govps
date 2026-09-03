@@ -99,8 +99,8 @@ def upsert_product(db: Session, merchant: Merchant, raw: RawProduct) -> tuple[Pr
     )
 
     incoming_stock = raw.in_stock
-    # 预置目录一律缺货：不得把库里仍显示有货的线上 SKU 打成缺货
-    if raw.from_preset and p is not None and p.in_stock and not raw.in_stock:
+    # 预置目录且未对实时库存进行验证时：不得把库里仍显示有货的线上 SKU 打成缺货
+    if raw.from_preset and not raw.stock_verified and p is not None and p.in_stock and not raw.in_stock:
         incoming_stock = p.in_stock
 
     incoming_price = raw.price if _positive_price(raw.price) else None
@@ -174,6 +174,8 @@ def upsert_product(db: Session, merchant: Merchant, raw: RawProduct) -> tuple[Pr
     p.purchase_url = raw.purchase_url or p.purchase_url
     p.location = normalize_location(raw.location or p.location)
     p.line_tags = normalize_line_tags(f"{p.name} {p.location or ''}", raw.line_tags or p.line_tags)
+    if raw.price_options:
+        p.price_options = raw.price_options
     _apply_specs(p, raw)
     if raw.recommended:
         p.recommended = True

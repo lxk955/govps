@@ -26,8 +26,9 @@ class RawProduct:
     bandwidth_gb: int | None = None
     port_mbps: int | None = None
     recommended: bool = False
-    # 预置目录/悲观回退：扫描时不得凭此把线上仍在售的 SKU 标成缺货
+    # 预置目录/悲观回退：扫描时若未验证实时库存，不得凭此把线上仍在售的 SKU 标成缺货
     from_preset: bool = False
+    stock_verified: bool = False
 
 
 class MerchantCrawler:
