@@ -16,6 +16,7 @@ import {
   getCompareIds,
   useCompareIds,
 } from "@/lib/compare-store";
+import { lineBadgeClass, lineInfo } from "@/lib/display";
 import { currencySymbol, cycleLabel } from "@/lib/format";
 import { productHref } from "@/lib/slug";
 
@@ -25,6 +26,17 @@ import { productHref } from "@/lib/slug";
  *   跨套餐比较以「折年 ≈ USD」为唯一可比口径，原价行明确标注不可直接横比。
  * - 移动端：整表横向滚动（AGENTS.md 大表格条款）。
  */
+
+const CARRIERS = ["电信", "联通", "移动"] as const;
+
+function carrierRoute(
+  rows: string[],
+  carrier: (typeof CARRIERS)[number],
+): string {
+  const prefix = `${carrier}:`;
+  const hit = rows.find((r) => r.startsWith(prefix));
+  return hit ? hit.slice(prefix.length) : "普通直连";
+}
 
 export function CompareView({ initialIds }: { initialIds: number[] }) {
   const router = useRouter();
@@ -73,6 +85,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
   };
 
   const loaded = items.filter((x): x is ProductDetail => x != null);
+  const lineById = new Map(loaded.map((p) => [p.id, lineInfo(p)]));
 
   return (
     <>
@@ -108,7 +121,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
           <p className="text-muted-foreground text-sm">还没有选择要对比的套餐。</p>
           <p className="text-muted-foreground max-w-md text-xs leading-relaxed">
             在 VPS 列表或详情页点击「对比」按钮，最多加入 {COMPARE_MAX} 款，
-            即可在此并排比较价格、配置、线路与库存。
+            即可在此并排比较价格、配置、机房、三网线路与库存。
           </p>
           <Button asChild size="sm">
             <Link href="/vps">去列表选择</Link>
@@ -223,16 +236,22 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
                   </td>
                 ))}
               </Row>
-              <Row label="机房 / 线路">
+              <Row label="机房">
                 {loaded.map((p) => (
                   <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3">
-                    <p>{p.location || "—"}</p>
-                    {p.line_tags.length > 0 && (
-                      <p className="text-muted-foreground mt-0.5 text-xs break-words">{p.line_tags.join(" / ")}</p>
-                    )}
+                    {p.location || "—"}
                   </td>
                 ))}
               </Row>
+              {CARRIERS.map((carrier) => (
+                <Row key={carrier} label={carrier}>
+                  {loaded.map((p) => (
+                    <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3">
+                      <CarrierRoute route={carrierRoute(lineById.get(p.id)?.carrierRows ?? [], carrier)} />
+                    </td>
+                  ))}
+                </Row>
+              ))}
               <Row label="购买">
                 {loaded.map((p) => (
                   <td key={p.id} className="bg-card border-r border-t p-2 pb-3 last:border-r-0 sm:p-3 sm:pb-4">
@@ -299,5 +318,21 @@ function Row({
       </th>
       {children}
     </tr>
+  );
+}
+
+const MUTED_ROUTES = new Set(["普通直连", "国际BGP"]);
+
+function CarrierRoute({ route }: { route: string }) {
+  if (MUTED_ROUTES.has(route)) {
+    return <span className="text-muted-foreground text-xs">{route}</span>;
+  }
+  return (
+    <span
+      className={`inline-block max-w-full truncate rounded border px-1.5 py-0.5 text-xs font-medium ${lineBadgeClass(route)}`}
+      title={route}
+    >
+      {route}
+    </span>
   );
 }

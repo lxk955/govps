@@ -4,7 +4,7 @@ import { CompareView } from "@/components/compare/compare-view";
 
 export const metadata: Metadata = {
   title: "套餐对比",
-  description: "并排对比最多 4 款 VPS 套餐的价格、配置、线路、库存与推荐指数。",
+  description: "并排对比最多 4 款 VPS 套餐的价格、配置、机房、三网线路与库存。",
   // 交互工具页且内容随用户选择变化：不建索引
   robots: { index: false, follow: true },
 };
