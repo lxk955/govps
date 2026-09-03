@@ -6,9 +6,9 @@ import { useCurrency, type CurrencyMode } from "@/components/currency-provider";
 import { cn } from "@/lib/utils";
 
 const MODES: { value: CurrencyMode; label: string; icon: string; desc: string }[] = [
-  { value: "original", label: "原币", icon: "🪙", desc: "供应商原币与实际结算币种" },
-  { value: "CNY", label: "约合 ¥", icon: "🇨🇳", desc: "折合人民币估算，方便对比" },
-  { value: "USD", label: "约合 $", icon: "🇺🇸", desc: "折合美元估算" },
+  { value: "original", label: "原币", icon: "🪙", desc: "商家官方计价与实际结算币种" },
+  { value: "CNY", label: "人民币", icon: "🇨🇳", desc: "按当前实时汇率换算为人民币 (¥)" },
+  { value: "USD", label: "美元", icon: "🇺🇸", desc: "按当前实时汇率换算为美元 ($)" },
 ];
 
 export function CurrencyToggle() {

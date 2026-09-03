@@ -119,10 +119,10 @@ export function CurrencyProvider({
       const formattedCny = inCny >= 100 ? Math.round(inCny).toString() : inCny.toFixed(1);
 
       return {
-        displayPrice: `≈ ¥${formattedCny}`,
+        displayPrice: `¥${formattedCny}`,
         isConverted: true,
         originalPrice: originalFormatted,
-        rateNotice: `按 1 USD ≈ ${cnyUnits.toFixed(2)} CNY 估算，实际扣款以原币为准`,
+        rateNotice: `按 1 USD ≈ ${cnyUnits.toFixed(2)} CNY 汇率换算，实际扣款以原币为准`,
       };
     }
 
@@ -139,10 +139,10 @@ export function CurrencyProvider({
       const formattedUsd = inUsd >= 100 ? Math.round(inUsd).toString() : inUsd.toFixed(2);
 
       return {
-        displayPrice: `≈ $${formattedUsd}`,
+        displayPrice: `$${formattedUsd}`,
         isConverted: true,
         originalPrice: originalFormatted,
-        rateNotice: `按实时汇率折算为美元估算，实际扣款以原币为准`,
+        rateNotice: `按实时汇率折算为美元，实际扣款以原币为准`,
       };
     }
 
