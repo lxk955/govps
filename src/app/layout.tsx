@@ -101,16 +101,16 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="zh-CN" suppressHydrationWarning>
-      <body className="bg-background text-foreground flex min-h-dvh flex-col antialiased">
+    <html lang="zh-CN" className="overflow-x-hidden" suppressHydrationWarning>
+      <body className="bg-background text-foreground flex min-h-dvh flex-col antialiased overflow-x-hidden w-full max-w-full">
         <ThemeProvider>
           <AuthProvider>
             <CurrencyProvider initialRates={ratesMap}>
-              <header className="bg-card/90 border-border sticky top-0 z-20 border-b backdrop-blur">
-                <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center gap-3 px-4 sm:gap-6">
+              <header className="bg-card/90 border-border sticky top-0 z-20 border-b backdrop-blur w-full overflow-x-hidden">
+                <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center justify-between gap-1.5 px-3 sm:gap-6 sm:px-4">
                   <Link
                     href="/"
-                    className="flex shrink-0 items-center gap-2 text-lg font-bold text-blue-600 dark:text-blue-400"
+                    className="flex shrink-0 items-center gap-1.5 text-base font-bold text-blue-600 sm:gap-2 sm:text-lg dark:text-blue-400"
                   >
                     {/* 旧站雷达标识（App.vue 同款 20/24 描边图形） */}
                     <svg
@@ -128,8 +128,7 @@ export default async function RootLayout({
                       <line x1="3" y1="12" x2="6" y2="12" />
                       <line x1="18" y1="12" x2="21" y2="12" />
                     </svg>
-                    {/* 主名 + 旧站中文名：同行胶囊标签。
-                        此前是 10px 小字竖排，字号与字重都压不住，观感廉价 */}
+                    {/* 主名 + 旧站中文名：同行胶囊标签 */}
                     <div className="flex flex-col justify-center leading-none sm:flex-row sm:items-center sm:gap-1.5">
                       <span className="text-base font-extrabold tracking-tight sm:text-lg">GoVPS</span>
                       <span className="text-[10px] font-medium tracking-tight text-slate-400 dark:text-slate-500 sm:rounded-md sm:bg-blue-50 sm:px-1.5 sm:py-0.5 sm:text-[11px] sm:font-semibold sm:text-blue-600 sm:dark:bg-blue-950/60 sm:dark:text-blue-400">
@@ -138,16 +137,18 @@ export default async function RootLayout({
                     </div>
                   </Link>
                   <HeaderNav />
-                  <div className="ml-auto flex shrink-0 items-center gap-1.5 text-sm sm:gap-2.5">
+                  <div className="flex shrink-0 items-center gap-1 text-sm sm:gap-2.5">
                     <CurrencyToggle />
-                    <BookmarkDialog />
+                    <div className="hidden sm:block">
+                      <BookmarkDialog />
+                    </div>
                     <HeaderAuth />
                     <ThemeToggle />
                   </div>
                 </div>
               </header>
 
-              <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6">{children}</main>
+              <main className="mx-auto w-full max-w-[1600px] flex-1 px-3 py-4 sm:px-4 sm:py-6 min-w-0 overflow-x-hidden">{children}</main>
 
             {/* 窄屏底部留出标签栏净空（pb-24）。留白必须加在页脚而非 main 上：
                 main 的 padding 保护不到它之后的页脚，实测会被 fixed 标签栏压住 56px。 */}

@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
  */
 const NAV_ITEMS = [
   { href: "/", label: "雷达", icon: Radar },
-  { href: "/deals", label: "特惠", icon: Zap },
+  { href: "/deals", label: "动态", icon: Zap },
   { href: "/ip", label: "IP工具", icon: Globe, prefix: true },
   { href: "/watchlist", label: "关注", icon: Heart },
 ] as const;
@@ -30,9 +30,10 @@ export function BottomNav() {
   return (
     <nav
       aria-label="移动端主导航"
-      className="border-border/80 bg-card/95 fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md transition-colors sm:hidden"
+      className="border-border/80 bg-card/95 fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur-md transition-colors sm:hidden"
+      style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 10px)" }}
     >
-      <ul className="flex items-center justify-around pt-1.5 pb-[max(env(safe-area-inset-bottom),10px)]">
+      <ul className="flex h-13 items-center justify-around">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active =

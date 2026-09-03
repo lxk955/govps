@@ -49,9 +49,9 @@ function AccountMenu({ email }: { email: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 max-w-44 gap-1.5 px-2 text-xs">
+        <Button variant="ghost" size="sm" className="h-8 max-w-10 sm:max-w-44 gap-1 px-1.5 sm:gap-1.5 sm:px-2 text-xs">
           <CircleUserRound aria-hidden className="h-4 w-4 shrink-0" />
-          <span className="truncate">{email}</span>
+          <span className="hidden sm:inline truncate">{email}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

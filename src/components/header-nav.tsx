@@ -12,7 +12,7 @@ import { useCompareIds } from "@/lib/compare-store";
  */
 const NAV_ITEMS = [
   { href: "/", label: "雷达" },
-  { href: "/deals", label: "特惠动态" },
+  { href: "/deals", label: "动态" },
   { href: "/routes", label: "线路专题", prefix: true },
   { href: "/providers", label: "服务商" },
   { href: "/ip", label: "IP 工具", prefix: true },

@@ -138,15 +138,15 @@ export function ListToolbar({
 
   return (
     <div className="mb-5 flex flex-col gap-3">
-      {/* 第 1 行：左侧快捷搜索框，右侧视图切换 */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* 第 1 行：左侧快捷搜索框，右侧排序与筛选 */}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 w-full min-w-0">
         <form
           role="search"
           onSubmit={(e) => {
             e.preventDefault();
             submitKeyword();
           }}
-          className="relative min-w-[220px] flex-1 sm:max-w-md"
+          className="relative w-full min-w-0 flex-1 sm:max-w-md"
         >
           <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
             {isPending ? (
@@ -181,7 +181,7 @@ export function ListToolbar({
           )}
         </form>
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex w-full items-center justify-between gap-1.5 sm:w-auto sm:justify-end sm:gap-2">
           <SortSelect state={state} onChange={(sort) => go({ sort, page: 1 })} />
           <MobileFilterSheet state={state} merchants={merchants} total={total} />
           {/*

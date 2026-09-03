@@ -24,7 +24,7 @@ export function SortSelect({
         value={state.sort}
         onChange={(e) => onChange(e.target.value as SortValue)}
         aria-label="套餐排序方式"
-        className="border-border bg-card text-foreground cursor-pointer appearance-none rounded-xl border py-1.5 pl-8 pr-7 text-xs font-bold shadow-xs transition-colors hover:border-slate-300 focus:border-blue-500 focus:outline-none dark:hover:border-slate-700"
+        className="border-border bg-card text-foreground cursor-pointer appearance-none rounded-xl border py-1.5 pl-8 pr-7 text-xs font-bold shadow-xs transition-colors hover:border-slate-300 focus:border-blue-500 focus:outline-none dark:hover:border-slate-700 max-w-[135px] sm:max-w-none truncate"
       >
         {SORT_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>
