@@ -16,7 +16,7 @@ import { useCompareIds } from "@/lib/compare-store";
  * 用户加入后找不到查看位置，故在此补一个常驻入口并显示已选数量。
  */
 const NAV_ITEMS = [
-  { href: "/vps", label: "产品" },
+  { href: "/", label: "产品" },
   { href: "/deals", label: "动态" },
   { href: "/ip", label: "IP 检测", prefix: true },
   { href: "/watchlist", label: "我的关注" },
@@ -40,9 +40,11 @@ export function HeaderNav() {
     >
       {NAV_ITEMS.map((item) => {
         const active =
-          "prefix" in item && item.prefix
-            ? pathname === item.href || pathname.startsWith(`${item.href}/`)
-            : pathname === item.href;
+          item.href === "/"
+            ? pathname === "/" || pathname === "/vps"
+            : "prefix" in item && item.prefix
+              ? pathname === item.href || pathname.startsWith(`${item.href}/`)
+              : pathname === item.href;
         return (
           <Link
             key={item.href}

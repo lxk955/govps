@@ -158,7 +158,7 @@ export function MobileFilterContent({
   useEffect(() => setPriceMax(state.max_price?.toString() ?? ""), [state.max_price]);
 
   const apply = (patch: Partial<ListQueryState>) => {
-    router.push(`/vps?${withParams(state, patch)}`);
+    router.push(`/?${withParams(state, patch)}`);
   };
 
   const toggleIn = (key: "merchant" | "line", value: string) => {

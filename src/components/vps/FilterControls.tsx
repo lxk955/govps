@@ -68,7 +68,7 @@ export function FilterControls({
   const [priceMax, setPriceMax] = useState(state.max_price?.toString() ?? "");
 
   const apply = (patch: Partial<ListQueryState>) => {
-    router.push(`/vps?${withParams(state, patch)}`);
+    router.push(`/?${withParams(state, patch)}`);
   };
 
   const selected = state.merchant;

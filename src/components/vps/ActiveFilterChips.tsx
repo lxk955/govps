@@ -18,7 +18,7 @@ export function ActiveFilterChips({
 }) {
   const router = useRouter();
   const go = (patch: Partial<ListQueryState>) => {
-    router.push(`/vps?${withParams(state, patch)}`);
+    router.push(`/?${withParams(state, patch)}`);
   };
 
   type Tag = { key: string; label: string; remove: () => void };
@@ -106,7 +106,7 @@ export function ActiveFilterChips({
       ))}
       <button
         type="button"
-        onClick={() => router.push("/vps")}
+        onClick={() => router.push("/")}
         className="ml-1 cursor-pointer text-xs font-bold text-rose-600 transition-colors hover:text-rose-700 dark:text-rose-400"
       >
         清空全部

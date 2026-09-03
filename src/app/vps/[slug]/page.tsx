@@ -372,7 +372,7 @@ export default async function VpsDetailPage({ params }: PageProps) {
 
       <div className="flex flex-wrap items-center gap-3">
         <Link
-          href="/vps"
+          href="/"
           className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
         >
           <ArrowLeft aria-hidden className="h-4 w-4" />

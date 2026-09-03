@@ -11,7 +11,7 @@ export default function NotFound() {
         你访问的页面不存在，对应的 VPS 套餐可能已被商家下架。
       </p>
       <Button asChild variant="outline" size="sm" className="mt-1">
-        <Link href="/vps">浏览在售套餐</Link>
+        <Link href="/">浏览在售套餐</Link>
       </Button>
     </main>
   );

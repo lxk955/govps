@@ -99,7 +99,7 @@ export function ListToolbar({
   useEffect(() => setKw(state.keyword), [state.keyword]);
 
   const go = (patch: Partial<ListQueryState>) => {
-    router.push(`/vps?${withParams(state, patch)}`);
+    router.push(`/?${withParams(state, patch)}`);
   };
 
   const toggleIn = (key: "location" | "line", value: string) => {

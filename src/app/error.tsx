@@ -42,7 +42,7 @@ export default function PageError({
           重试
         </Button>
         <Button asChild variant="outline" size="sm">
-          <Link href="/vps">浏览在售套餐</Link>
+          <Link href="/">浏览在售套餐</Link>
         </Button>
       </div>
       {error.digest && (

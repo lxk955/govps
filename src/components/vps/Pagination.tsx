@@ -52,7 +52,7 @@ export function Pagination({
           <span className="text-slate-300 dark:text-slate-600">·</span>
           <div className="flex items-center gap-2">
             <Link
-              href={`/vps?${withParams(state, { page: page - 1 }, { resetPage: false })}`}
+              href={`/?${withParams(state, { page: page - 1 }, { resetPage: false })}`}
               aria-disabled={page <= 1}
               className={navClass(page <= 1)}
             >
@@ -62,7 +62,7 @@ export function Pagination({
               {page} / {totalPages}
             </span>
             <Link
-              href={`/vps?${withParams(state, { page: page + 1 }, { resetPage: false })}`}
+              href={`/?${withParams(state, { page: page + 1 }, { resetPage: false })}`}
               aria-disabled={page >= totalPages}
               className={navClass(page >= totalPages)}
             >

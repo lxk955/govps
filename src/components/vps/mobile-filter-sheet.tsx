@@ -42,7 +42,7 @@ export function MobileFilterSheet({
 
   const clearAll = () => {
     router.push(
-      `/vps?${withParams(state, {
+      `/?${withParams(state, {
         merchant: [],
         line: [],
         min_ram: undefined,

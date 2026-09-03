@@ -15,7 +15,7 @@ import { Activity, Globe, LayoutGrid } from "lucide-react";
  * 标签与 HeaderNav 保持一致，仅呈现方式不同（图标 + 文字）。
  */
 const NAV_ITEMS = [
-  { href: "/vps", label: "产品", icon: LayoutGrid },
+  { href: "/", label: "产品", icon: LayoutGrid },
   { href: "/deals", label: "动态", icon: Activity },
   { href: "/ip", label: "IP 检测", icon: Globe, prefix: true },
   // 关注入口用与关注按钮同款的心形（icon 为 null 时渲染 HeartIcon）
@@ -54,9 +54,11 @@ export function BottomNav() {
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active =
-            "prefix" in item && item.prefix
-              ? pathname === item.href || pathname.startsWith(`${item.href}/`)
-              : pathname === item.href;
+            item.href === "/"
+              ? pathname === "/" || pathname === "/vps"
+              : "prefix" in item && item.prefix
+                ? pathname === item.href || pathname.startsWith(`${item.href}/`)
+                : pathname === item.href;
 
           return (
             <li key={item.href} className="flex-1">

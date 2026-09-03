@@ -123,7 +123,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
             即可在此并排比较价格、配置、机房、三网线路与库存。
           </p>
           <Button asChild size="sm">
-            <Link href="/vps">去列表选择</Link>
+            <Link href="/">去列表选择</Link>
           </Button>
         </div>
       ) : (

@@ -62,7 +62,7 @@ function MerchantCard({ m }: { m: MerchantSummary }) {
 
       <footer className="mt-auto flex items-center gap-2">
         <Link
-          href={`/vps?merchant=${encodeURIComponent(m.slug)}`}
+          href={`/?merchant=${encodeURIComponent(m.slug)}`}
           className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-sm transition-colors hover:bg-muted"
         >
           <PackageSearch aria-hidden className="h-3.5 w-3.5" />
