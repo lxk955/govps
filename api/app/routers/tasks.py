@@ -72,3 +72,37 @@ def backup_db_task(x_task_token: str | None = Header(default=None)):
     if not result.get("ok"):
         raise HTTPException(status_code=500, detail=result.get("error", "backup failed"))
     return result
+
+
+@router.post("/indexnow")
+def trigger_indexnow(
+    x_task_token: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    """推送当前在售套餐及核心页面至 Bing IndexNow 搜索引擎秒级收录。"""
+    if x_task_token != settings.TASK_TOKEN:
+        raise HTTPException(status_code=403, detail="invalid task token")
+
+    from sqlalchemy import select
+    from ..crawler.base import slugify
+    from ..models import Product
+    from ..services.indexnow import submit_to_indexnow
+
+    urls = [
+        f"https://{settings.SITE_DOMAIN}/",
+        f"https://{settings.SITE_DOMAIN}/deals",
+        f"https://{settings.SITE_DOMAIN}/routes",
+        f"https://{settings.SITE_DOMAIN}/routes/cn2-gia",
+        f"https://{settings.SITE_DOMAIN}/routes/9929",
+        f"https://{settings.SITE_DOMAIN}/routes/cmin2",
+        f"https://{settings.SITE_DOMAIN}/routes/4837",
+        f"https://{settings.SITE_DOMAIN}/providers",
+    ]
+
+    products = db.scalars(select(Product)).all()
+    for p in products:
+        slug = slugify(p.name) or "plan"
+        urls.append(f"https://{settings.SITE_DOMAIN}/vps/{p.id}-{slug}")
+
+    return submit_to_indexnow(urls)
+

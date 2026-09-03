@@ -11,9 +11,11 @@ import { useCompareIds } from "@/lib/compare-store";
  * 对比入口由 CompareBar 浮动条提供，按需展示。
  */
 const NAV_ITEMS = [
-  { href: "/", label: "产品" },
-  { href: "/deals", label: "动态" },
-  { href: "/ip", label: "IP 检测", prefix: true },
+  { href: "/", label: "雷达" },
+  { href: "/deals", label: "特惠动态" },
+  { href: "/routes", label: "线路专题", prefix: true },
+  { href: "/providers", label: "服务商" },
+  { href: "/ip", label: "IP 工具", prefix: true },
   { href: "/watchlist", label: "我的关注" },
 ] as const;
 

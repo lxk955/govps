@@ -213,6 +213,7 @@ def run_scan(db: Session, force: bool = False) -> dict:
     单个商家失败不影响其他商家（AGENTS.md）。"""
     ensure_merchants(db)
     summary: dict[str, str] = {}
+    changed_product_ids: set[int] = set()
 
     with make_client(settings.SCAN_TIMEOUT) as client:
         now = datetime.now(timezone.utc)
@@ -253,6 +254,8 @@ def run_scan(db: Session, force: bool = False) -> dict:
             event_count = 0
             for raw in raws:
                 product, events = upsert_product(db, merchant, raw)
+                if events:
+                    changed_product_ids.add(product.id)
                 for ev in events:
                     db.flush()  # 拿到 ev.id
                     dispatch_event(db, ev, product)
@@ -294,9 +297,27 @@ def run_scan(db: Session, force: bool = False) -> dict:
     rates = maybe_update_rates(db)
     db.commit()
 
+    # 搜索引擎推送：当有补货或调价事件时，秒级通知 Bing IndexNow
+    indexnow_result = None
+    if changed_product_ids:
+        try:
+            from ..crawler.base import slugify
+            from .indexnow import submit_to_indexnow
+
+            urls = [f"https://{settings.SITE_DOMAIN}/"]
+            for pid in changed_product_ids:
+                p = db.get(Product, pid)
+                if p:
+                    slug = slugify(p.name) or "plan"
+                    urls.append(f"https://{settings.SITE_DOMAIN}/vps/{p.id}-{slug}")
+            indexnow_result = submit_to_indexnow(urls)
+        except Exception as e:
+            indexnow_result = {"ok": False, "error": str(e)}
+
     return {
         "ok": True,
         "summary": summary,
         "materialized": refreshed,
         "rates": rates,
+        "indexnow": indexnow_result,
     }

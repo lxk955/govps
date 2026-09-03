@@ -6,6 +6,8 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "sqlite:///./data/govps.db"
     SITE_DOMAIN: str = "govps.xyz"
+    INDEXNOW_KEY: str = "c032dbfcde5e4860a4f5f5bc98126e03"
+    INDEXNOW_ENABLED: bool = True
     SERVER_IP: str = "43.173.89.152"
     TASK_TOKEN: str = "change-me"
     RESEND_API_KEY: str = ""
