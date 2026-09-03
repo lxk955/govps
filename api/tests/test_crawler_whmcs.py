@@ -49,6 +49,10 @@ def test_price_cycle_detection_ignores_transfer_noise():
 
     assert detect_cycle("1000 GB Monthly Transfer") == "annually"
     assert detect_cycle("$49.99 USD Annually") == "annually"
+    assert detect_cycle("$34.00 USD Semi-Annually") == "semi-annually"
+    assert detect_cycle("Semi") == "semi-annually"
+    assert detect_cycle("Half Year") == "semi-annually"
+    assert detect_cycle("$18.00 USD Quarterly") == "quarterly"
     assert detect_cycle("") == "annually"
 
 

@@ -21,7 +21,7 @@ from .whmcs import GroupPage, detect_cycle
 
 BASE = "https://clients.zgovps.com"
 
-_RE_PRICE = re.compile(r"\$\s*(\d+(?:\.\d{1,2})?)\s*USD\s*(\w+)", re.I)
+_RE_PRICE = re.compile(r"\$\s*(\d+(?:\.\d{1,2})?)", re.I)
 
 
 class ZgoCloudCrawler(MerchantCrawler):
@@ -75,7 +75,8 @@ class ZgoCloudCrawler(MerchantCrawler):
             price = None
             billing_cycle = "annually"
             for price_option in cycle_options:
-                m = _RE_PRICE.search(price_option.text(strip=True))
+                opt_text = price_option.text(strip=True)
+                m = _RE_PRICE.search(opt_text)
                 if not m:
                     continue
                 try:
@@ -84,7 +85,7 @@ class ZgoCloudCrawler(MerchantCrawler):
                     continue
                 if opt_price <= 0:
                     continue
-                opt_cycle = detect_cycle(m.group(2) or price_option.text(strip=True))
+                opt_cycle = detect_cycle(opt_text)
                 price_options.append(
                     {
                         "billing_cycle": opt_cycle,
