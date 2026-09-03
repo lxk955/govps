@@ -7,9 +7,9 @@
 export function slugify(name: string): string {
   const s = name
     .toLowerCase()
-    .replace(/[^a-z0-9一-鿿]+/g, "-")
+    .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  // 截短避免超长 URL；中文保留（percent-encoding 由浏览器处理）
+  // 截短避免超长 URL；纯 ASCII 避免复制分享与聊天工具中 %XX%XX 乱码
   return s.slice(0, 60).replace(/-+$/g, "");
 }
 

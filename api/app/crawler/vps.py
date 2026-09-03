@@ -241,21 +241,47 @@ _RE_ERRORS = re.compile(r"var\s+errors\s*=\s*\[(.*?)\]", re.S | re.I)
 _OOS_KEYWORDS = ("unavailable", "out of stock", "sold out")
 
 
-def _check_stock_by_pid(client: httpx.Client, pid: str) -> bool | None:
-    """加购页缺货信号校验（回退路径用）。None = 无法判定。"""
+def _inspect_product_by_pid(client: httpx.Client, pid: str) -> tuple[bool, list[dict]]:
+    """加购页实时校验：精确检查对应 pid 卡片的真实库存与多周期价格。"""
     try:
         r = client.get(f"{BASE}/?cmd=cart&action=add&id={pid}", timeout=15)
     except Exception:
-        return None
+        return False, []
     if r.status_code != 200:
-        return None
-    m = _RE_ERRORS.search(r.text)
-    if m:
-        return not any(kw in m.group(1).lower() for kw in _OOS_KEYWORDS)
-    low = r.text.lower()
-    if any(kw in low for kw in _OOS_KEYWORDS):
-        return False
-    return None
+        return False, []
+
+    tree = HTMLParser(r.text)
+    card = tree.css_first(f'[data-value="{pid}"]')
+    if not card:
+        m = _RE_ERRORS.search(r.text)
+        if m and any(kw in m.group(1).lower() for kw in _OOS_KEYWORDS):
+            return False, []
+        return False, []
+
+    # 1. 严格库存判定：卡片 class 包含 outofstock 或包含缺货徽章则判定缺货
+    cls = card.attributes.get("class", "") or ""
+    has_oos_badge = card.css_first(".product-out-of-stock, .cart-product-outofstock-badge") is not None
+    in_stock = ("outofstock" not in cls) and not has_oos_badge
+
+    # 2. 实时多周期价格解析（过滤 p4/p5 等 4~5 年非常规周期）
+    price_options: list[dict] = []
+    for sp in card.css(".product-price"):
+        c_cls = sp.attributes.get("class", "") or ""
+        m = re.search(r"cycle-(\w+)", c_cls)
+        pm = _RE_PRICE.search(sp.text(strip=True))
+        if not m or not pm:
+            continue
+        cycle = _CYCLE_MAP.get(m.group(1))
+        if not cycle or cycle in ("p4", "p5"):
+            continue
+        price_options.append({
+            "billing_cycle": cycle,
+            "price": float(pm.group(2)),
+            "currency": (pm.group(3) or _CURRENCY_MAP.get(pm.group(1) or "", "EUR")).upper(),
+            "purchase_url": f"{BASE}/?cmd=cart&action=add&id={pid}",
+        })
+
+    return in_stock, price_options
 
 
 class VPSCrawler(MerchantCrawler):
@@ -272,21 +298,29 @@ class VPSCrawler(MerchantCrawler):
             print(f"[vps] live catalog: {len(live)} products from category pages")
             return live
 
-        # 回退：预置数据 + 加购页库存校验
+        # 回退：预置数据 + 加购页逐卡片库存与价格校验
         print(f"[vps] category pages unavailable ({len(live)} parsed), fallback to presets")
         results: list[RawProduct] = []
         for p in PRESET_VPS_PRODUCTS:
-            stock = _check_stock_by_pid(client, p.external_id)
+            stock, opts = _inspect_product_by_pid(client, p.external_id)
+            options = opts if opts else list(p.price_options or [])
+            base_opt = next((o for o in options if o["billing_cycle"] == p.billing_cycle), None)
+            if not base_opt and options:
+                base_opt = options[0]
+            price = Decimal(str(base_opt["price"])) if base_opt else p.price
+            cycle = base_opt["billing_cycle"] if base_opt else p.billing_cycle
+            currency = base_opt["currency"] if base_opt else p.currency
+
             results.append(
                 RawProduct(
                     external_id=p.external_id,
                     name=p.name,
-                    price=p.price,
-                    currency=p.currency,
-                    billing_cycle=p.billing_cycle,
-                    price_options=list(p.price_options or []),
+                    price=price,
+                    currency=currency,
+                    billing_cycle=cycle,
+                    price_options=options,
                     purchase_url=p.purchase_url,
-                    in_stock=stock if stock is not None else p.in_stock,
+                    in_stock=stock,
                     location=normalize_location(p.location),
                     line_tags=normalize_line_tags(p.name, p.line_tags),
                     cpu_cores=p.cpu_cores,
