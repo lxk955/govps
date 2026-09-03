@@ -106,7 +106,7 @@ export default async function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <CurrencyProvider initialRates={ratesMap}>
-              <header className="bg-card/90 border-border sticky top-0 z-20 border-b backdrop-blur w-full overflow-x-hidden">
+              <header className="bg-card/90 border-border sticky top-0 z-20 border-b backdrop-blur w-full">
                 <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center justify-between gap-1.5 px-3 sm:gap-6 sm:px-4">
                   <Link
                     href="/"
@@ -148,7 +148,7 @@ export default async function RootLayout({
                 </div>
               </header>
 
-              <main className="mx-auto w-full max-w-[1600px] flex-1 px-3 py-4 sm:px-4 sm:py-6 min-w-0 overflow-x-hidden">{children}</main>
+              <main className="mx-auto w-full max-w-[1600px] flex-1 px-3 py-4 sm:px-4 sm:py-6 min-w-0">{children}</main>
 
             {/* 窄屏底部留出标签栏净空（pb-24）。留白必须加在页脚而非 main 上：
                 main 的 padding 保护不到它之后的页脚，实测会被 fixed 标签栏压住 56px。 */}
