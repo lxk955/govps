@@ -34,9 +34,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  // 3. 全量套餐详情页（覆盖全部在售套餐，上限 500 款）
-  const products = await listProducts({ size: 500, sort: "hot" }).catch(() => ({ total: 0, items: [] }));
-  const productRoutes: MetadataRoute.Sitemap = products.items.map((p) => ({
+  // 3. 全量套餐详情页（覆盖全部在售套餐，通过分页获取全部收录）
+  const allProducts: Array<{ id: number; name: string; updated_at?: string | null }> = [];
+  try {
+    for (let page = 1; page <= 6; page++) {
+      const res = await listProducts({ page, size: 100, sort: "hot" });
+      if (!res.items || res.items.length === 0) break;
+      allProducts.push(...res.items);
+      if (allProducts.length >= res.total || res.items.length < 100) break;
+    }
+  } catch {
+    // 数据获取失败时降级，不阻塞地图构建
+  }
+
+  const productRoutes: MetadataRoute.Sitemap = allProducts.map((p) => ({
     url: `${SITE_URL}${productHref(p.id, p.name)}`,
     lastModified: p.updated_at ? new Date(p.updated_at) : now,
     changeFrequency: "daily" as const,

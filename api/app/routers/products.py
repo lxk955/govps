@@ -297,7 +297,7 @@ def list_products(
     watched: bool | None = Query(default=None, description="只看我关注的产品（需登录）"),
     sort: str = Query(default="hot"),
     page: int = Query(default=1, ge=1),
-    size: int = Query(default=30, ge=1, le=100),
+    size: int = Query(default=30, ge=1, le=500),
     user: User | None = Depends(get_optional_user),
 ):
     """P1 性能改造版（修复 §2 #1）：过滤/分组/排序/分页下推 SQL，
