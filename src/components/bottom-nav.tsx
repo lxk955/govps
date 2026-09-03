@@ -30,9 +30,9 @@ export function BottomNav() {
   return (
     <nav
       aria-label="移动端主导航"
-      className="border-border/80 bg-card/90 fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md transition-colors sm:hidden"
+      className="border-border/80 bg-card/95 fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-md transition-colors sm:hidden"
     >
-      <ul className="flex items-center justify-around pb-[calc(env(safe-area-inset-bottom)+2px)] pt-1">
+      <ul className="flex items-center justify-around pt-1.5 pb-[max(env(safe-area-inset-bottom),10px)]">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active =
@@ -46,7 +46,7 @@ export function BottomNav() {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative flex flex-col items-center justify-center gap-0.5 py-1 text-[11px] transition-all active:scale-90",
+                  "relative flex flex-col items-center justify-center gap-0.5 py-0.5 text-[11px] transition-all active:scale-95 shrink-0 select-none",
                   active
                     ? "font-bold text-blue-600 dark:text-blue-400"
                     : "font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200",
@@ -54,7 +54,7 @@ export function BottomNav() {
               >
                 <div
                   className={cn(
-                    "relative flex h-7 w-14 items-center justify-center rounded-full transition-colors",
+                    "relative flex h-7 w-12 items-center justify-center rounded-full transition-colors",
                     active
                       ? "bg-blue-100/70 text-blue-600 dark:bg-blue-950/80 dark:text-blue-400"
                       : "text-slate-600 dark:text-slate-400",
@@ -69,7 +69,7 @@ export function BottomNav() {
                     aria-hidden
                   />
                 </div>
-                <span className="leading-tight tracking-tight">{item.label}</span>
+                <span className="leading-tight tracking-tight block shrink-0">{item.label}</span>
               </Link>
             </li>
           );
