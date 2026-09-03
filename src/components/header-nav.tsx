@@ -7,14 +7,14 @@ import { useCompareIds } from "@/lib/compare-store";
 
 /**
  * 桌面端主导航：
- * 产品（根路径）/ 动态 / IP 检测 / 我的关注 / 对比。
+ * 产品（根路径）/ 动态 / IP 检测 / 我的关注。
+ * 对比入口由 CompareBar 浮动条提供，按需展示。
  */
 const NAV_ITEMS = [
   { href: "/", label: "产品" },
   { href: "/deals", label: "动态" },
   { href: "/ip", label: "IP 检测", prefix: true },
   { href: "/watchlist", label: "我的关注" },
-  { href: "/compare", label: "对比" },
 ] as const;
 
 export function HeaderNav() {
@@ -47,14 +47,22 @@ export function HeaderNav() {
             }`}
           >
             {item.label}
-            {item.href === "/compare" && compareCount > 0 && (
-              <span className="ml-1 rounded-full bg-blue-600 px-1.5 py-px text-[10px] font-bold text-white tabular-nums">
-                {compareCount}
-              </span>
-            )}
           </Link>
         );
       })}
+
+      {/* 仅当已选中套餐时，桌面端顶部增加一个对比快捷徽标 */}
+      {compareCount > 0 && pathname !== "/compare" && (
+        <Link
+          href={`/compare?ids=${ids.join(",")}`}
+          className="ml-1 flex items-center gap-1 rounded-xl border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-600 transition-colors hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-300 dark:hover:bg-blue-900/60"
+        >
+          <span>对比</span>
+          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] text-white">
+            {compareCount}
+          </span>
+        </Link>
+      )}
     </nav>
   );
 }
