@@ -9,6 +9,7 @@ import {
   DetailCycleProvider,
   DetailPriceCard,
 } from "@/components/vps/detail-cycle";
+import { DetailShareButton } from "@/components/vps/detail-share-button";
 import { PriceHistoryChart } from "@/components/vps/price-history-chart";
 import {
   getProductDetail,
@@ -263,7 +264,10 @@ export default async function VpsDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          <DetailBuyButton product={p} />
+          <div className="flex flex-wrap items-center gap-2.5">
+            <DetailShareButton product={p} />
+            <DetailBuyButton product={p} />
+          </div>
         </div>
 
         {/* 规格与价格概览卡片 */}
@@ -418,6 +422,7 @@ export default async function VpsDetailPage({ params }: PageProps) {
           返回列表
         </Link>
         <CompareButton productId={p.id} />
+        <DetailShareButton product={p} />
       </div>
 
       <footer className="text-muted-foreground text-xs leading-relaxed">
