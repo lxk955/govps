@@ -54,11 +54,9 @@ export function BottomNav() {
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const active =
-            item.href === "/"
-              ? pathname === "/" || pathname === "/vps"
-              : "prefix" in item && item.prefix
-                ? pathname === item.href || pathname.startsWith(`${item.href}/`)
-                : pathname === item.href;
+            "prefix" in item && item.prefix
+              ? pathname === item.href || pathname.startsWith(`${item.href}/`)
+              : pathname === item.href;
 
           return (
             <li key={item.href} className="flex-1">

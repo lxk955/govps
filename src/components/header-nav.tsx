@@ -6,14 +6,8 @@ import { usePathname } from "next/navigation";
 import { useCompareIds } from "@/lib/compare-store";
 
 /**
- * 主导航（1:1 复刻旧站 App.vue 胶囊式导航与激活态着色）。
- *
- * 标签沿用旧站四项：产品 / 动态 / IP 检测 / 我的关注。
- * 「产品」指向 /vps——新站比旧站多出一个首页（含精选位与 SEO 入口），
- * 入口保留在站点 Logo 上，不占用导航位以免偏离旧站排版。
- *
- * 「对比」为新增项：对比功能此前只有「加入对比」按钮而无任何入口，
- * 用户加入后找不到查看位置，故在此补一个常驻入口并显示已选数量。
+ * 桌面端主导航：
+ * 产品（根路径）/ 动态 / IP 检测 / 我的关注 / 对比。
  */
 const NAV_ITEMS = [
   { href: "/", label: "产品" },
@@ -30,9 +24,7 @@ export function HeaderNav() {
 
   return (
     /*
-     * 仅 sm 以上显示：窄屏放不下全部导航项（390px 视口下需要 454px，可用 358px），
-     * 曾在顶部改为横向滚动，但滚动条隐藏后用户看不出还有内容，等于没有导航。
-     * 窄屏的导航改由 BottomNav（底部等分标签栏）承担，四项全部完整可见。
+     * 仅 sm 以上显示：窄屏由底部等分标签栏 BottomNav 承担，更符合触屏操作。
      */
     <nav
       aria-label="主导航"
@@ -40,11 +32,9 @@ export function HeaderNav() {
     >
       {NAV_ITEMS.map((item) => {
         const active =
-          item.href === "/"
-            ? pathname === "/" || pathname === "/vps"
-            : "prefix" in item && item.prefix
-              ? pathname === item.href || pathname.startsWith(`${item.href}/`)
-              : pathname === item.href;
+          "prefix" in item && item.prefix
+            ? pathname === item.href || pathname.startsWith(`${item.href}/`)
+            : pathname === item.href;
         return (
           <Link
             key={item.href}
