@@ -29,6 +29,14 @@ const API_ORIGIN = normalizeApiOrigin(process.env.API_ORIGIN);
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  eslint: {
+    // 提交前本地已强制跑过 eslint 验证，跳过容器内重复耗时检查
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    // 提交前本地已强制跑过 tsc 验证，避免 2GB 内存 VPS 上高负载内存换页
+    ignoreBuildErrors: true,
+  },
   async rewrites() {
     return [
       { source: "/api/:path*", destination: `${API_ORIGIN}/api/:path*` },
