@@ -8,8 +8,8 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        // API 与购买跳转不进索引
-        disallow: ["/api/", "/go/"],
+        // API、外链跳转与登录/个人关注等私有状态页不进索引，节省搜索引擎抓取预算
+        disallow: ["/api/", "/go/", "/watchlist", "/login"],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,

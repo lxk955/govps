@@ -21,6 +21,7 @@ import { formatPrice, timeAgo } from "@/lib/format";
 import { testIpFor } from "@/lib/merchant-test-ips";
 import { parseSlugId, productHref } from "@/lib/slug";
 import { ApiError } from "@/lib/api/client";
+import { SITE_URL } from "@/lib/site";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -59,17 +60,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     .join(" · ");
 
   const description = `${p.merchant.name} ${p.name}：${specBits}，${formatPrice(p.price, p.currency)}（折年 ≈ ${formatPrice(p.price_yearly, p.currency)}），${p.in_stock ? "当前有货" : "暂时缺货"}。GoVPS 监控价格与库存变动。`;
+  const canonicalUrl = `${SITE_URL}${productHref(p.id, p.name)}`;
 
   return {
     title: `${p.name} - ${p.merchant.name}`,
     description,
-    alternates: { canonical: productHref(p.id, p.name) },
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title: `${p.name} - ${p.merchant.name} | GoVPS · VPS雷达`,
       description,
       type: "website",
-      url: productHref(p.id, p.name),
+      url: canonicalUrl,
       siteName: "GoVPS · VPS雷达",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${p.name} - ${p.merchant.name} | GoVPS · VPS雷达`,
+      description,
     },
   };
 }
@@ -133,25 +140,57 @@ export default async function VpsDetailPage({ params }: PageProps) {
   const line = lineInfo(p);
   const short = shortName(p);
 
-  const jsonLd = {
+  const pageCanonicalUrl = `${SITE_URL}${productHref(p.id, p.name)}`;
+
+  const jsonLdProduct = {
     "@context": "https://schema.org",
     "@type": "Product",
-    name: p.name,
+    name: `${p.merchant.name} ${p.name}`,
+    description: `${p.merchant.name} ${p.name} - ${p.cpu_cores != null ? `${p.cpu_cores}核 CPU, ` : ""}${p.ram_gb != null ? `${p.ram_gb}GB 内存, ` : ""}${p.disk_gb != null ? `${p.disk_gb}GB 硬盘, ` : ""}${p.location ? `机房: ${p.location}, ` : ""}当前状态: ${p.in_stock ? "有货在售" : "缺货"}`,
     brand: { "@type": "Brand", name: p.merchant.name },
     offers: {
       "@type": "Offer",
       price: String(p.price),
       priceCurrency: p.currency,
       availability: `https://schema.org/${p.in_stock ? "InStock" : "OutOfStock"}`,
-      url: p.purchase_url,
+      url: pageCanonicalUrl,
     },
+  };
+
+  const jsonLdBreadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "首页",
+        item: SITE_URL,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: p.merchant.name,
+        item: `${SITE_URL}/?merchant=${encodeURIComponent(p.merchant.slug)}`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: p.name,
+        item: pageCanonicalUrl,
+      },
+    ],
   };
 
   return (
     <div className="space-y-6">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdProduct) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdBreadcrumb) }}
       />
 
       <DetailCycleProvider product={p}>

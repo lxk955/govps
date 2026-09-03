@@ -14,10 +14,27 @@ import { parseListQuery } from "@/lib/query-state";
 import { ROW_ACTIONS_HEAD } from "@/lib/row-layout";
 
 export const metadata: Metadata = {
-  title: "GoVPS · VPS雷达 - VPS 库存与降价监控",
+  title: {
+    absolute: "GoVPS · VPS雷达 - 实时 VPS 库存、线路对比与降价监控",
+  },
   description:
-    "多商家 VPS 套餐聚合列表：按商家、机房、线路、价格与配置筛选，支持降价、补货与史低价监控。",
+    "多商家 VPS 套餐实时聚合：按商家、机房、线路、价格与配置极速筛选，支持 CN2 GIA / 9929 / CMIN2 优质线路、降价与补货自动监控。",
   alternates: { canonical: "/" },
+  openGraph: {
+    title: "GoVPS · VPS雷达 - 实时 VPS 库存、线路对比与降价监控",
+    description:
+      "多商家 VPS 套餐实时聚合：按商家、机房、线路、价格与配置极速筛选，支持 CN2 GIA / 9929 / CMIN2 优质线路、降价与补货自动监控。",
+    url: "/",
+    siteName: "GoVPS · VPS雷达",
+    locale: "zh_CN",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GoVPS · VPS雷达 - 实时 VPS 库存、线路对比与降价监控",
+    description:
+      "多商家 VPS 套餐实时聚合：支持 CN2 GIA / 9929 优质线路、降价与补货自动监控。",
+  },
 };
 
 interface PageProps {

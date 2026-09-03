@@ -1,6 +1,20 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 
 import { IpCheckPanel } from "@/components/ip/ip-check-panel";
+
+export const metadata: Metadata = {
+  title: "IP 归属与威胁情报查询 - 纯净度检测",
+  description:
+    "在线 IP 纯净度检测、IP 欺诈分查询、机房/原生/双 ISP 识别、ASN 与地理位置精准解析。",
+  alternates: { canonical: "/ip" },
+  openGraph: {
+    title: "IP 归属与威胁情报查询 - GoVPS 工具箱",
+    description:
+      "在线 IP 纯净度检测、IP 欺诈分查询、机房/原生/双 ISP 识别、ASN 与地理位置精准解析。",
+    url: "/ip",
+  },
+};
 
 /**
  * 取访客真实公网 IP。

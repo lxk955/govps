@@ -17,11 +17,56 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "GoVPS · VPS雷达 - VPS 库存与降价监控",
+    default: "GoVPS · VPS雷达 - VPS 实时库存与降价监控",
     template: "%s | GoVPS · VPS雷达",
   },
   description:
-    "多商家 VPS 套餐聚合：库存监控、降价提醒、线路对比与购买推荐，数据定期同步自各商家官网。",
+    "多商家 VPS 套餐实时聚合：按商家、机房、线路、价格与配置极速筛选，支持 CN2 GIA / 9929 / CMIN2 优质线路、降价与补货自动监控。",
+  keywords: [
+    "VPS",
+    "VPS雷达",
+    "VPS监控",
+    "VPS推荐",
+    "CN2 GIA",
+    "联通9929",
+    "移动CMIN2",
+    "搬瓦工库存",
+    "DMIT补货",
+    "VPS降价",
+    "便宜VPS",
+    "香港VPS",
+    "日本VPS",
+    "美国VPS",
+    "VPS线路对比",
+  ],
+  authors: [{ name: "GoVPS" }],
+  creator: "GoVPS",
+  openGraph: {
+    type: "website",
+    locale: "zh_CN",
+    url: SITE_URL,
+    siteName: "GoVPS · VPS雷达",
+    title: "GoVPS · VPS雷达 - VPS 实时库存与降价监控",
+    description:
+      "多商家 VPS 套餐实时聚合：按商家、机房、线路、价格与配置极速筛选，支持 CN2 GIA / 9929 / CMIN2 优质线路、降价与补货自动监控。",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GoVPS · VPS雷达 - VPS 实时库存与降价监控",
+    description:
+      "多商家 VPS 套餐实时聚合：按商家、机房、线路、价格与配置极速筛选，支持 CN2 GIA / 9929 / CMIN2 优质线路、降价与补货自动监控。",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
 };
 
 export const viewport: Viewport = {
