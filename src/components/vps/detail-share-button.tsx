@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Check, Share2 } from "lucide-react";
 
 import type { ProductDetail } from "@/lib/api/endpoints";
-import { formatPrice } from "@/lib/format";
+import { lineInfo, shortName } from "@/lib/display";
+import { cycleLabel, formatPrice } from "@/lib/format";
 import { productHref } from "@/lib/slug";
 import { SITE_URL } from "@/lib/site";
 import { Button } from "@/components/ui/button";
@@ -13,21 +14,40 @@ export function DetailShareButton({ product: p }: { product: ProductDetail }) {
   const [copied, setCopied] = useState(false);
 
   const handleShare = async () => {
-    const lines = p.line_tags?.slice(0, 2).join(" / ") || "";
+    const line = lineInfo(p);
+    const short = shortName(p);
+
+    // 全部专线标签，杜绝截断（例如 CN2 GIA / 9929 / CMIN2，包含移动）
+    const lineBadges =
+      line.badges.length > 0
+        ? line.badges.map((b) => b.text).join(" / ")
+        : p.line_tags?.join(" / ") || "";
+
+    // 三网明确走向（电信、联通、移动）
+    const carrierText = line.carrierRows?.length > 0 ? line.carrierRows.join(" · ") : "";
+
     const specs = [
       p.cpu_cores != null ? `${p.cpu_cores}核` : null,
       p.ram_gb != null ? `${p.ram_gb}G` : null,
       p.disk_gb != null ? `${p.disk_gb}G` : null,
       p.bandwidth_gb ? (p.bandwidth_gb < 0 ? "无限流量" : `${p.bandwidth_gb}G流量`) : null,
+      p.port_mbps
+        ? p.port_mbps >= 1000
+          ? `${(p.port_mbps / 1000).toFixed(0)}Gbps`
+          : `${p.port_mbps}Mbps`
+        : null,
     ]
       .filter(Boolean)
-      .join("·");
+      .join(" · ");
 
     const text = [
-      `📡 【${p.merchant.name}】${p.name}`,
-      `💰 ${formatPrice(p.price, p.currency)} · ${p.in_stock ? "🟢 当前有货" : "🔴 暂时缺货"}`,
+      `📡 【${p.merchant.name}】${short}`,
+      `💰 ${formatPrice(p.price, p.currency)}/${cycleLabel(p.billing_cycle)} · ${p.in_stock ? "🟢 当前有货" : "🔴 暂时缺货"}`,
       specs ? `⚙️ 配置：${specs}` : null,
-      p.location || lines ? `🌐 线路机房：${[p.location, lines].filter(Boolean).join(" · ")}` : null,
+      p.location || lineBadges
+        ? `🌐 线路机房：${[p.location, lineBadges ? `【${lineBadges}】` : ""].filter(Boolean).join(" · ")}`
+        : null,
+      carrierText ? `📶 三网走向：${carrierText}` : null,
       `🔗 实时监控详情：${SITE_URL}${productHref(p.id, p.name)}`,
     ]
       .filter(Boolean)

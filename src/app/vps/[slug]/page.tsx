@@ -55,7 +55,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     p.ram_gb != null ? `${p.ram_gb}G内存` : null,
     p.disk_gb != null ? `${p.disk_gb}G盘` : null,
     p.location,
-    ...p.line_tags.slice(0, 2),
+    ...p.line_tags,
   ]
     .filter(Boolean)
     .join(" · ");
