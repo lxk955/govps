@@ -93,8 +93,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
         <div>
           <h1 className="text-xl font-bold tracking-tight lg:text-2xl">套餐对比</h1>
           <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-            最多对比 {COMPARE_MAX} 款；不同币种/付款周期的「原价」不可直接横比，
-            跨套餐比较请以「折年 ≈ USD」为准（换算口径见页尾）。
+            最多对比 {COMPARE_MAX} 款。原价币种或付款周期不同时不可直接横比，跨套餐请看「折年 ≈ USD」。
           </p>
           {/* 3 款及以上在窄屏放不下，提示可横向滑动（2 款时刚好放得下，无需提示） */}
           {loaded.length >= 3 && (
@@ -173,7 +172,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
               </tr>
             </thead>
             <tbody className="text-sm">
-              <Row label="价格（原币标价）" hint="各套餐自身标价，币种/周期不同不可直接横比">
+              <Row label="价格（原币标价）">
                 {loaded.map((p) => (
                   <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3">
                     <span className="font-bold tabular-nums">
@@ -192,7 +191,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
                   </td>
                 ))}
               </Row>
-              <Row label="折年 ≈ USD" hint="跨套餐可比口径；换算汇率见页尾说明">
+              <Row label="折年 ≈ USD">
                 {loaded.map((p) => (
                   <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3">
                     {p.currency !== "USD" && p.price_yearly_converted != null ? (
@@ -292,18 +291,13 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
         </div>
       )}
 
-      {loaded.length > 0 && loaded.length < 2 && (
-        <p className="text-muted-foreground mt-3 rounded-lg bg-muted/50 px-3 py-2 text-xs">
-          已选 {loaded.length} 款——至少加入 2 款才能形成有效对比，可在列表页继续添加。
-        </p>
-      )}
-
       {loaded.length > 0 && (
         <footer className="text-muted-foreground mt-4 border-t pt-3 text-xs leading-relaxed">
-          换算口径：USD 参考价 = 原价 ÷ 每美元汇率（units_per_usd，来源与更新时间见
-          {" "}<Link href="/api/rates" className="underline underline-offset-2">/api/rates</Link>）；
-          历史价格换算使用对应日期的汇率快照。「价格（原币标价）」行为各套餐自身口径，
-          币种与付款周期不同的时间不可直接比较。
+          {loaded.length < 2 && (
+            <>已选 {loaded.length} 款，再加 {2 - loaded.length} 款即可对比。{" "}</>
+          )}
+          「折年 ≈ USD」按当日汇率换算（原币年价 ÷ 每美元汇率），来源与更新时间见
+          {" "}<Link href="/api/rates" className="underline underline-offset-2">/api/rates</Link>。
         </footer>
       )}
     </>
@@ -312,26 +306,15 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
 
 function Row({
   label,
-  hint,
   children,
 }: {
   label: string;
-  hint?: string;
   children: React.ReactNode;
 }) {
   return (
     <tr>
       <th scope="row" className="bg-background sticky left-0 z-10 p-1.5 align-top text-xs font-normal sm:p-2">
         <span className="text-muted-foreground">{label}</span>
-        {/*
-          行内说明窄屏隐藏：80px 的首列放不下，会挤成好几行把行高撑大。
-          该信息（不同币种/周期不可直接横比）在页面顶部的说明里已完整给出。
-        */}
-        {hint && (
-          <span className="text-muted-foreground/70 mt-0.5 hidden text-[10px] leading-snug sm:block">
-            {hint}
-          </span>
-        )}
       </th>
       {children}
     </tr>
