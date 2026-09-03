@@ -57,6 +57,7 @@ export default async function HomePage({ searchParams }: PageProps) {
       size: state.size,
       min_price: state.min_price,
       max_price: state.max_price,
+      currency: state.currency || "CNY",
       min_cpu: state.min_cpu,
       min_ram: state.min_ram,
       min_bw: state.min_bw,

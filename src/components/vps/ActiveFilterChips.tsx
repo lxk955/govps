@@ -59,10 +59,11 @@ export function ActiveFilterChips({
     tags.push({ key: "recent_restock", label: "最新补货", remove: () => go({ recent_restock: undefined }) });
   if (state.recommended) tags.push({ key: "recommended", label: "精选推荐", remove: () => go({ recommended: undefined }) });
   if (state.min_price !== undefined || state.max_price !== undefined) {
+    const symbol = state.currency === "USD" ? "$" : "¥";
     tags.push({
       key: "price",
-      label: `年付 $${state.min_price ?? 0} - ${state.max_price ?? "∞"}`,
-      remove: () => go({ min_price: undefined, max_price: undefined }),
+      label: `年付 ${symbol}${state.min_price ?? 0} - ${state.max_price ?? "∞"}`,
+      remove: () => go({ min_price: undefined, max_price: undefined, currency: undefined }),
     });
   }
   if (state.min_ram !== undefined)

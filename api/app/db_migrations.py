@@ -57,6 +57,10 @@ def detect_current_revision(inspector) -> str | None:
             ),
         ),
         ("0008_dns_leak_hits", lambda i: i.has_table("dns_leak_hits")),
+        (
+            "0009_user_currency_mode",
+            lambda i: "currency_mode" in _column_names(i, "users"),
+        ),
     ]
     reached: str | None = None
     for revision_id, present in stages:

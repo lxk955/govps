@@ -43,6 +43,9 @@ const CurrencyContext = createContext<CurrencyContextType>({
   }),
 });
 
+import { useAuth } from "./auth-provider";
+import { apiFetch } from "@/lib/api/client";
+
 export function CurrencyProvider({
   children,
   initialRates,
@@ -50,20 +53,38 @@ export function CurrencyProvider({
   children: React.ReactNode;
   initialRates?: Record<string, number>;
 }) {
-  const [mode, setModeState] = useState<CurrencyMode>("original");
+  const { user } = useAuth();
+  const [mode, setModeState] = useState<CurrencyMode>("CNY");
   const [rates, setRates] = useState<Record<string, number>>(initialRates || DEFAULT_RATES);
 
-  // 初始化从 localStorage 读取用户偏好
+  // 初始化从 localStorage 读取用户偏好（若无则默认人民币 CNY）
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY) as CurrencyMode | null;
       if (stored && (stored === "original" || stored === "CNY" || stored === "USD")) {
         setModeState(stored);
+      } else {
+        setModeState("CNY");
       }
     } catch {
       // 忽略隐私模式下的 localStorage 异常
     }
   }, []);
+
+  // 当登录用户的货币偏好加载后，以云端个人设置同步
+  useEffect(() => {
+    if (
+      user?.currency_mode &&
+      (user.currency_mode === "CNY" || user.currency_mode === "USD" || user.currency_mode === "original")
+    ) {
+      setModeState(user.currency_mode as CurrencyMode);
+      try {
+        localStorage.setItem(STORAGE_KEY, user.currency_mode);
+      } catch {
+        // 忽略
+      }
+    }
+  }, [user?.currency_mode]);
 
   // 客户端如果缺失 rates，拉取最新汇率
   useEffect(() => {
@@ -89,6 +110,13 @@ export function CurrencyProvider({
       localStorage.setItem(STORAGE_KEY, newMode);
     } catch {
       // 忽略
+    }
+    // 若已登录，同步写回个人数据库档案
+    if (user) {
+      apiFetch("/api/auth/preferences", {
+        method: "PUT",
+        body: JSON.stringify({ currency_mode: newMode }),
+      }).catch(() => {});
     }
   };
 

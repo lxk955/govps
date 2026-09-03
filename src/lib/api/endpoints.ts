@@ -134,6 +134,7 @@ export type ProductListParams = {
   line?: string[];
   min_price?: number;
   max_price?: number;
+  currency?: string;
   min_ram?: number;
   min_cpu?: number;
   min_bw?: number;
@@ -165,6 +166,7 @@ export function buildProductsQuery(params: ProductListParams): string {
     const v = params[key];
     if (v !== undefined) qs.set(key, String(v));
   }
+  if (params.currency) qs.set("currency", params.currency);
   for (const key of [
     "in_stock",
     "price_drop",

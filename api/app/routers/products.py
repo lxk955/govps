@@ -79,21 +79,11 @@ def _line_filter_sql(values: list[str]):
     return or_(*per_value) if per_value else None
 
 
-def _yearly_price_sql_expr():
-    """折算年付价并换算为 USD 的 SQL 表达式（排序、价格区间过滤共用）。
+def _yearly_price_sql_expr(currency: str = "USD"):
+    """折算年付价并换算为指定币种（USD 或 CNY）的 SQL 表达式（排序、价格区间过滤共用）。
 
     两步：先按付款周期折算年付价（与 schemas.yearly_price 同款因子），再按汇率
-    换算为 USD（USD 金额 = 原币金额 ÷ units_per_usd）。
-
-    换算不可省略：跨币种直接比较原币数值会失真，例如 55（CNY）实际约 8 美元，
-    却会被排在 35.88（USD）之后。价格区间过滤同理——min_price/max_price 是美元
-    口径，不换算则非 USD 产品几乎不可能落在区间内。
-
-    汇率缺失时 COALESCE 退化为 1，即按原币数值比较：不精确，但不会报错，
-    也不会让缺汇率的产品被整体排除（汇率现由启动兜底与扫描日更保证）。
-
-    周期写法先归一化（下划线→连字符）再查表；
-    PostgreSQL 中 round(val, 2) 的参数必须为 Numeric 类型。
+    换算为目标币种（默认 USD；当 currency 为 CNY 时换算为人民币）。
     """
     cycle = func.replace(func.coalesce(Product.billing_cycle, "annually"), "_", "-")
     factor = case(
@@ -113,6 +103,16 @@ def _yearly_price_sql_expr():
     product_price_num = cast(Product.price, Numeric(10, 4))
     yearly = product_price_num * factor
     usd = yearly / func.coalesce(rate, cast(1.0, Numeric(16, 8)))
+
+    if currency and currency.upper() == "CNY":
+        cny_rate = (
+            select(ExchangeRate.units_per_usd)
+            .where(ExchangeRate.code == "CNY")
+            .scalar_subquery()
+        )
+        cny = usd * func.coalesce(cny_rate, cast(7.2, Numeric(16, 8)))
+        return func.round(cast(cny, Numeric(12, 2)), 2)
+
     return func.round(cast(usd, Numeric(12, 2)), 2)
 
 
@@ -284,6 +284,7 @@ def list_products(
     ),
     min_price: float | None = Query(default=None, description="折算年付最低价"),
     max_price: float | None = Query(default=None, description="折算年付最高价"),
+    currency: str | None = Query(default="USD", description="价格筛选基准币种（CNY/USD）"),
     min_ram: float | None = Query(default=None),
     min_cpu: int | None = Query(default=None, description="最小 CPU 核数"),
     min_bw: int | None = Query(default=None, description="最小月流量 GB"),
@@ -311,6 +312,7 @@ def list_products(
         raise HTTPException(status_code=401, detail="login required for watched filter")
 
     # ── 过滤条件下推 ──────────────────────────────────────────────
+    curr = (currency or "USD").upper()
     conds = []
     if merchant:
         conds.append(Merchant.slug.in_(merchant))
@@ -321,9 +323,9 @@ def list_products(
         if cond_line is not None:
             conds.append(cond_line)
     if min_price is not None:
-        conds.append(_yearly_price_sql_expr() >= min_price)
+        conds.append(_yearly_price_sql_expr(curr) >= min_price)
     if max_price is not None:
-        conds.append(_yearly_price_sql_expr() <= max_price)
+        conds.append(_yearly_price_sql_expr(curr) <= max_price)
     if min_ram is not None:
         conds.append(Product.ram_gb >= min_ram)
     if min_cpu is not None:

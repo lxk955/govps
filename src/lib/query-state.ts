@@ -38,6 +38,7 @@ export interface ListQueryState {
   sort: SortValue;
   page: number;
   size: number;
+  currency?: string;
   min_price?: number;
   max_price?: number;
   min_ram?: number;
@@ -103,6 +104,8 @@ export function parseListQuery(sp: URLSearchParams | Record<string, string | str
   }
   const view = get("view");
   if (view === "card" || view === "list") state.view = view;
+  const currency = get("currency");
+  if (currency) state.currency = currency;
   return state;
 }
 
@@ -110,6 +113,7 @@ export function queryToString(state: ListQueryState): string {
   const qs = new URLSearchParams();
   for (const k of MULTI_KEYS) for (const v of state[k]) qs.append(k, v);
   if (state.keyword.trim()) qs.set("keyword", state.keyword.trim());
+  if (state.currency) qs.set("currency", state.currency);
   for (const k of NUM_KEYS) {
     const v = state[k];
     if (v !== undefined) qs.set(k, String(v));

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { merchantTitle, sortMerchants } from "@/lib/merchant-notes";
 import { type ListQueryState, withParams } from "@/lib/query-state";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/components/currency-provider";
 
 /**
  * 桌面端侧栏筛选（1:1 复刻旧站 components/FilterBar.vue）：
@@ -83,10 +84,14 @@ export function FilterControls({
   const totalInStock = merchants.reduce((a, m) => a + (m.in_stock_count ?? 0), 0);
   const totalCount = merchants.reduce((a, m) => a + (m.count ?? 0), 0);
 
+  const { mode } = useCurrency();
+  const currencySymbol = mode === "CNY" ? "¥" : "$";
+
   const applyAdvanced = () => {
     apply({
       min_price: priceMin === "" ? undefined : Number(priceMin),
       max_price: priceMax === "" ? undefined : Number(priceMax),
+      currency: mode === "CNY" ? "CNY" : "USD",
     });
   };
 
@@ -288,7 +293,7 @@ export function FilterControls({
           <div className="border-border mt-3 space-y-3 border-t pt-3 text-xs">
             <div>
               <label className="mb-1.5 block font-bold text-slate-500 dark:text-slate-400">
-                折算年付价格 ($)
+                折算年付价格 ({currencySymbol})
               </label>
               <div className="flex items-center gap-1.5">
                 <input
@@ -297,8 +302,8 @@ export function FilterControls({
                   inputMode="numeric"
                   value={priceMin}
                   onChange={(e) => setPriceMin(e.target.value)}
-                  placeholder="最低"
-                  aria-label="最低年付价格（美元）"
+                  placeholder={`最低 ${currencySymbol}`}
+                  aria-label={`最低年付价格（${currencySymbol}）`}
                   className="border-border bg-card w-full rounded-lg border px-2 py-1 text-base focus:border-blue-500 focus:outline-none sm:text-xs"
                 />
                 <span className="text-slate-300">-</span>
@@ -308,8 +313,8 @@ export function FilterControls({
                   inputMode="numeric"
                   value={priceMax}
                   onChange={(e) => setPriceMax(e.target.value)}
-                  placeholder="最高"
-                  aria-label="最高年付价格（美元）"
+                  placeholder={`最高 ${currencySymbol}`}
+                  aria-label={`最高年付价格（${currencySymbol}）`}
                   className="border-border bg-card w-full rounded-lg border px-2 py-1 text-base focus:border-blue-500 focus:outline-none sm:text-xs"
                 />
               </div>

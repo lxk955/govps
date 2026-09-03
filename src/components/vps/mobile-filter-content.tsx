@@ -7,6 +7,7 @@ import type { MerchantOption } from "@/components/vps/FilterControls";
 import { merchantTitle, sortMerchants } from "@/lib/merchant-notes";
 import { LINE_OPTIONS, SORT_OPTIONS, type ListQueryState, withParams } from "@/lib/query-state";
 import { cn } from "@/lib/utils";
+import { useCurrency } from "@/components/currency-provider";
 
 /**
  * 移动端筛选内容：分组折叠（Accordion）+ 点选即生效。
@@ -153,6 +154,9 @@ export function MobileFilterContent({
   const [priceMin, setPriceMin] = useState(state.min_price?.toString() ?? "");
   const [priceMax, setPriceMax] = useState(state.max_price?.toString() ?? "");
 
+  const { mode } = useCurrency();
+  const currencySymbol = mode === "CNY" ? "¥" : "$";
+
   // 点选即生效后 state 会变化，同步回本地输入值
   useEffect(() => setPriceMin(state.min_price?.toString() ?? ""), [state.min_price]);
   useEffect(() => setPriceMax(state.max_price?.toString() ?? ""), [state.max_price]);
@@ -171,7 +175,7 @@ export function MobileFilterContent({
     const min = priceMin === "" ? undefined : Number(priceMin);
     const max = priceMax === "" ? undefined : Number(priceMax);
     if (min === state.min_price && max === state.max_price) return;
-    apply({ min_price: min, max_price: max });
+    apply({ min_price: min, max_price: max, currency: mode === "CNY" ? "CNY" : "USD" });
   };
 
   const specCount = [
@@ -247,7 +251,7 @@ export function MobileFilterContent({
 
       {/* 2. 价格区间 */}
       <Section
-        title="价格区间（年付 $）"
+        title={`价格区间（年付 ${currencySymbol}）`}
         hint={
           state.min_price !== undefined || state.max_price !== undefined ? (
             <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
@@ -265,8 +269,8 @@ export function MobileFilterContent({
             onChange={(e) => setPriceMin(e.target.value)}
             onBlur={commitPrice}
             onKeyDown={(e) => e.key === "Enter" && commitPrice()}
-            placeholder="最低"
-            aria-label="最低年付价格（美元）"
+            placeholder={`最低 ${currencySymbol}`}
+            aria-label={`最低年付价格（${currencySymbol}）`}
             className="border-border bg-card w-full rounded-lg border px-3 py-2 text-base focus:border-blue-500 focus:outline-none"
           />
           <span className="text-muted-foreground">-</span>
@@ -278,8 +282,8 @@ export function MobileFilterContent({
             onChange={(e) => setPriceMax(e.target.value)}
             onBlur={commitPrice}
             onKeyDown={(e) => e.key === "Enter" && commitPrice()}
-            placeholder="最高"
-            aria-label="最高年付价格（美元）"
+            placeholder={`最高 ${currencySymbol}`}
+            aria-label={`最高年付价格（${currencySymbol}）`}
             className="border-border bg-card w-full rounded-lg border px-3 py-2 text-base focus:border-blue-500 focus:outline-none"
           />
         </div>

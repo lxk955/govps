@@ -129,6 +129,7 @@ def verify(payload: VerifyIn, db: Session = Depends(get_db)):
 
 class PreferenceIn(BaseModel):
     view_mode: str | None = None  # "card" | "list"
+    currency_mode: str | None = None  # "CNY" | "USD" | "original"
 
 
 @router.get("/me")
@@ -137,6 +138,7 @@ def me(user: User = Depends(get_current_user)):
     return {
         "email": user.email,
         "view_mode": user.view_mode or "card",
+        "currency_mode": getattr(user, "currency_mode", None) or "CNY",
     }
 
 
@@ -146,12 +148,15 @@ def update_preferences(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """更新用户偏好设置（如视图模式卡片/列表）。"""
+    """更新用户偏好设置（如视图模式卡片/列表、价格换算币种）。"""
     if payload.view_mode and payload.view_mode in ["card", "list"]:
         user.view_mode = payload.view_mode
-        db.commit()
+    if payload.currency_mode and payload.currency_mode in ["CNY", "USD", "original"]:
+        user.currency_mode = payload.currency_mode
+    db.commit()
     return {
         "ok": True,
         "email": user.email,
         "view_mode": user.view_mode or "card",
+        "currency_mode": getattr(user, "currency_mode", None) or "CNY",
     }

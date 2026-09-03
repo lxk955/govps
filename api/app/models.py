@@ -140,6 +140,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     api_token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     view_mode: Mapped[str] = mapped_column(String(20), default="card")
+    currency_mode: Mapped[str] = mapped_column(String(20), default="CNY")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

@@ -12,8 +12,10 @@ import { apiFetch } from "@/lib/api/client";
  * 仅浏览器端注入凭证，RSC/SSR 不受登录态影响（SEO 分离）。
  */
 
-interface AuthUser {
+export interface AuthUser {
   email: string;
+  view_mode?: string;
+  currency_mode?: string;
 }
 
 interface AuthContextValue {
@@ -47,8 +49,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchMe = useCallback(async (token: string) => {
     setApiToken(token);
     try {
-      const me = await apiFetch<{ email: string }>("/api/auth/me");
-      setUser({ email: me.email });
+      const me = await apiFetch<{ email: string; view_mode?: string; currency_mode?: string }>("/api/auth/me");
+      setUser({ email: me.email, view_mode: me.view_mode, currency_mode: me.currency_mode });
     } catch {
       // token 失效：onAuthExpired 已清存储，这里兜底复位
       setUser(null);
