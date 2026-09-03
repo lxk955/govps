@@ -1,41 +1,52 @@
 /**
- * 根级骨架屏（App Router 约定文件）。
+ * 列表页骨架屏（App Router 约定文件）。
  *
- * 同时作为未单独声明 loading.tsx 的路由的兜底 fallback。
+ * 列表页是 RSC 每请求回源（no-store），后端冷启动时用与真实布局同构的占位块，
+ * 让首屏立刻有内容、避免布局跳变（CLS）。
  *
- * 无障碍：容器标记 aria-busy 并给出 sr-only 状态文本；骨架块是纯装饰结构，
- * 用 aria-hidden 移出无障碍树，避免屏幕阅读器播报无意义的占位元素。
+ * 列宽规则与真实列表一致：grid-cols-[repeat(auto-fill,minmax(min(260px,100%),1fr))]
  */
 export default function Loading() {
   return (
-    <main aria-busy="true">
+    <div className="flex gap-6" aria-busy="true">
       <p role="status" className="sr-only">
-        正在加载首页数据…
+        正在加载套餐列表…
       </p>
 
-      <section aria-hidden="true" className="border-b">
-        <div className="mx-auto w-full max-w-7xl px-4 py-12 lg:py-16">
-          <div className="h-8 w-2/3 animate-pulse rounded-lg bg-slate-200 lg:h-10 dark:bg-slate-800" />
-          <div className="mt-4 h-4 w-full max-w-xl animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-          <div className="mt-2 h-4 w-3/4 max-w-md animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-          <div className="mt-6 flex gap-2">
-            <div className="h-9 w-32 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
-            <div className="h-9 w-32 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
-          </div>
-        </div>
-      </section>
-
-      <div aria-hidden="true" className="mx-auto w-full max-w-7xl px-4 py-8">
-        <div className="mb-3 h-5 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
+      {/* 桌面端侧栏筛选占位 */}
+      <aside aria-hidden="true" className="hidden w-60 shrink-0 lg:block">
+        <div className="border-border bg-card space-y-2.5 rounded-2xl border p-3.5 shadow-sm">
+          <div className="h-4 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+          <div className="h-9 w-full animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+          {Array.from({ length: 7 }).map((_, i) => (
             <div
               key={i}
-              className="border-border h-56 animate-pulse rounded-xl border bg-slate-100 dark:bg-slate-800"
+              className="h-8 w-full animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800"
             />
           ))}
         </div>
-      </div>
-    </main>
+      </aside>
+
+      <section
+        aria-hidden="true"
+        className="border-border bg-card min-w-0 flex-1 lg:rounded-2xl lg:border lg:p-5"
+      >
+        {/* 顶部工具栏占位 */}
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className="h-9 w-full max-w-xs animate-pulse rounded-xl bg-slate-100 sm:w-64 dark:bg-slate-800" />
+          <div className="h-8 w-40 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+        </div>
+
+        {/* 卡片网格占位：列宽规则与真实列表一致 */}
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(260px,100%),1fr))] gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={i}
+              className="border-border h-56 animate-pulse rounded-2xl border bg-slate-100 dark:bg-slate-800"
+            />
+          ))}
+        </div>
+      </section>
+    </div>
   );
 }

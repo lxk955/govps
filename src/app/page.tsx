@@ -8,19 +8,15 @@ import { NotifyBanner } from "@/components/vps/notify-banner";
 import { Pagination } from "@/components/vps/Pagination";
 import { VpsCard } from "@/components/vps/VpsCard";
 import { VpsRow } from "@/components/vps/VpsRow";
-import {
-  getEventsSummary,
-  listMerchants,
-  listProducts,
-  type ProductsResponse,
-} from "@/lib/api/endpoints";
+import { getEventsSummary, listMerchants, listProducts, type ProductsResponse } from "@/lib/api/endpoints";
+import { timeAgo } from "@/lib/format";
 import { parseListQuery } from "@/lib/query-state";
 import { ROW_ACTIONS_HEAD } from "@/lib/row-layout";
 
 export const metadata: Metadata = {
-  title: { absolute: "GoVPS · VPS雷达 - 实时 VPS 库存、降价监控与线路对比" },
+  title: "GoVPS · VPS雷达 - VPS 库存与降价监控",
   description:
-    "多商家 VPS 套餐实时聚合：按商家、机房、线路、价格与配置极速筛选，支持 CN2 GIA / 9929 / CMIN2 优质线路、降价与补货自动监控。",
+    "多商家 VPS 套餐聚合列表：按商家、机房、线路、价格与配置筛选，支持降价、补货与史低价监控。",
   alternates: { canonical: "/" },
 };
 
@@ -82,152 +78,147 @@ export default async function HomePage({ searchParams }: PageProps) {
   }, null);
 
   return (
-    <>
-      {/* 顶部紧凑定位区：兼顾品牌与 SEO，开门见山 */}
-      <header className="mb-4">
-        <h1 className="text-xl font-bold tracking-tight text-foreground lg:text-2xl">
-          VPS 实时雷达
-        </h1>
-        <p className="text-muted-foreground mt-0.5 text-xs sm:text-sm">
-          全网多商家套餐实时监控 · CN2 GIA / 9929 / CMIN2 优质线路聚合 · 价格与库存变动秒级感知
-        </p>
-      </header>
+    <div className="flex gap-6">
+      {/* 桌面端侧栏筛选 */}
+      <aside className="sticky top-20 hidden max-h-[calc(100dvh-6rem)] w-60 shrink-0 self-start overflow-y-auto lg:block">
+        <FilterControls state={state} merchants={merchantOptions} />
+      </aside>
 
-      <div className="flex gap-6">
-        {/* 桌面端侧栏筛选 */}
-        <aside className="sticky top-20 hidden max-h-[calc(100dvh-6rem)] w-60 shrink-0 self-start overflow-y-auto lg:block">
-          <FilterControls state={state} merchants={merchantOptions} />
-        </aside>
+      {/*
+       * 这层卡片外框服务于桌面端「左筛选栏 + 右列表区」的两栏布局。移动端侧栏
+       * 已改为抽屉，外框就成了多余的第二层框：它与内部产品卡片的边框叠加，左右
+       * 各吃掉 21px，390px 屏上内容区由 358px 缩到 316px（浪费约 12%）。
+       * 移动端去掉边框/圆角/背景/内边距，lg 以上（侧栏出现的断点）恢复原样。
+       */}
+      <section className="border-border bg-card min-w-0 flex-1 lg:rounded-2xl lg:border lg:p-5">
+        {/* 补货/降价动态聚合条（有事件才展示） */}
+        {summary && (summary.restock_count > 0 || summary.drop_count > 0) && (
+          <Link
+            href="/deals"
+            className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/90 to-indigo-50/70 px-3.5 py-2 text-xs text-slate-600 transition-all hover:border-blue-300 dark:border-blue-900 dark:from-blue-950/50 dark:to-indigo-950/40 dark:text-slate-300"
+          >
+            <span className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-100">
+              📡 实时动态
+            </span>
+            {summary.restock_count > 0 && (
+              <span className="flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400">
+                ⚡ 近 24h 补货 <b className="font-black">{summary.restock_count}</b> 个
+              </span>
+            )}
+            {summary.drop_count > 0 && (
+              <span className="flex items-center gap-1 font-medium text-orange-600 dark:text-orange-400">
+                📉 降价 <b className="font-black">{summary.drop_count}</b> 个
+              </span>
+            )}
+            <span className="ml-auto flex items-center gap-1 font-bold text-blue-600 dark:text-blue-400">
+              查看动态 →
+            </span>
+          </Link>
+        )}
 
-        {/* 主列表区 */}
-        <section className="border-border bg-card min-w-0 flex-1 lg:rounded-2xl lg:border lg:p-5">
-          {/* 补货/降价动态聚合条（有事件才展示） */}
-          {summary && (summary.restock_count > 0 || summary.drop_count > 0) && (
+        {/* 顶部操作区：搜索 + 视图切换 + 快捷筛选胶囊 */}
+        <ListToolbar state={state} merchants={merchantOptions} total={total} />
+        <ActiveFilterChips state={state} merchants={merchantOptions} />
+
+        {/* 未登录通知引导横幅 */}
+        <NotifyBanner />
+
+        {error ? (
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-12 text-center dark:border-red-900 dark:bg-red-950/30">
+            <div className="text-3xl">📡</div>
+            <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>
             <Link
-              href="/deals"
-              className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/90 to-indigo-50/70 px-3.5 py-2 text-xs text-slate-600 transition-all hover:border-blue-300 dark:border-blue-900 dark:from-blue-950/50 dark:to-indigo-950/40 dark:text-slate-300"
+              href="/"
+              className="rounded-xl bg-red-600 px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700"
             >
-              <span className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-100">
-                📡 实时动态
-              </span>
-              {summary.restock_count > 0 && (
-                <span className="flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400">
-                  ⚡ 近 24h 补货 <b className="font-black">{summary.restock_count}</b> 个
-                </span>
-              )}
-              {summary.drop_count > 0 && (
-                <span className="flex items-center gap-1 font-medium text-orange-600 dark:text-orange-400">
-                  📉 降价 <b className="font-black">{summary.drop_count}</b> 个
-                </span>
-              )}
-              <span className="ml-auto flex items-center gap-1 font-bold text-blue-600 dark:text-blue-400">
-                查看动态 →
-              </span>
+              重新加载
             </Link>
-          )}
-
-          {/* 顶部操作区：搜索 + 视图切换 + 快捷筛选胶囊 */}
-          <ListToolbar state={state} merchants={merchantOptions} total={total} />
-          <ActiveFilterChips state={state} merchants={merchantOptions} />
-
-          {/* 未登录通知引导横幅 */}
-          <NotifyBanner />
-
-          {error ? (
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-12 text-center dark:border-red-900 dark:bg-red-950/30">
-              <div className="text-3xl">📡</div>
-              <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>
+          </div>
+        ) : items.length === 0 ? (
+          /* 智能零结果状态（带推荐快捷动作） */
+          <div className="border-border flex flex-col items-center justify-center rounded-2xl border border-dashed px-4 py-16 text-center">
+            <svg
+              className="mb-3 h-12 w-12 text-slate-300 dark:text-slate-600"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path strokeLinecap="round" d="m20 20-3.5-3.5" />
+            </svg>
+            <h3 className="text-slate-800 text-base font-bold dark:text-slate-100">
+              未找到符合当前多重筛选条件的套餐
+            </h3>
+            <p className="text-slate-400 mt-1 max-w-sm text-xs dark:text-slate-500">
+              可能是某些限制（如预算、最低内存或特定机房）过于严苛，建议尝试放宽限制或浏览热门机房：
+            </p>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
               <Link
                 href="/"
-                className="rounded-xl bg-red-600 px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700"
+                className="rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-blue-700"
               >
-                重新加载
+                ✨ 一键重置全部筛选
               </Link>
-            </div>
-          ) : items.length === 0 ? (
-            /* 智能零结果状态（带推荐快捷动作） */
-            <div className="border-border flex flex-col items-center justify-center rounded-2xl border border-dashed px-4 py-16 text-center">
-              <svg
-                aria-hidden
-                className="text-muted-foreground/50 h-10 w-10"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607z"
-                />
-              </svg>
-              <p className="text-foreground mt-3 text-sm font-bold">未找到符合条件的套餐</p>
-              <p className="text-muted-foreground mt-1 max-w-sm text-xs leading-relaxed">
-                当前筛选条件组合过于严格，建议尝试放宽限制或清除部分条件。
-              </p>
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              {[
+                { loc: "洛杉矶", flag: "🇺🇸", label: "洛杉矶热门套餐" },
+                { loc: "东京", flag: "🇯🇵", label: "日本东京精品套餐" },
+                { loc: "香港", flag: "🇭🇰", label: "香港低延迟套餐" },
+              ].map((q) => (
                 <Link
-                  href="/"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-colors"
+                  key={q.loc}
+                  href={`/?location=${encodeURIComponent(q.loc)}`}
+                  className="border-border bg-card text-foreground rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
-                  清空全部筛选
+                  {q.flag} {q.label}
                 </Link>
-                {state.in_stock && (
-                  <Link
-                    href="/?in_stock=false"
-                    className="border-border bg-card text-foreground hover:bg-accent rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors"
-                  >
-                    包含缺货套餐
-                  </Link>
-                )}
-              </div>
-            </div>
-          ) : view === "card" ? (
-            /* 卡片视图 */
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {items.map((p) => (
-                <VpsCard key={p.id} product={p} />
               ))}
             </div>
-          ) : (
-            /* 列表视图：移动端卡片式展示（消除表格挤压），桌面端 6 列标准表 */
-            <>
-              {/* 移动端卡片式条目 */}
-              <div className="flex flex-col gap-2.5 sm:hidden">
-                {items.map((p) => (
-                  <VpsCard key={p.id} product={p} />
-                ))}
-              </div>
+          </div>
+        ) : view === "card" ? (
+          /*
+           * 卡片视图：列宽随容器自适应。
+           * 下限由 312px 降到 280px：312px 时 1280px 视口只排得下 2 列（卡片被
+           * 拉到 463px），1920px 下仍是 3 列（410px），大屏空间被浪费。降到
+           * 280px 后 1280px 排 3 列、1920px 排 4 列，单卡约 300px——与首页精选
+           * 位的 295~303px 相当，内容不会被挤坏。
+           */
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(260px,100%),1fr))] gap-4">
+            {items.map((p) => (
+              <VpsCard key={p.id} product={p} />
+            ))}
+          </div>
+        ) : (
+          /* 列表视图：表头仅桌面端显示，移动端行内已自解释 */
+          <div>
+            <div className="border-border/60 bg-slate-50/80 text-muted-foreground mb-1 hidden items-center gap-3 rounded-xl px-4 py-2 text-xs font-bold sm:flex dark:bg-slate-800/60">
+              <div className="min-w-0 flex-1">套餐名称与商家</div>
+              <div className="hidden w-[220px] shrink-0 lg:block">配置 / 流量</div>
+              <div className="hidden w-[100px] shrink-0 md:block">机房位置</div>
+              <div className="hidden w-[168px] shrink-0 lg:block">网络与线路</div>
+              <div className="w-[125px] shrink-0 text-right">价格与周期</div>
+              <div className="hidden w-16 shrink-0 text-center xl:block">现货状态</div>
+              {/* 列宽须与内容行 RowBuyZone 的 ROW_ACTIONS_ROW 一致，否则标题与内容错位 */}
+              <div className={`${ROW_ACTIONS_HEAD} shrink-0 text-right`}>操作</div>
+            </div>
+            {items.map((p) => (
+              <VpsRow key={p.id} product={p} />
+            ))}
+          </div>
+        )}
 
-              {/* 桌面端标准表格 */}
-              <div className="border-border hidden overflow-hidden rounded-xl border sm:block">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-muted/60 text-muted-foreground border-b font-medium">
-                      <tr>
-                        <th className="px-3 py-2.5">商家 / 套餐</th>
-                        <th className="px-3 py-2.5">机房</th>
-                        <th className="px-3 py-2.5">线路</th>
-                        <th className="px-3 py-2.5">配置 / 流量</th>
-                        <th className="px-3 py-2.5 text-right">价格</th>
-                        <th className={ROW_ACTIONS_HEAD}>操作</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {items.map((p) => (
-                        <VpsRow key={p.id} product={p} />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </>
-          )}
+        {items.length > 0 && (
+          <Pagination state={state} total={total} freshness={timeAgo(freshness)} />
+        )}
 
-          {/* 底部统计与翻页 */}
-          <Pagination state={state} total={total} freshness={freshness} />
-        </section>
-      </div>
-    </>
+        {items.length > 0 && (
+          <p className="text-muted-foreground mt-4 text-xs leading-relaxed">
+            价格为商家原币标价，「折年」为同币种按付款周期折算，跨币种统一折算为美元参考价。
+            数据更新时间以卡片标注为准，库存与价格以商家页面为准。
+          </p>
+        )}
+      </section>
+    </div>
   );
 }
