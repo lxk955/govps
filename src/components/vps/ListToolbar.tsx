@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutGrid, List, Search, X } from "lucide-react";
+import { LayoutGrid, List, Loader2, Search, X } from "lucide-react";
 
 import { MobileFilterSheet } from "@/components/vps/mobile-filter-sheet";
 import type { MerchantOption } from "@/components/vps/FilterControls";
@@ -58,7 +58,7 @@ const TONE_ON: Record<string, string> = {
 const CHIP_BASE =
   "shrink-0 flex cursor-pointer items-center gap-1 rounded-xl border px-2 py-1 text-xs font-bold transition-all sm:px-3";
 const CHIP_OFF =
-  "border-border bg-slate-50/70 text-slate-600 hover:border-slate-300 hover:bg-slate-100 dark:bg-slate-800/60 dark:text-slate-300 dark:hover:bg-slate-800";
+  "border-border/70 bg-card text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800";
 
 function Chip({
   active,
@@ -94,13 +94,34 @@ export function ListToolbar({
   total: number;
 }) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [kw, setKw] = useState(state.keyword);
+  const [isComposing, setIsComposing] = useState(false);
 
-  useEffect(() => setKw(state.keyword), [state.keyword]);
+  // 当 URL 外部发生变化时（如点击 active 标签移除、前进后退），同步到输入框
+  useEffect(() => {
+    setKw(state.keyword);
+  }, [state.keyword]);
 
   const go = (patch: Partial<ListQueryState>) => {
-    router.push(`/?${withParams(state, patch)}`);
+    startTransition(() => {
+      router.push(`/?${withParams(state, patch)}`);
+    });
   };
+
+  // 300ms 智能防抖即时搜索（支持中文输入法防抖，未完成组词不触发）
+  useEffect(() => {
+    if (isComposing) return;
+    if (kw.trim() === state.keyword.trim()) return;
+
+    const timer = setTimeout(() => {
+      startTransition(() => {
+        router.push(`/?${withParams(state, { keyword: kw })}`);
+      });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [kw, isComposing, state, router]);
 
   const toggleIn = (key: "location" | "line", value: string) => {
     const cur = state[key];
@@ -109,7 +130,20 @@ export function ListToolbar({
 
   const setView = (view: "card" | "list") => go({ view });
 
-  const submitKeyword = () => go({ keyword: kw });
+  // 回车立即搜索（无需等待 300ms）
+  const submitKeyword = () => {
+    if (kw.trim() !== state.keyword.trim()) {
+      go({ keyword: kw });
+    }
+  };
+
+  // 一键清空搜索
+  const clearKeyword = () => {
+    setKw("");
+    if (state.keyword) {
+      go({ keyword: "" });
+    }
+  };
 
   return (
     <div className="mb-5 flex flex-col gap-3">
@@ -124,12 +158,21 @@ export function ListToolbar({
           className="relative min-w-[220px] flex-1 sm:max-w-md"
         >
           <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-            <Search aria-hidden className="h-4 w-4" />
+            {isPending ? (
+              <Loader2 aria-hidden className="h-4 w-4 animate-spin text-blue-500" />
+            ) : (
+              <Search aria-hidden className="h-4 w-4" />
+            )}
           </span>
           <input
             type="text"
             value={kw}
             onChange={(e) => setKw(e.target.value)}
+            onCompositionStart={() => setIsComposing(true)}
+            onCompositionEnd={(e) => {
+              setIsComposing(false);
+              setKw(e.currentTarget.value);
+            }}
             aria-label="搜索套餐、机房、线路或配置"
             placeholder="搜索套餐、机房、线路或配置..."
             className="border-border bg-slate-50/70 focus:border-blue-500 focus:ring-blue-100 text-foreground placeholder:text-slate-400 w-full rounded-xl border py-1.5 pr-8 pl-9 text-base transition-all focus:bg-white focus:ring-2 focus:outline-none sm:text-sm dark:bg-slate-800/60 dark:focus:bg-slate-900"
@@ -137,13 +180,10 @@ export function ListToolbar({
           {kw && (
             <button
               type="button"
-              onClick={() => {
-                setKw("");
-                go({ keyword: "" });
-              }}
+              onClick={clearKeyword}
               title="清空搜索"
               aria-label="清空搜索"
-              className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-2.5 text-slate-400 hover:text-slate-600"
+              className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               <X aria-hidden className="h-4 w-4" />
             </button>
