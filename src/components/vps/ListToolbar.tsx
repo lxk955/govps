@@ -32,19 +32,9 @@ const POPULAR_LOCATIONS = [
  */
 const QUICK_LINE_KEYS: readonly string[] = ["cn2_gia", "9929", "cmin2"];
 
-const QUICK_FILTERS = [
-  { key: "recent_restock", label: "最新补货", icon: "⚡", tone: "emerald" },
-  { key: "lowest_price", label: "史低价", icon: "🏷️", tone: "rose" },
-  { key: "price_drop", label: "降价中", icon: "📉", tone: "orange" },
-  { key: "in_stock", label: "仅看有货", icon: "🟢", tone: "emerald" },
-] as const;
-
 const TONE_ON: Record<string, string> = {
   emerald:
     "border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/50",
-  rose: "border-rose-500 bg-rose-50 text-rose-600 ring-2 ring-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900/50",
-  orange:
-    "border-orange-500 bg-orange-50 text-orange-600 ring-2 ring-orange-100 dark:bg-orange-950/50 dark:text-orange-300 dark:ring-orange-900/50",
   blue: "border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-100 dark:bg-blue-950/50 dark:text-blue-300 dark:ring-blue-900/50",
   indigo:
     "border-indigo-500 bg-indigo-50 text-indigo-600 ring-2 ring-indigo-100 dark:bg-indigo-950/50 dark:text-indigo-300 dark:ring-indigo-900/50",
@@ -237,53 +227,44 @@ export function ListToolbar({
 
       {/*
        * 第 2 行：快捷筛选胶囊。
-       * 移动端按类别分三排（快捷筛选 / 热门机房 / 线路）：原先是单行横向滚动，
-       * 右侧胶囊在屏外看不见。桌面端仍合并为一行，组间用竖线分隔。
-       * 各组用 flex-wrap 兜底，避免窄屏横向溢出（AGENTS.md 要求）。
+       * 核心状态（仅看有货） + 热门机房 + 优质专线。
+       * 摒弃冗余的降价/补货胶囊（由页面顶部「实时动态」条承载），
+       * 移动端与桌面端均能清爽展示，极大减轻视觉压迫感。
        */}
-      <div className="flex flex-col gap-1.5 py-0.5 md:flex-row md:items-center md:gap-2">
-        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-          {QUICK_FILTERS.map((f) => (
-            <Chip
-              key={f.key}
-              tone={f.tone}
-              active={Boolean(state[f.key])}
-              onClick={() => go({ [f.key]: !state[f.key] } as Partial<ListQueryState>)}
-            >
-              <span aria-hidden>{f.icon}</span> {f.label}
-            </Chip>
-          ))}
-        </div>
+      <div className="flex flex-wrap items-center gap-1.5 py-0.5 sm:gap-2">
+        <Chip
+          tone="emerald"
+          active={Boolean(state.in_stock)}
+          onClick={() => go({ in_stock: !state.in_stock })}
+        >
+          <span aria-hidden>🟢</span> 仅看有货
+        </Chip>
 
-        <div aria-hidden className="bg-border hidden h-4 w-px shrink-0 md:block" />
+        <div aria-hidden className="bg-border mx-0.5 hidden h-4 w-px shrink-0 sm:block" />
 
-        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-          {POPULAR_LOCATIONS.map((loc) => (
-            <Chip
-              key={loc.name}
-              tone="blue"
-              active={state.location.includes(loc.name)}
-              onClick={() => toggleIn("location", loc.name)}
-            >
-              <span aria-hidden>{loc.flag}</span> {loc.name}
-            </Chip>
-          ))}
-        </div>
+        {POPULAR_LOCATIONS.map((loc) => (
+          <Chip
+            key={loc.name}
+            tone="blue"
+            active={state.location.includes(loc.name)}
+            onClick={() => toggleIn("location", loc.name)}
+          >
+            <span aria-hidden>{loc.flag}</span> {loc.name}
+          </Chip>
+        ))}
 
-        <div aria-hidden className="bg-border hidden h-4 w-px shrink-0 md:block" />
+        <div aria-hidden className="bg-border mx-0.5 hidden h-4 w-px shrink-0 sm:block" />
 
-        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-          {LINE_OPTIONS.filter((opt) => QUICK_LINE_KEYS.includes(opt.value)).map((opt) => (
-            <Chip
-              key={opt.value}
-              tone="indigo"
-              active={state.line.includes(opt.value)}
-              onClick={() => toggleIn("line", opt.value)}
-            >
-              {opt.label}
-            </Chip>
-          ))}
-        </div>
+        {LINE_OPTIONS.filter((opt) => QUICK_LINE_KEYS.includes(opt.value)).map((opt) => (
+          <Chip
+            key={opt.value}
+            tone="indigo"
+            active={state.line.includes(opt.value)}
+            onClick={() => toggleIn("line", opt.value)}
+          >
+            {opt.label}
+          </Chip>
+        ))}
       </div>
     </div>
   );
