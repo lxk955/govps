@@ -18,6 +18,11 @@ services:
       - MAIL_FROM=${MAIL_FROM:-GoVPS · VPS雷达 <notify@govps.xyz>}
       - PUBLIC_API_URL=${SITE_URL:-https://govps.xyz}
       - CORS_ORIGINS=${SITE_URL:-https://govps.xyz},http://localhost:3000
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID:-}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
+      - R2_BUCKET=${R2_BUCKET:-govps-backups}
+      - R2_ENDPOINT=${R2_ENDPOINT:-}
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:

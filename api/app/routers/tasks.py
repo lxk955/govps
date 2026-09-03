@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..database import get_db
+from ..services.backup import run_backup
 from ..services.notify import process_pending_emails
 from ..services.rates import update_rates
 from ..services.scan import run_scan
@@ -57,3 +58,17 @@ def process_emails_task(
     if x_task_token != settings.TASK_TOKEN:
         raise HTTPException(status_code=403, detail="invalid task token")
     return process_pending_emails(db)
+
+
+@router.post("/backup-db")
+def backup_db_task(x_task_token: str | None = Header(default=None)):
+    """把 SQLite 一致快照 gzip 后上传到 Cloudflare R2（私有桶）。
+
+    由 VPS crontab 每日调用；R2 未配置时返回 skipped，不视为失败。
+    WAL 下禁止直接拷贝 .db 文件，本端点走 SQLite Online Backup API。"""
+    if x_task_token != settings.TASK_TOKEN:
+        raise HTTPException(status_code=403, detail="invalid task token")
+    result = run_backup()
+    if not result.get("ok"):
+        raise HTTPException(status_code=500, detail=result.get("error", "backup failed"))
+    return result

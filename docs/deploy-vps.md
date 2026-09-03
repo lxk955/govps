@@ -68,6 +68,15 @@ sudo chown -R $USER:$USER /opt/govps
 | **`VPS_PORT`** | SSH 端口（可选，默认 22） | `22` |
 | **`VPS_DEPLOY_PATH`**| 部署目录（可选，默认 `/opt/govps`） | `/opt/govps` |
 
+在 VPS 的 `/opt/govps/.env` 里再加 R2 备份项（Cloudflare 控制台创建桶 `govps-backups` 和 Object Read & Write Token）：
+
+```ini
+R2_ACCOUNT_ID=你的账号 ID
+R2_ACCESS_KEY_ID=R2 Access Key
+R2_SECRET_ACCESS_KEY=R2 Secret Access Key
+R2_BUCKET=govps-backups
+```
+
 > 💡 **如何生成专属部署密钥（如果还没有）：**
 > ```bash
 > # 在本地生成一对不带密码的专用密钥
@@ -142,7 +151,7 @@ docker compose up -d --build
 ```bash
 crontab -e
 ```
-追加以下两行（将其中的 `YOUR_TASK_TOKEN` 替换为你的 `.env` 中的 `TASK_TOKEN`）：
+追加以下三行（将其中的 `YOUR_TASK_TOKEN` 替换为你的 `.env` 中的 `TASK_TOKEN`）：
 
 ```bash
 # 每 5 分钟抓取各商家最新库存与价格（本地内网调用，0 外部网络开销）
@@ -150,6 +159,9 @@ crontab -e
 
 # 每天中午 12:00 (UTC 04:00) 自动同步多币种汇率
 0 12 * * * curl -s -X POST http://127.0.0.1:8000/api/tasks/update-rates -H "X-Task-Token: YOUR_TASK_TOKEN" > /dev/null
+
+# 每天 04:15 UTC：SQLite 一致快照 gzip 后上传 Cloudflare R2（保留 7 日 + 4 个周日）
+15 4 * * * curl -s -X POST http://127.0.0.1:8000/api/tasks/backup-db -H "X-Task-Token: YOUR_TASK_TOKEN" > /dev/null
 ```
 
 ---
@@ -168,6 +180,19 @@ docker compose logs -f caddy   # 网关日志
 # 重启全部服务
 docker compose restart
 
-# 备份数据库（直接备份单个 SQLite 文件即可）
-cp /opt/govps/data/govps.db /backup/govps_$(date +%F).db
+# 备份数据库（WAL 下不要直接 cp govps.db，会拷花）
+# 触发一次上传到 R2：
+curl -s -X POST http://127.0.0.1:8000/api/tasks/backup-db -H "X-Task-Token: YOUR_TASK_TOKEN"
+
+# 从 R2 恢复（先在 Cloudflare 下载 db/latest.db.gz）：
+docker compose stop api dns
+gzip -dc latest.db.gz > /opt/govps/data/govps.db
+rm -f /opt/govps/data/govps.db-wal /opt/govps/data/govps.db-shm
+docker compose start api dns
+
+# 部署失败回滚到迁移前本地快照：
+docker compose stop api dns
+gzip -dc /opt/govps/data/govps-pre-migrate.db.gz > /opt/govps/data/govps.db
+rm -f /opt/govps/data/govps.db-wal /opt/govps/data/govps.db-shm
+docker compose start api dns
 ```

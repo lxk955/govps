@@ -35,6 +35,20 @@ class Settings(BaseSettings):
     # 测试环境置 True 以满足「常规测试禁网」，也避免污染汇率用例的 fixture；
     # 汇率本身的逻辑由 tests/test_rates.py 用隔离数据单独覆盖。
     SKIP_AUTO_RATES: bool = False
+    # Cloudflare R2 数据库备份（均可选；缺任一关键项则 /api/tasks/backup-db skip）
+    R2_ACCOUNT_ID: str = ""
+    R2_ACCESS_KEY_ID: str = ""
+    R2_SECRET_ACCESS_KEY: str = ""
+    R2_BUCKET: str = "govps-backups"
+    R2_ENDPOINT: str = ""
+
+    @property
+    def r2_endpoint(self) -> str:
+        if self.R2_ENDPOINT.strip():
+            return self.R2_ENDPOINT.strip().rstrip("/")
+        if self.R2_ACCOUNT_ID.strip():
+            return f"https://{self.R2_ACCOUNT_ID.strip()}.r2.cloudflarestorage.com"
+        return ""
 
     @property
     def cors_origin_list(self) -> list[str]:
