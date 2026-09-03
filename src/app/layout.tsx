@@ -130,12 +130,12 @@ export default async function RootLayout({
                     </svg>
                     {/* 主名 + 旧站中文名：同行胶囊标签。
                         此前是 10px 小字竖排，字号与字重都压不住，观感廉价 */}
-                    <span className="flex items-center gap-1.5">
-                      <span>GoVPS</span>
-                      <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold tracking-tight text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
+                    <div className="flex flex-col justify-center leading-none sm:flex-row sm:items-center sm:gap-1.5">
+                      <span className="text-base font-extrabold tracking-tight sm:text-lg">GoVPS</span>
+                      <span className="text-[10px] font-medium tracking-tight text-slate-400 dark:text-slate-500 sm:rounded-md sm:bg-blue-50 sm:px-1.5 sm:py-0.5 sm:text-[11px] sm:font-semibold sm:text-blue-600 sm:dark:bg-blue-950/60 sm:dark:text-blue-400">
                         VPS雷达
                       </span>
-                    </span>
+                    </div>
                   </Link>
                   <HeaderNav />
                   <div className="ml-auto flex shrink-0 items-center gap-1.5 text-sm sm:gap-2.5">
