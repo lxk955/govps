@@ -9,6 +9,7 @@ import { HeaderAuth } from "@/components/header-auth";
 import { HeaderNav } from "@/components/header-nav";
 import { PageViewTracker } from "@/components/page-view-tracker";
 import { RouteProgress } from "@/components/route-progress";
+import { ScrollToTop } from "@/components/scroll-to-top";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SITE_URL } from "@/lib/site";
@@ -147,6 +148,7 @@ export default function RootLayout({
             </footer>
 
             <BottomNav />
+            <ScrollToTop />
             <CompareBar />
             <PageViewTracker />
             {/* 全局路由加载进度条：useSearchParams 须包 Suspense，避免静态预渲染 CSR bailout */}
