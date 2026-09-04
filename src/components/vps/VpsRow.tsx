@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CardTagRow } from "@/components/vps/card-tag-row";
 import { RowBuyZone } from "@/components/vps/row-buy-zone";
 import type { ProductListItem, WatchPrefs } from "@/lib/api/endpoints";
-import { lineInfo, lineTierClass, shortName } from "@/lib/display";
+import { fmtPort, fmtTraffic, lineInfo, lineTierClass, shortName } from "@/lib/display";
 import { productHref } from "@/lib/slug";
 
 /**
@@ -12,16 +12,6 @@ import { productHref } from "@/lib/slug";
  * 注意与旧结构的差异：旧站并非 <table>，而是**每行一张独立圆角卡片**纵向堆叠，
  * 除产品列外各列固定宽度严格对齐；移动端纵向堆叠为两段（信息 / 价格+操作）。
  */
-
-function fmtBw(gb: number | null | undefined): string {
-  if (gb == null) return "";
-  if (gb < 0) return "无限流量/月";
-  return `${gb >= 1000 ? `${(gb / 1000).toFixed(gb % 1000 === 0 ? 0 : 1)}T` : `${gb}G`} 流量`;
-}
-
-function fmtPort(mbps: number): string {
-  return mbps >= 1000 ? `${(mbps / 1000).toFixed(mbps % 1000 === 0 ? 0 : 1)}Gbps` : `${mbps}Mbps`;
-}
 
 export function VpsRow({
   product,
@@ -51,7 +41,8 @@ export function VpsRow({
       .join(" · ") || "—";
   const specBottom = (() => {
     if (p.bandwidth_gb == null && !p.port_mbps) return "—";
-    const bw = fmtBw(p.bandwidth_gb);
+    const bw =
+      p.bandwidth_gb == null ? "" : p.bandwidth_gb < 0 ? "不限流量/月" : `${fmtTraffic(p.bandwidth_gb)} 流量`;
     const port = p.port_mbps ? fmtPort(p.port_mbps) : "";
     if (bw && port) return `${bw}@${port}`;
     return bw || `${port} 带宽`;

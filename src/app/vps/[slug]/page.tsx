@@ -17,7 +17,7 @@ import {
   listProducts,
   type ProductDetail,
 } from "@/lib/api/endpoints";
-import { lineInfo, lineTierClass, shortName } from "@/lib/display";
+import { fmtPort, fmtSize, fmtTraffic, lineInfo, lineTierClass, shortName } from "@/lib/display";
 import { formatPrice, timeAgo } from "@/lib/format";
 import { testIpFor } from "@/lib/merchant-test-ips";
 import { parseSlugId, productHref } from "@/lib/slug";
@@ -293,8 +293,8 @@ export default async function VpsDetailPage({ params }: PageProps) {
             <div className="text-slate-800 mt-1 text-sm leading-6 font-bold dark:text-slate-200">
               {[
                 p.cpu_cores && `${p.cpu_cores} 核 CPU`,
-                p.ram_gb && `${p.ram_gb}G 内存`,
-                p.disk_gb && `${p.disk_gb}G 存储`,
+                p.ram_gb && `${fmtSize(p.ram_gb)} 内存`,
+                p.disk_gb && `${fmtSize(p.disk_gb)} 存储`,
               ]
                 .filter(Boolean)
                 .join(" · ") || "规格见官网详情"}
@@ -307,16 +307,12 @@ export default async function VpsDetailPage({ params }: PageProps) {
             </div>
             <div className="text-slate-800 mt-1 text-sm leading-6 font-bold dark:text-slate-200">
               {[
-                p.bandwidth_gb
+                p.bandwidth_gb != null
                   ? p.bandwidth_gb < 0
-                    ? "无限月流量"
-                    : `${p.bandwidth_gb >= 1000 ? `${p.bandwidth_gb / 1000}T` : `${p.bandwidth_gb}G`} 流量/月`
+                    ? "不限月流量"
+                    : `${fmtTraffic(p.bandwidth_gb)} 流量/月`
                   : "",
-                p.port_mbps
-                  ? p.port_mbps >= 1000
-                    ? `${p.port_mbps / 1000}Gbps 端口`
-                    : `${p.port_mbps}Mbps 端口`
-                  : "",
+                p.port_mbps ? `${fmtPort(p.port_mbps)} 端口` : "",
               ]
                 .filter(Boolean)
                 .join(" · ") || "见商家网络说明"}

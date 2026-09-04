@@ -5,7 +5,7 @@ import { CardBuyZone } from "@/components/vps/card-buy-zone";
 import { CardTagRow } from "@/components/vps/card-tag-row";
 import { WatchButton } from "@/components/vps/watch-button";
 import type { ProductListItem, WatchPrefs } from "@/lib/api/endpoints";
-import { lineInfo, lineTierClass, shortName } from "@/lib/display";
+import { fmtPort, fmtSize, fmtTraffic, lineInfo, lineTierClass, shortName } from "@/lib/display";
 import { productHref } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 
@@ -14,21 +14,6 @@ import { cn } from "@/lib/utils";
  * 头部三行槽 → 2×2 规格矩阵 → 机房与三网线路 → 吸底价格与购买。
  * 各段高度固定（24/20/22/44/68px），保证网格中多卡片严格对齐。
  */
-
-function fmtSize(gb: number | null): string {
-  return `${gb || 1}G`;
-}
-
-function fmtBw(gb: number | null | undefined): string {
-  if (gb == null) return "按量";
-  if (gb < 0) return "无限";
-  return gb >= 1000 ? `${(gb / 1000).toFixed(gb % 1000 === 0 ? 0 : 1)}T` : `${gb}G`;
-}
-
-function fmtPort(mbps: number | null | undefined): string {
-  if (!mbps) return "";
-  return mbps >= 1000 ? `${(mbps / 1000).toFixed(mbps % 1000 === 0 ? 0 : 1)}Gbps` : `${mbps}Mbps`;
-}
 
 export function VpsCard({
   product,
@@ -53,8 +38,8 @@ export function VpsCard({
     p.ram_gb != null ? `${fmtSize(p.ram_gb)} 内存` : "内存 —",
     p.disk_gb != null ? `${fmtSize(p.disk_gb)} 硬盘` : "硬盘 —",
     p.port_mbps
-      ? `${fmtBw(p.bandwidth_gb)}@${fmtPort(p.port_mbps)}`
-      : `${fmtBw(p.bandwidth_gb)} 流量`,
+      ? `${p.bandwidth_gb == null ? "按量" : fmtTraffic(p.bandwidth_gb)}@${fmtPort(p.port_mbps)}`
+      : `${p.bandwidth_gb == null ? "按量" : fmtTraffic(p.bandwidth_gb)} 流量`,
   ];
 
   const tooltip = p.recommend_reasons.length

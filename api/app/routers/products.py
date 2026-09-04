@@ -158,7 +158,7 @@ CYCLE_ORDER = {
 }
 
 # 详情页价格/库存曲线：只回近 90 天、最多 200 个点（时间正序，供折线图）。
-# 扫描只在值变化时写快照，200 点通常覆盖数月；超出窗口的点仍留在库里供以后做保留策略。
+# 扫描只在值变化时写快照；窗口外的点由 scan.prune_snapshots 按保留策略删除。
 SNAPSHOT_WINDOW_DAYS = 90
 SNAPSHOT_MAX_POINTS = 200
 

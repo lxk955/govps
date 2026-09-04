@@ -331,3 +331,20 @@ export function lineTierClass(level: 0 | 1 | 2 | 3): string {
   if (level === 1) return "font-medium text-amber-600 dark:text-amber-500";
   return "text-gray-400 dark:text-slate-500";
 }
+
+/** 内存/硬盘：`12G`；0 当作 1G（与旧卡片一致，避免展示 0G） */
+export function fmtSize(gb: number): string {
+  return `${gb || 1}G`;
+}
+
+/** 月流量：`500G` / `1.5T` / `不限` */
+export function fmtTraffic(gb: number): string {
+  if (gb < 0) return "不限";
+  return gb >= 1000 ? `${(gb / 1000).toFixed(gb % 1000 === 0 ? 0 : 1)}T` : `${gb}G`;
+}
+
+/** 带宽：`100Mbps` / `1Gbps` */
+export function fmtPort(mbps: number): string {
+  if (mbps >= 1000) return `${(mbps / 1000).toFixed(mbps % 1000 === 0 ? 0 : 1)}Gbps`;
+  return `${mbps}Mbps`;
+}

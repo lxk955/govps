@@ -1,9 +1,12 @@
 /**
  * FastAPI 客户端唯一封装（refactor-plan §1/§2.6）：
- * - 一律相对路径，经 next.config rewrites 转发到 API_ORIGIN（同域，无 CORS）
+ * - 浏览器：相对路径，经 next.config rewrites 转发到 API_ORIGIN（同域，无 CORS）
+ * - RSC：直连 API_ORIGIN（Docker 内网 http://api:8000），不绕公网 Host
  * - 错误统一归一为 ApiError，页面不得各自解析原始响应
  * - 缓存策略由调用方显式声明：RSC 用 next.revalidate，客户端交互用 no-store
  */
+
+import { serverApiOrigin } from "@/lib/api-origin";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -41,33 +44,14 @@ export function onAuthExpired(cb: () => void): () => void {
   };
 }
 
-/**
- * 解析请求基址：浏览器端相对路径走同域；RSC 在服务端执行，fetch 不支持相对路径，
- * 从请求头还原同源绝对地址后仍经自身 /api/* rewrite 转发（服务端转发，无 CORS），
- * 业务代码依旧只写相对路径。
- */
-async function resolveBaseUrl(): Promise<string> {
+function resolveBaseUrl(): string {
   if (typeof window !== "undefined") return "";
-  const { headers } = await import("next/headers");
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  return `${proto}://${host}`;
+  return serverApiOrigin();
 }
 
-/**
- * Render 免费实例空闲后会休眠，唤醒窗口内请求被边缘直接拒绝：
- * 429 + x-render-routing: hibernate-rate-limited，body 为纯文本（非 JSON）。
- *
- * 退避时长必须匹配冷启动量级：免费实例唤醒实测 5~30s，原先只退避
- * 600/1200ms（累计 1.8s）必然抢在实例就绪前放弃，用户每次都看到 429。
- * 现改为阶梯退避累计约 8s（第 0.8 / 2.3 / 4.8 / 8.3s 各重试一次），
- * 覆盖多数冷启动；再久就不宜让 RSC 继续阻塞，交给页面提示刷新重试。
- *
- * 仅对幂等 GET 退避重试；非 GET 重试可能造成重复写入。
- */
-const RETRY_STATUS = new Set([429, 502, 503]);
-const RETRY_DELAYS_MS = [800, 1500, 2500, 3500];
+/** 瞬时 502/503 短重试一次。429 是业务限流，不再当 Render 休眠来等。 */
+const RETRY_STATUS = new Set([502, 503]);
+const RETRY_DELAYS_MS = [300];
 
 function shouldRetry(res: Response, method?: string): boolean {
   return (method ?? "GET").toUpperCase() === "GET" && RETRY_STATUS.has(res.status);
@@ -81,7 +65,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
 
   let res: Response;
   try {
-    const base = await resolveBaseUrl();
+    const base = resolveBaseUrl();
     const send = () =>
       fetch(`${base}${path}`, {
         ...rest,
@@ -105,7 +89,6 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
   }
 
   if (res.status === 401 && hadAuth) {
-    // 凭证失效：清除本地登录态并通知（避免各页面重复处理）
     setApiToken(null);
     for (const cb of authExpiredListeners) cb();
   }
@@ -117,11 +100,6 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
       if (typeof data?.detail === "string") detail = data.detail;
     } catch {
       // 非 JSON 响应体：保留 statusText
-    }
-    // 休眠拒绝是纯文本 429，不是业务限流：换成用户可操作的提示，
-    // 避免把 HTTP 状态文本 "Too Many Requests" 直接丢到页面上。
-    if (res.status === 429 && res.headers.get("x-render-routing") === "hibernate-rate-limited") {
-      detail = "数据服务正在启动，请稍后刷新页面";
     }
     throw new ApiError(res.status, detail);
   }

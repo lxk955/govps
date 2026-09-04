@@ -7,7 +7,7 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from ..config import settings
@@ -25,6 +25,21 @@ from ..models import (
 from .materialize import fill_static_fields, refresh_derived_fields
 from .notify import dispatch_event
 from .rates import update_rates
+
+# 库存曲线只要近 90 天；价格快照多留一年供「史低」判断。扫描只在值变化时写入，
+# 不 prune 的话表会无限涨。
+STOCK_SNAPSHOT_KEEP_DAYS = 90
+PRICE_SNAPSHOT_KEEP_DAYS = 365
+
+
+def prune_snapshots(db: Session) -> dict[str, int]:
+    """删除窗口外的价格/库存快照。返回删除行数。"""
+    now = datetime.now(timezone.utc)
+    stock_cut = now - timedelta(days=STOCK_SNAPSHOT_KEEP_DAYS)
+    price_cut = now - timedelta(days=PRICE_SNAPSHOT_KEEP_DAYS)
+    stock_n = db.execute(delete(StockSnapshot).where(StockSnapshot.checked_at < stock_cut)).rowcount or 0
+    price_n = db.execute(delete(PriceSnapshot).where(PriceSnapshot.checked_at < price_cut)).rowcount or 0
+    return {"stock": int(stock_n), "price": int(price_n)}
 
 
 def effective_interval_minutes(merchant: Merchant | None, crawler) -> int:
@@ -297,6 +312,7 @@ def run_scan(db: Session, force: bool = False) -> dict:
 
     # 汇率日更：运维只配 scan 这一个 cron 时，汇率也不会长期过期
     rates = maybe_update_rates(db)
+    pruned = prune_snapshots(db)
     db.commit()
 
     # 搜索引擎推送：当有补货或调价事件时，秒级通知 Bing IndexNow
@@ -321,5 +337,6 @@ def run_scan(db: Session, force: bool = False) -> dict:
         "summary": summary,
         "materialized": refreshed,
         "rates": rates,
+        "pruned": pruned,
         "indexnow": indexnow_result,
     }

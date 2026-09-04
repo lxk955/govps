@@ -17,7 +17,7 @@ import {
   getCompareIds,
   useCompareIds,
 } from "@/lib/compare-store";
-import { lineBadgeClass, lineInfo } from "@/lib/display";
+import { fmtPort, fmtSize, fmtTraffic, lineBadgeClass, lineInfo } from "@/lib/display";
 import { cycleLabel, formatPrice } from "@/lib/format";
 import { productHref } from "@/lib/slug";
 
@@ -235,28 +235,28 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
               <Row label="内存">
                 {loaded.map((p) => (
                   <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3 tabular-nums">
-                    {p.ram_gb != null ? `${p.ram_gb}G` : "—"}
+                    {p.ram_gb != null ? fmtSize(p.ram_gb) : "—"}
                   </td>
                 ))}
               </Row>
               <Row label="硬盘">
                 {loaded.map((p) => (
                   <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3 tabular-nums">
-                    {p.disk_gb != null ? `${p.disk_gb}G` : "—"}
+                    {p.disk_gb != null ? fmtSize(p.disk_gb) : "—"}
                   </td>
                 ))}
               </Row>
               <Row label="月流量">
                 {loaded.map((p) => (
                   <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3 tabular-nums">
-                    {p.bandwidth_gb == null ? "—" : p.bandwidth_gb < 0 ? "不限" : `${p.bandwidth_gb.toLocaleString("zh-CN")}G`}
+                    {p.bandwidth_gb == null ? "—" : fmtTraffic(p.bandwidth_gb)}
                   </td>
                 ))}
               </Row>
               <Row label="带宽">
                 {loaded.map((p) => (
                   <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3 tabular-nums">
-                    {p.port_mbps != null ? `${p.port_mbps}M` : "—"}
+                    {p.port_mbps != null ? fmtPort(p.port_mbps) : "—"}
                   </td>
                 ))}
               </Row>
