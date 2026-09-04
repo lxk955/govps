@@ -237,7 +237,7 @@ export function ListToolbar({
         <Chip
           tone="emerald"
           active={Boolean(state.in_stock)}
-          onClick={() => go({ in_stock: !state.in_stock })}
+          onClick={() => go({ in_stock: state.in_stock ? undefined : true })}
         >
           <span aria-hidden>🟢</span> 仅看有货
         </Chip>

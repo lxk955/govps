@@ -3,21 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { DESKTOP_NAV, navItemActive } from "@/lib/nav";
 import { useCompareIds } from "@/lib/compare-store";
 
 /**
- * 桌面端主导航：
- * 产品（根路径）/ 动态 / IP 检测 / 我的关注。
- * 对比入口由 CompareBar 浮动条提供，按需展示。
+ * 桌面端主导航。对比入口由 CompareBar 浮动条 + 徽标提供，按需展示。
  */
-const NAV_ITEMS = [
-  { href: "/", label: "雷达" },
-  { href: "/deals", label: "动态" },
-  { href: "/routes", label: "线路专题", prefix: true },
-  { href: "/providers", label: "服务商" },
-  { href: "/ip", label: "IP 工具", prefix: true },
-  { href: "/watchlist", label: "我的关注" },
-] as const;
 
 export function HeaderNav() {
   const pathname = usePathname();
@@ -32,11 +23,8 @@ export function HeaderNav() {
       aria-label="主导航"
       className="hidden items-center gap-1 text-xs sm:flex sm:gap-1.5 sm:text-sm"
     >
-      {NAV_ITEMS.map((item) => {
-        const active =
-          "prefix" in item && item.prefix
-            ? pathname === item.href || pathname.startsWith(`${item.href}/`)
-            : pathname === item.href;
+      {DESKTOP_NAV.map((item) => {
+        const active = navItemActive(pathname, item);
         return (
           <Link
             key={item.href}

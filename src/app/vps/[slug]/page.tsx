@@ -38,8 +38,8 @@ async function fetchProduct(slug: string): Promise<FetchResult> {
   try {
     return { ok: true, product: await getProductDetail(id) };
   } catch (e) {
-    // 区分「后端确认不存在」与「取数失败」：后者多为免费实例休眠返回的 429，
-    // 若一律落到 notFound() 会让用户误以为套餐已下架。
+    // 区分「后端确认不存在」与「取数失败」：后者提示加载失败，
+    // 一律 notFound() 会让用户误以为套餐已下架。
     return { ok: false, status: e instanceof ApiError ? e.status : 0 };
   }
 }

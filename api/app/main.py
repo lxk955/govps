@@ -104,7 +104,7 @@ async def api_cache_control(request, call_next):
 
     全站 /api/* 默认 no-store，避免 Cloudflare 把缺货/涨价回成旧状态
     （AGENTS.md Data Freshness）。商家列表与 24h 计数不是实时库存，
-    允许短 max-age，减轻 Render 冷启动后的重复回源。
+    允许短 max-age，减轻首页重复回源。
     """
     response = await call_next(request)
     if not request.url.path.startswith("/api/"):

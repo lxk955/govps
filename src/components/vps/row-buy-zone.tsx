@@ -8,7 +8,7 @@ import { useCurrency } from "@/components/currency-provider";
 import { Button } from "@/components/ui/button";
 import { WatchButton } from "@/components/vps/watch-button";
 import { watchProduct, type ProductListItem, type WatchPrefs } from "@/lib/api/endpoints";
-import { cycleLabel, currencySymbol, monthlyEquivalent } from "@/lib/format";
+import { cycleLabel, monthlyEquivalent } from "@/lib/format";
 import { ROW_ACTIONS_ROW } from "@/lib/row-layout";
 
 /**
@@ -54,7 +54,6 @@ export function RowBuyZone({
           },
         ];
   const current = options[idx] ?? options[0];
-  const sym = currencySymbol(current.currency);
   const monthly = monthlyEquivalent(current.price, current.billing_cycle);
   const purchaseUrl = `/go/${p.id}?src=row&cycle=${encodeURIComponent(current.billing_cycle)}`;
 
@@ -80,6 +79,7 @@ export function RowBuyZone({
 
   const { convert } = useCurrency();
   const priceInfo = convert(current.price, current.currency);
+  const monthlyInfo = monthly != null ? convert(monthly, current.currency) : null;
 
   return (
     <div className="flex items-center justify-between gap-3 sm:contents">
@@ -122,10 +122,9 @@ export function RowBuyZone({
           </div>
         )}
 
-        {monthly && (
+        {monthlyInfo && (
           <div className="text-[11px] text-slate-400 dark:text-slate-500">
-            ≈ {sym}
-            {monthly}/月
+            ≈ {monthlyInfo.displayPrice}/月
           </div>
         )}
       </div>

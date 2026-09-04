@@ -5,24 +5,18 @@ import { usePathname } from "next/navigation";
 import { Globe, Heart, Radar, Zap } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { MOBILE_NAV, navItemActive } from "@/lib/nav";
 
 /**
- * 移动端底部吸底导航栏（sm 以下常驻显示，原生 App 级触控体验）。
- * 4 大核心板块：
- * 1. 首页 (VPS雷达)
- * 2. 特惠 (降价榜与秒杀补货流)
- * 3. IP工具 (纯净度检测/DNS/WebRTC)
- * 4. 关注 (降价与到货提醒列表)
- *
- * 注：对比功能采用上下文浮动条（CompareBar），仅在用户主动勾选套餐时按需浮起，
- * 避免占用常驻导航空间。
+ * 移动端底部吸底导航栏（sm 以下常驻显示）。
+ * 对比用 CompareBar 按需浮起，不占常驻位。
  */
-const NAV_ITEMS = [
-  { href: "/", label: "雷达", icon: Radar },
-  { href: "/deals", label: "动态", icon: Zap },
-  { href: "/ip", label: "IP工具", icon: Globe, prefix: true },
-  { href: "/watchlist", label: "关注", icon: Heart },
-] as const;
+const NAV_ICONS = {
+  "/": Radar,
+  "/deals": Zap,
+  "/ip": Globe,
+  "/watchlist": Heart,
+} as const;
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -34,12 +28,9 @@ export function BottomNav() {
       style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 10px)" }}
     >
       <ul className="flex h-13 items-center justify-around">
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const active =
-            "prefix" in item && item.prefix
-              ? pathname === item.href || pathname.startsWith(`${item.href}/`)
-              : pathname === item.href;
+        {MOBILE_NAV.map((item) => {
+          const Icon = NAV_ICONS[item.href as keyof typeof NAV_ICONS];
+          const active = navItemActive(pathname, item);
 
           return (
             <li key={item.href} className="flex-1">

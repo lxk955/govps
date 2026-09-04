@@ -31,7 +31,7 @@ export function NotifyBanner() {
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <Link
-          href="/login"
+          href="/login?next=/"
           className="rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white transition-colors hover:bg-blue-700"
         >
           开启提醒

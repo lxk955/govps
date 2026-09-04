@@ -7,7 +7,7 @@ import { useAuth } from "@/components/auth-provider";
 import { useCurrency } from "@/components/currency-provider";
 import { Button } from "@/components/ui/button";
 import { watchProduct, type ProductListItem } from "@/lib/api/endpoints";
-import { cycleLabel, currencySymbol, monthlyEquivalent } from "@/lib/format";
+import { cycleLabel, monthlyEquivalent } from "@/lib/format";
 
 /**
  * 卡片底部价格与购买区（1:1 复刻旧站 ProductCard.vue 第 4 段）。
@@ -36,7 +36,6 @@ export function CardBuyZone({ product }: { product: ProductListItem }) {
           },
         ];
   const current = options[idx] ?? options[0];
-  const sym = currencySymbol(current.currency);
   const cycleCn = cycleLabel(current.billing_cycle);
   const monthly = monthlyEquivalent(current.price, current.billing_cycle);
   const purchaseUrl = `/go/${p.id}?src=card&cycle=${encodeURIComponent(current.billing_cycle)}`;
@@ -64,6 +63,7 @@ export function CardBuyZone({ product }: { product: ProductListItem }) {
 
   const { convert } = useCurrency();
   const priceInfo = convert(current.price, current.currency);
+  const monthlyInfo = monthly != null ? convert(monthly, current.currency) : null;
 
   return (
     <div className="border-border mt-auto flex items-end justify-between gap-2 border-t pt-3">
@@ -104,10 +104,9 @@ export function CardBuyZone({ product }: { product: ProductListItem }) {
                 );
               })}
             </select>
-          ) : monthly ? (
+          ) : monthlyInfo ? (
             <span className="text-[11px] text-slate-400 dark:text-slate-500">
-              ≈ {sym}
-              {monthly}/月
+              ≈ {monthlyInfo.displayPrice}/月
             </span>
           ) : (
             <span className="text-[11px] text-slate-300 dark:text-slate-600">—</span>

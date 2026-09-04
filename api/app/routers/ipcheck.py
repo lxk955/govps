@@ -212,7 +212,7 @@ async def check_ip(
     # 1. 确定目标 IP
     if not ip or not ip.strip():
         # 兜底解析请求来源。经 Next.js rewrite 转发后这里通常只能拿到前端
-        # 服务（Render）的出口 IP，因此 /ip 页面已改为显式传 ?ip=。
+        # web 容器的出口 IP，因此 /ip 页面已改为显式传 ?ip=。
         # 统一复用 services/client_ip，避免与 auth 的限流判定出现分歧。
         detected_ip = client_ip(request)
         if detected_ip in ("", "unknown", "127.0.0.1", "localhost", "::1"):

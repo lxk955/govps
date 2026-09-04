@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { DealsRangeSelect } from "@/components/deals/deals-range-select";
+import { PriceText } from "@/components/price-text";
 import { WatchButton } from "@/components/vps/watch-button";
 import { getEvents, getEventsSummary, type EventItem, type EventsSummary } from "@/lib/api/endpoints";
 import { lineInfo, lineTierClass, shortName } from "@/lib/display";
-import { cycleLabel, formatPrice, timeAgo } from "@/lib/format";
+import { cycleLabel, timeAgo } from "@/lib/format";
 import { productHref } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 
@@ -183,8 +184,6 @@ export default async function DealsPage({ searchParams }: PageProps) {
 
                 {/* 变化信息 + 库存/关注：移动端左右分布，桌面端整体靠右 */}
                 <div className="flex items-center justify-between gap-3 sm:shrink-0">
-                  {/* 变化信息。formatPrice 已含货币符号，勿在外面再拼 currencySymbol
-                      （此前 {sym}{formatPrice(...)} 造成 ¥¥55 双符号） */}
                   <div className="min-w-0 sm:text-right">
                     {isDrop ? (
                       <>
@@ -194,9 +193,19 @@ export default async function DealsPage({ searchParams }: PageProps) {
                           </span>
                         )}
                         <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                          <s>{formatPrice(Number(ev.old_value ?? 0), prod.currency)}</s> →{" "}
+                          <s>
+                            <PriceText
+                              price={Number(ev.old_value ?? 0)}
+                              currency={prod.currency}
+                              showOriginal={false}
+                            />
+                          </s>{" "}
+                          →{" "}
                           <b className="text-slate-700 dark:text-slate-300">
-                            {formatPrice(Number(ev.new_value ?? prod.price), prod.currency)}
+                            <PriceText
+                              price={Number(ev.new_value ?? prod.price)}
+                              currency={prod.currency}
+                            />
                           </b>
                         </div>
                       </>
@@ -206,7 +215,8 @@ export default async function DealsPage({ searchParams }: PageProps) {
                           补货
                         </span>
                         <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                          {formatPrice(prod.price, prod.currency)}/{cycleLabel(prod.billing_cycle)}
+                          <PriceText price={prod.price} currency={prod.currency} />/
+                          {cycleLabel(prod.billing_cycle)}
                         </div>
                       </>
                     )}

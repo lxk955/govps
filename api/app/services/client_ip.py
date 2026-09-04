@@ -5,7 +5,7 @@
 不同端点可能解析出不同 IP。
 
 注意：请求经 Next.js rewrite 转发时，本服务看到的 X-Forwarded-For 首段是
-前端服务（Render）的出口 IP 而非访客 IP。因此 /api/ip/check 改由前端显式
+web 容器的出口 IP 而非访客 IP。因此 /api/ip/check 改由前端显式
 传 ?ip=，这里的解析仅作为兜底。
 """
 

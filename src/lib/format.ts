@@ -40,7 +40,7 @@ export function cycleLabel(cycle: string): string {
 }
 
 /** 折算月价（旧站 currentMonthlyEquiv）：按所选周期摊到每月，月付返回 null */
-export function monthlyEquivalent(price: number, cycle: string): string | null {
+export function monthlyEquivalent(price: number, cycle: string): number | null {
   const divisors: Record<string, number> = {
     quarterly: 3,
     "semi-annually": 6,
@@ -50,7 +50,7 @@ export function monthlyEquivalent(price: number, cycle: string): string | null {
     triennially: 36,
   };
   const d = divisors[cycle];
-  return d ? (price / d).toFixed(2) : null;
+  return d ? price / d : null;
 }
 
 // 说明：曾存在 formatCycle()（返回带斜杠的「/月」），与 cycleLabel 是同一张
