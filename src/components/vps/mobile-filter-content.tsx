@@ -8,6 +8,12 @@ import { merchantTitle, sortMerchants } from "@/lib/merchant-notes";
 import { LINE_OPTIONS, SORT_OPTIONS, type ListQueryState, withParams } from "@/lib/query-state";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/components/currency-provider";
+import {
+  convertFilterAmount,
+  priceFilterCurrency,
+  priceFilterHint,
+  priceFilterSymbol,
+} from "@/lib/currency-mode";
 
 /**
  * 移动端筛选内容：分组折叠（Accordion）+ 点选即生效。
@@ -154,16 +160,34 @@ export function MobileFilterContent({
   const [priceMin, setPriceMin] = useState(state.min_price?.toString() ?? "");
   const [priceMax, setPriceMax] = useState(state.max_price?.toString() ?? "");
 
-  const { mode } = useCurrency();
-  const currencySymbol = mode === "CNY" ? "¥" : "$";
+  const { mode, rates } = useCurrency();
+  const filterCur = priceFilterCurrency(mode);
+  const currencySymbol = priceFilterSymbol(mode);
+  const currencyHint = priceFilterHint(mode);
+
+  const apply = (patch: Partial<ListQueryState>) => {
+    router.push(`/?${withParams(state, patch)}`);
+  };
 
   // 点选即生效后 state 会变化，同步回本地输入值
   useEffect(() => setPriceMin(state.min_price?.toString() ?? ""), [state.min_price]);
   useEffect(() => setPriceMax(state.max_price?.toString() ?? ""), [state.max_price]);
 
-  const apply = (patch: Partial<ListQueryState>) => {
-    router.push(`/?${withParams(state, patch)}`);
-  };
+  useEffect(() => {
+    if (state.min_price == null && state.max_price == null) return;
+    const current =
+      state.currency === "USD" || state.currency === "CNY" ? state.currency : filterCur;
+    if (current === filterCur) return;
+    const cny = rates.CNY || 7.2;
+    apply({
+      currency: filterCur,
+      min_price:
+        state.min_price == null ? undefined : convertFilterAmount(state.min_price, current, filterCur, cny),
+      max_price:
+        state.max_price == null ? undefined : convertFilterAmount(state.max_price, current, filterCur, cny),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   const toggleIn = (key: "merchant" | "line", value: string) => {
     const cur = state[key];
@@ -175,7 +199,7 @@ export function MobileFilterContent({
     const min = priceMin === "" ? undefined : Number(priceMin);
     const max = priceMax === "" ? undefined : Number(priceMax);
     if (min === state.min_price && max === state.max_price) return;
-    apply({ min_price: min, max_price: max, currency: mode === "CNY" ? "CNY" : "USD" });
+    apply({ min_price: min, max_price: max, currency: filterCur });
   };
 
   const specCount = [
@@ -251,7 +275,7 @@ export function MobileFilterContent({
 
       {/* 2. 价格区间 */}
       <Section
-        title={`价格区间（年付 ${currencySymbol}）`}
+        title={`价格区间（${currencyHint}）`}
         hint={
           state.min_price !== undefined || state.max_price !== undefined ? (
             <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white">

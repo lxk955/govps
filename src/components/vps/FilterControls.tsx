@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { merchantTitle, sortMerchants } from "@/lib/merchant-notes";
 import { type ListQueryState, withParams } from "@/lib/query-state";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/components/currency-provider";
+import {
+  convertFilterAmount,
+  priceFilterCurrency,
+  priceFilterHint,
+  priceFilterSymbol,
+} from "@/lib/currency-mode";
 
 /**
  * 桌面端侧栏筛选（1:1 复刻旧站 components/FilterBar.vue）：
@@ -84,14 +90,38 @@ export function FilterControls({
   const totalInStock = merchants.reduce((a, m) => a + (m.in_stock_count ?? 0), 0);
   const totalCount = merchants.reduce((a, m) => a + (m.count ?? 0), 0);
 
-  const { mode } = useCurrency();
-  const currencySymbol = mode === "CNY" ? "¥" : "$";
+  const { mode, rates } = useCurrency();
+  const filterCur = priceFilterCurrency(mode);
+  const currencySymbol = priceFilterSymbol(mode);
+  const currencyHint = priceFilterHint(mode);
+
+  useEffect(() => {
+    setPriceMin(state.min_price?.toString() ?? "");
+    setPriceMax(state.max_price?.toString() ?? "");
+  }, [state.min_price, state.max_price]);
+
+  useEffect(() => {
+    if (state.min_price == null && state.max_price == null) return;
+    const current =
+      state.currency === "USD" || state.currency === "CNY" ? state.currency : filterCur;
+    if (current === filterCur) return;
+    const cny = rates.CNY || 7.2;
+    apply({
+      currency: filterCur,
+      min_price:
+        state.min_price == null ? undefined : convertFilterAmount(state.min_price, current, filterCur, cny),
+      max_price:
+        state.max_price == null ? undefined : convertFilterAmount(state.max_price, current, filterCur, cny),
+    });
+    // 只在币种切换时改写区间，避免和输入框互相触发
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   const applyAdvanced = () => {
     apply({
       min_price: priceMin === "" ? undefined : Number(priceMin),
       max_price: priceMax === "" ? undefined : Number(priceMax),
-      currency: mode === "CNY" ? "CNY" : "USD",
+      currency: filterCur,
     });
   };
 
@@ -293,7 +323,7 @@ export function FilterControls({
           <div className="border-border mt-3 space-y-3 border-t pt-3 text-xs">
             <div>
               <label className="mb-1.5 block font-bold text-slate-500 dark:text-slate-400">
-                折算年付价格 ({currencySymbol})
+                折算年付价格（{currencyHint}）
               </label>
               <div className="flex items-center gap-1.5">
                 <input
@@ -388,6 +418,7 @@ export function FilterControls({
                     min_cpu: undefined,
                     min_bw: undefined,
                     min_port: undefined,
+                    currency: undefined,
                   });
                 }}
                 className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { AuthProvider } from "@/components/auth-provider";
 import { BookmarkDialog } from "@/components/bookmark-dialog";
@@ -15,6 +16,7 @@ import { CurrencyToggle } from "@/components/currency-toggle";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getCurrentRates } from "@/lib/api/endpoints";
+import { CURRENCY_COOKIE, parseCurrencyMode } from "@/lib/currency-mode";
 import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
@@ -99,13 +101,14 @@ export default async function RootLayout({
       ratesMap[r.code] = r.units_per_usd;
     }
   }
+  const cookieMode = parseCurrencyMode((await cookies()).get(CURRENCY_COOKIE)?.value);
 
   return (
     <html lang="zh-CN" className="overflow-x-hidden" suppressHydrationWarning>
       <body className="bg-background text-foreground flex min-h-dvh flex-col antialiased overflow-x-hidden w-full max-w-full">
         <ThemeProvider>
           <AuthProvider>
-            <CurrencyProvider initialRates={ratesMap}>
+            <CurrencyProvider initialRates={ratesMap} initialMode={cookieMode}>
               <header className="bg-card/90 border-border sticky top-0 z-20 border-b backdrop-blur w-full">
                 <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center justify-between gap-1.5 px-3 sm:gap-6 sm:px-4">
                   <Link

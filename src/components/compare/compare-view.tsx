@@ -7,6 +7,7 @@ import { ArrowUpRight, Loader2, Scale, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useCurrency } from "@/components/currency-provider";
 import {
   getProductDetail,
   type ProductDetail,
@@ -17,14 +18,13 @@ import {
   useCompareIds,
 } from "@/lib/compare-store";
 import { lineBadgeClass, lineInfo } from "@/lib/display";
-import { currencySymbol, cycleLabel } from "@/lib/format";
+import { cycleLabel, formatPrice } from "@/lib/format";
 import { productHref } from "@/lib/slug";
 
 /**
  * 对比视图（P6）：≤4 款并排。
- * - 数据口径：原价（供应商原币/周期）为主位；USD 换算价与 P5 接口一致；
- *   跨套餐比较以「折年 ≈ USD」为唯一可比口径，原价行明确标注不可直接横比。
- * - 移动端：整表横向滚动（AGENTS.md 大表格条款）。
+ * 价格行跟随全站币种开关；跨套餐可比口径是「折年价」
+ * （人民币/美元按汇率，原币模式下用美元横比）。
  */
 
 const CARRIERS = ["电信", "联通", "移动"] as const;
@@ -41,6 +41,7 @@ function carrierRoute(
 export function CompareView({ initialIds }: { initialIds: number[] }) {
   const router = useRouter();
   const { ids, ready, remove, clear, replace } = useCompareIds();
+  const { mode, convert } = useCurrency();
   const [items, setItems] = useState<(ProductDetail | null)[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -86,6 +87,11 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
 
   const loaded = items.filter((x): x is ProductDetail => x != null);
   const lineById = new Map(loaded.map((p) => [p.id, lineInfo(p)]));
+  const yearlyLabel = "折年价";
+  const comparableHint =
+    mode === "original"
+      ? "原币标价币种不同时不可直接横比，跨套餐请看折年价（按美元换算）。"
+      : "原币或付款周期不同时不可直接横比，跨套餐请看折年价（按当前币种换算）。";
 
   return (
     <>
@@ -93,7 +99,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
         <div>
           <h1 className="text-xl font-bold tracking-tight lg:text-2xl">套餐对比</h1>
           <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-            最多对比 {COMPARE_MAX} 款。原价币种或付款周期不同时不可直接横比，跨套餐请看「折年 ≈ USD」。
+            最多对比 {COMPARE_MAX} 款。{comparableHint}
           </p>
           {/* 3 款及以上在窄屏放不下，提示可横向滑动（2 款时刚好放得下，无需提示） */}
           {loaded.length >= 3 && (
@@ -172,39 +178,41 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
               </tr>
             </thead>
             <tbody className="text-sm">
-              <Row label="价格（原币标价）">
-                {loaded.map((p) => (
-                  <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3">
-                    <span className="font-bold tabular-nums">
-                      {currencySymbol(p.currency)}{p.price.toFixed(2)}
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      /{cycleLabel(p.billing_cycle)}
-                    </span>
-                  </td>
-                ))}
-              </Row>
-              <Row label="折年价（原币）">
-                {loaded.map((p) => (
-                  <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3 tabular-nums">
-                    {currencySymbol(p.currency)}{p.price_yearly.toFixed(2)}<span className="text-muted-foreground text-xs">/年</span>
-                  </td>
-                ))}
-              </Row>
-              <Row label="折年 ≈ USD">
-                {loaded.map((p) => (
-                  <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3">
-                    {p.currency !== "USD" && p.price_yearly_converted != null ? (
-                      <span className="font-bold text-sky-800 tabular-nums dark:text-sky-300">
-                        ${p.price_yearly_converted.toFixed(2)}<span className="text-muted-foreground text-xs font-normal">/年</span>
+              <Row label="价格">
+                {loaded.map((p) => {
+                  const info = convert(p.price, p.currency);
+                  return (
+                    <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3">
+                      <span className="font-bold tabular-nums">{info.displayPrice}</span>
+                      <span className="text-muted-foreground text-xs">
+                        /{cycleLabel(p.billing_cycle)}
                       </span>
-                    ) : p.currency === "USD" ? (
-                      <span className="text-muted-foreground text-xs">即原价（USD）</span>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">暂无汇率</span>
-                    )}
-                  </td>
-                ))}
+                      {info.isConverted && (
+                        <div className="text-muted-foreground mt-0.5 text-[11px]" title={info.rateNotice}>
+                          原 {info.originalPrice}
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
+              </Row>
+              <Row label={yearlyLabel}>
+                {loaded.map((p) => {
+                  const yearly = yearlyComparable(p, mode, convert);
+                  return (
+                    <td key={p.id} className="bg-card border-r border-t p-2 last:border-r-0 sm:p-3">
+                      <span className="font-bold text-sky-800 tabular-nums dark:text-sky-300">
+                        {yearly.display}
+                        <span className="text-muted-foreground text-xs font-normal">/年</span>
+                      </span>
+                      {yearly.original && (
+                        <div className="text-muted-foreground mt-0.5 text-[11px]">
+                          原 {yearly.original}/年
+                        </div>
+                      )}
+                    </td>
+                  );
+                })}
               </Row>
               <Row label="库存">
                 {loaded.map((p) => (
@@ -296,12 +304,34 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
           {loaded.length < 2 && (
             <>已选 {loaded.length} 款，再加 {2 - loaded.length} 款即可对比。{" "}</>
           )}
-          「折年 ≈ USD」按当日汇率换算（原币年价 ÷ 每美元汇率），来源与更新时间见
+          {comparableHint} 汇率来源见
           {" "}<Link href="/api/rates" className="underline underline-offset-2">/api/rates</Link>。
         </footer>
       )}
     </>
   );
+}
+
+function yearlyComparable(
+  p: ProductDetail,
+  mode: "original" | "CNY" | "USD",
+  convert: ReturnType<typeof useCurrency>["convert"],
+): { display: string; original: string | null } {
+  const originalYearly = formatPrice(p.price_yearly, p.currency);
+  if (mode === "original") {
+    if (p.currency === "USD") {
+      return { display: originalYearly, original: null };
+    }
+    if (p.price_yearly_converted != null) {
+      return { display: formatPrice(p.price_yearly_converted, "USD"), original: originalYearly };
+    }
+    return { display: "暂无汇率", original: originalYearly };
+  }
+  const info = convert(p.price_yearly, p.currency);
+  return {
+    display: info.displayPrice,
+    original: info.isConverted ? info.originalPrice : null,
+  };
 }
 
 function Row({

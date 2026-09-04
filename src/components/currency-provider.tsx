@@ -2,11 +2,20 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { formatPrice } from "@/lib/format";
+import {
+  CURRENCY_COOKIE,
+  CURRENCY_STORAGE_KEY,
+  parseCurrencyMode,
+  writeCurrencyCookie,
+  type CurrencyMode,
+} from "@/lib/currency-mode";
+import { useAuth } from "./auth-provider";
+import { apiFetch } from "@/lib/api/client";
 
-export type CurrencyMode = "original" | "CNY" | "USD";
+export type { CurrencyMode };
 
 export interface ConvertedPriceResult {
-  /** 格式化后的主展示文本，如 "≈ ¥258" 或 "$35.88" */
+  /** 格式化后的主展示文本，如 "¥258" 或 "$35.88" */
   displayPrice: string;
   /** 是否经过汇率换算（用于遵守 AGENTS.md：清晰区分原价与估算价） */
   isConverted: boolean;
@@ -30,10 +39,8 @@ const DEFAULT_RATES: Record<string, number> = {
   CAD: 1.38,
 };
 
-const STORAGE_KEY = "govps_currency_mode";
-
 const CurrencyContext = createContext<CurrencyContextType>({
-  mode: "original",
+  mode: "CNY",
   setMode: () => {},
   rates: DEFAULT_RATES,
   convert: (price, currency) => ({
@@ -43,32 +50,45 @@ const CurrencyContext = createContext<CurrencyContextType>({
   }),
 });
 
-import { useAuth } from "./auth-provider";
-import { apiFetch } from "@/lib/api/client";
+function persistMode(mode: CurrencyMode) {
+  writeCurrencyCookie(mode);
+  try {
+    localStorage.setItem(CURRENCY_STORAGE_KEY, mode);
+  } catch {
+    // 忽略隐私模式下的存储异常
+  }
+}
 
 export function CurrencyProvider({
   children,
   initialRates,
+  initialMode = "CNY",
 }: {
   children: React.ReactNode;
   initialRates?: Record<string, number>;
+  initialMode?: CurrencyMode;
 }) {
   const { user } = useAuth();
-  const [mode, setModeState] = useState<CurrencyMode>("CNY");
+  const [mode, setModeState] = useState<CurrencyMode>(initialMode);
   const [rates, setRates] = useState<Record<string, number>>(initialRates || DEFAULT_RATES);
 
-  // 初始化从 localStorage 读取用户偏好（若无则默认人民币 CNY）
+  // 无 cookie 的老访客：从 localStorage 迁一次并写 cookie，之后 SSR 与展示一致
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY) as CurrencyMode | null;
-      if (stored && (stored === "original" || stored === "CNY" || stored === "USD")) {
-        setModeState(stored);
-      } else {
-        setModeState("CNY");
+      const hasCookie = document.cookie.split("; ").some((c) => c.startsWith(`${CURRENCY_COOKIE}=`));
+      const stored = localStorage.getItem(CURRENCY_STORAGE_KEY);
+      const parsed = parseCurrencyMode(stored);
+      if (!hasCookie && stored && parsed !== initialMode) {
+        setModeState(parsed);
+        persistMode(parsed);
+        return;
       }
+      persistMode(mode);
     } catch {
-      // 忽略隐私模式下的 localStorage 异常
+      // 忽略
     }
+    // 只在挂载时迁移
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 当登录用户的货币偏好加载后，以云端个人设置同步
@@ -77,12 +97,9 @@ export function CurrencyProvider({
       user?.currency_mode &&
       (user.currency_mode === "CNY" || user.currency_mode === "USD" || user.currency_mode === "original")
     ) {
-      setModeState(user.currency_mode as CurrencyMode);
-      try {
-        localStorage.setItem(STORAGE_KEY, user.currency_mode);
-      } catch {
-        // 忽略
-      }
+      const next = user.currency_mode as CurrencyMode;
+      setModeState(next);
+      persistMode(next);
     }
   }, [user?.currency_mode]);
 
@@ -106,12 +123,7 @@ export function CurrencyProvider({
 
   const setMode = (newMode: CurrencyMode) => {
     setModeState(newMode);
-    try {
-      localStorage.setItem(STORAGE_KEY, newMode);
-    } catch {
-      // 忽略
-    }
-    // 若已登录，同步写回个人数据库档案
+    persistMode(newMode);
     if (user) {
       apiFetch("/api/auth/preferences", {
         method: "PUT",

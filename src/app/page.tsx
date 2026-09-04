@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 
 import { ActiveFilterChips } from "@/components/vps/ActiveFilterChips";
@@ -9,6 +10,7 @@ import { Pagination } from "@/components/vps/Pagination";
 import { VpsCard } from "@/components/vps/VpsCard";
 import { VpsRow } from "@/components/vps/VpsRow";
 import { getEventsSummary, listMerchants, listProducts, type ProductsResponse } from "@/lib/api/endpoints";
+import { CURRENCY_COOKIE, parseCurrencyMode, priceFilterCurrency } from "@/lib/currency-mode";
 import { timeAgo } from "@/lib/format";
 import { parseListQuery } from "@/lib/query-state";
 import { ROW_ACTIONS_HEAD } from "@/lib/row-layout";
@@ -44,6 +46,8 @@ interface PageProps {
 export default async function HomePage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const state = parseListQuery(sp);
+  const cookieMode = parseCurrencyMode((await cookies()).get(CURRENCY_COOKIE)?.value);
+  const filterCurrency = state.currency || priceFilterCurrency(cookieMode);
 
   const [merchants, productResult, summary] = await Promise.all([
     listMerchants().catch(() => []),
@@ -57,7 +61,7 @@ export default async function HomePage({ searchParams }: PageProps) {
       size: state.size,
       min_price: state.min_price,
       max_price: state.max_price,
-      currency: state.currency || "CNY",
+      currency: filterCurrency,
       min_cpu: state.min_cpu,
       min_ram: state.min_ram,
       min_bw: state.min_bw,

@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 
 import type { MerchantOption } from "@/components/vps/FilterControls";
+import { useCurrency } from "@/components/currency-provider";
+import { priceFilterSymbol } from "@/lib/currency-mode";
 import { LINE_OPTIONS, type ListQueryState, withParams } from "@/lib/query-state";
 
 /**
@@ -17,6 +19,7 @@ export function ActiveFilterChips({
   merchants: MerchantOption[];
 }) {
   const router = useRouter();
+  const { mode } = useCurrency();
   const go = (patch: Partial<ListQueryState>) => {
     router.push(`/?${withParams(state, patch)}`);
   };
@@ -59,7 +62,10 @@ export function ActiveFilterChips({
     tags.push({ key: "recent_restock", label: "最新补货", remove: () => go({ recent_restock: undefined }) });
   if (state.recommended) tags.push({ key: "recommended", label: "精选推荐", remove: () => go({ recommended: undefined }) });
   if (state.min_price !== undefined || state.max_price !== undefined) {
-    const symbol = state.currency === "USD" ? "$" : "¥";
+    const symbol =
+      state.currency === "USD" || state.currency === "CNY"
+        ? priceFilterSymbol(state.currency)
+        : priceFilterSymbol(mode);
     tags.push({
       key: "price",
       label: `年付 ${symbol}${state.min_price ?? 0} - ${state.max_price ?? "∞"}`,
