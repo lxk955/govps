@@ -37,7 +37,7 @@ export function CurrencyToggle() {
           )}
         >
           <span aria-hidden className="text-xs">{current.icon}</span>
-          <span className="leading-none">{current.label}</span>
+          <span className="hidden leading-none sm:inline">{current.label}</span>
           <ChevronDown className="h-3 w-3 text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
         </button>
       </DropdownMenuTrigger>

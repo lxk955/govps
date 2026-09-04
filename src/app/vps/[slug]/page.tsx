@@ -195,8 +195,6 @@ export default async function VpsDetailPage({ params }: PageProps) {
       />
 
       <DetailCycleProvider product={p}>
-        {p.price_dropped && p.prev_price != null && null}
-
         {/* 头部信息 */}
         <div className="border-border bg-card flex flex-wrap items-start justify-between gap-4 rounded-2xl border p-6 shadow-sm">
           <div className="max-w-2xl space-y-2">

@@ -78,12 +78,8 @@ export function LoginForm({ next }: { next: string | null }) {
   };
 
   return (
-    <div className="mx-auto mt-16 w-full max-w-sm">
+    <div className="mx-auto w-full max-w-sm">
       <div className="border-border bg-card rounded-2xl border p-6 shadow-sm">
-        <h1 className="text-slate-900 text-lg font-bold dark:text-slate-100">登录 / 注册</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          邮箱验证码登录，无需密码。登录后可关注套餐并接收到货/降价邮件通知。
-        </p>
 
         {step === "email" ? (
           <form
@@ -91,7 +87,7 @@ export function LoginForm({ next }: { next: string | null }) {
               e.preventDefault();
               void requestCode();
             }}
-            className="mt-5 space-y-3"
+            className="space-y-3"
           >
             <Label htmlFor="login-email" className="sr-only">
               邮箱地址
@@ -115,7 +111,7 @@ export function LoginForm({ next }: { next: string | null }) {
             </Button>
           </form>
         ) : (
-          <form onSubmit={submitCode} className="mt-5 space-y-3">
+          <form onSubmit={submitCode} className="space-y-3">
             <p className="text-sm text-slate-500 dark:text-slate-400">
               验证码已发送至{" "}
               <b className="text-slate-700 dark:text-slate-300">{email}</b>

@@ -6,6 +6,8 @@ import { Scale, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useCompareIds } from "@/lib/compare-store";
+import { FLOAT_ABOVE_TABBAR } from "@/lib/nav";
+import { cn } from "@/lib/utils";
 
 /**
  * 对比浮动条：选中套餐后常驻底部，引导前往 /compare。
@@ -14,7 +16,7 @@ import { useCompareIds } from "@/lib/compare-store";
  * 入口，用户加入后找不到查看位置，等于功能不存在。此条在选中非空且不在
  * /compare 页时出现，提供直达链接与清空入口。
  *
- * 位置：移动端 bottom-20（让开底部导航栏），sm 以上 bottom-4 靠右下角。
+ * 位置：移动端抬到安全区 + 底栏之上，sm 以上 bottom-4 靠右下角。
  */
 export function CompareBar() {
   const { ids, ready, clear } = useCompareIds();
@@ -25,7 +27,10 @@ export function CompareBar() {
   return (
     <div
       role="status"
-      className="bg-card fixed inset-x-4 bottom-20 z-30 mx-auto flex max-w-md items-center justify-between gap-3 rounded-xl border p-3 shadow-lg sm:bottom-4 sm:left-auto sm:right-6"
+      className={cn(
+        "bg-card fixed inset-x-4 z-30 mx-auto flex max-w-md items-center justify-between gap-3 rounded-xl border p-3 shadow-lg sm:bottom-4 sm:left-auto sm:right-6",
+        FLOAT_ABOVE_TABBAR,
+      )}
     >
       <p className="min-w-0 truncate text-sm">
         <Scale aria-hidden className="mr-1.5 inline h-4 w-4 align-text-bottom" />

@@ -62,7 +62,7 @@ export function DetailBuyButton({ product }: { product: ProductDetail }) {
   return (
     <div className="flex flex-col items-end gap-2">
       <div className="flex items-center gap-3">
-        <WatchButton productId={product.id} />
+        <WatchButton productId={product.id} hydrate />
         <Button
           asChild
           className={

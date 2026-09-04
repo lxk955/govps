@@ -5,9 +5,7 @@
  */
 
 /**
- * 支持的排序值（URL 上的 ?sort=）。列表页目前没有排序 UI（与旧站一致），
- * 仅通过 URL 参数生效，因此这里只保留合法值的单一定义用于解析与类型约束，
- * 不再维护从未被渲染的 label。
+ * 支持的排序值（URL 上的 ?sort=）。与 SortSelect / 后端 VALID_SORTS 对齐。
  */
 export type SortValue = "hot" | "deal" | "popularity" | "price_asc" | "price_desc" | "updated";
 

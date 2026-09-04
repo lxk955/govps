@@ -113,7 +113,28 @@ export function ActiveFilterChips({
       ))}
       <button
         type="button"
-        onClick={() => router.push("/")}
+        onClick={() =>
+          router.push(
+            `/?${withParams(state, {
+              merchant: [],
+              location: [],
+              line: [],
+              keyword: "",
+              in_stock: undefined,
+              price_drop: undefined,
+              lowest_price: undefined,
+              recent_restock: undefined,
+              recommended: undefined,
+              min_ram: undefined,
+              min_cpu: undefined,
+              min_port: undefined,
+              min_bw: undefined,
+              min_price: undefined,
+              max_price: undefined,
+              currency: undefined,
+            })}`,
+          )
+        }
         className="ml-1 cursor-pointer text-xs font-bold text-rose-600 transition-colors hover:text-rose-700 dark:text-rose-400"
       >
         清空全部

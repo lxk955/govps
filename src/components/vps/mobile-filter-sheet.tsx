@@ -37,20 +37,27 @@ export function MobileFilterSheet({
 
   const activeCount =
     state.merchant.length +
+    state.location.length +
     state.line.length +
+    (state.keyword.trim() ? 1 : 0) +
+    (state.in_stock ? 1 : 0) +
     SPEC_KEYS.filter((k) => state[k] !== undefined).length;
 
   const clearAll = () => {
     router.push(
       `/?${withParams(state, {
         merchant: [],
+        location: [],
         line: [],
+        keyword: "",
+        in_stock: undefined,
         min_ram: undefined,
         min_cpu: undefined,
         min_port: undefined,
         min_bw: undefined,
         min_price: undefined,
         max_price: undefined,
+        currency: undefined,
       })}`,
     );
   };

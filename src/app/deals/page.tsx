@@ -237,7 +237,7 @@ export default async function DealsPage({ searchParams }: PageProps) {
                     >
                       {prod.in_stock ? "有货" : "缺货"}
                     </span>
-                    <WatchButton productId={prod.id} />
+                    <WatchButton productId={prod.id} hydrate />
                   </div>
                 </div>
               </div>

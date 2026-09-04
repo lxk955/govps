@@ -115,27 +115,33 @@ export default async function HomePage({ searchParams }: PageProps) {
       <section className="border-border bg-card min-w-0 flex-1 lg:rounded-2xl lg:border lg:p-5">
         {/* 补货/降价动态聚合条（有事件才展示） */}
         {summary && (summary.restock_count > 0 || summary.drop_count > 0) && (
-          <Link
-            href="/deals"
-            className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/90 to-indigo-50/70 px-3.5 py-2 text-xs text-slate-600 transition-all hover:border-blue-300 dark:border-blue-900 dark:from-blue-950/50 dark:to-indigo-950/40 dark:text-slate-300"
-          >
+          <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50/90 to-indigo-50/70 px-3.5 py-2 text-xs text-slate-600 dark:border-blue-900 dark:from-blue-950/50 dark:to-indigo-950/40 dark:text-slate-300">
             <span className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-100">
               📡 实时动态
             </span>
             {summary.restock_count > 0 && (
-              <span className="flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400">
+              <Link
+                href="/deals"
+                className="flex items-center gap-1 font-medium text-emerald-700 hover:underline dark:text-emerald-400"
+              >
                 ⚡ 近 24h 补货 <b className="font-black">{summary.restock_count}</b> 个
-              </span>
+              </Link>
             )}
             {summary.drop_count > 0 && (
-              <span className="flex items-center gap-1 font-medium text-orange-600 dark:text-orange-400">
+              <Link
+                href="/deals?type=PRICE_DROP"
+                className="flex items-center gap-1 font-medium text-orange-600 hover:underline dark:text-orange-400"
+              >
                 📉 降价 <b className="font-black">{summary.drop_count}</b> 个
-              </span>
+              </Link>
             )}
-            <span className="ml-auto flex items-center gap-1 font-bold text-blue-600 dark:text-blue-400">
+            <Link
+              href="/deals"
+              className="ml-auto flex items-center gap-1 font-bold text-blue-600 dark:text-blue-400"
+            >
               查看动态 →
-            </span>
-          </Link>
+            </Link>
+          </div>
         )}
 
         {/* 顶部操作区：搜索 + 视图切换 + 快捷筛选胶囊 */}

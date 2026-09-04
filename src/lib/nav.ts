@@ -27,3 +27,12 @@ export function navItemActive(pathname: string, item: NavItem): boolean {
   if (item.prefix) return pathname === item.href || pathname.startsWith(`${item.href}/`);
   return pathname === item.href;
 }
+
+/** 移动端浮动条：底栏 h-13 + 安全区 + 12px 间隙 */
+export const FLOAT_ABOVE_TABBAR =
+  "bottom-[calc(3.25rem+env(safe-area-inset-bottom,0px)+0.75rem)]";
+
+/** 再叠一条对比条时，回顶按钮再抬一截 */
+export const FLOAT_ABOVE_TABBAR_AND_BAR =
+  "bottom-[calc(3.25rem+env(safe-area-inset-bottom,0px)+5.5rem)]";
+

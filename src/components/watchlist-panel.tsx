@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { VpsCard } from "@/components/vps/VpsCard";
 import { VpsRow } from "@/components/vps/VpsRow";
 import { cn } from "@/lib/utils";
+import { FLOAT_ABOVE_TABBAR } from "@/lib/nav";
 import {
   getWatchlist,
   watchProduct,
@@ -244,7 +245,10 @@ function UndoZone({ onUndoDone }: { onUndoDone: () => Promise<void> }) {
   return (
     <div
       role="status"
-      className="bg-card fixed inset-x-4 bottom-4 z-50 mx-auto flex max-w-md items-center justify-between gap-3 rounded-xl border p-3 shadow-lg sm:left-auto sm:right-6"
+      className={cn(
+        "bg-card fixed inset-x-4 z-50 mx-auto flex max-w-md items-center justify-between gap-3 rounded-xl border p-3 shadow-lg sm:bottom-4 sm:left-auto sm:right-6",
+        FLOAT_ABOVE_TABBAR,
+      )}
     >
       <p className="min-w-0 truncate text-sm">已取消关注</p>
       <div className="flex shrink-0 items-center gap-1">

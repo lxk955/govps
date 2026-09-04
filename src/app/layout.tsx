@@ -170,7 +170,9 @@ export default async function RootLayout({
               </div>
               <div className="mb-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
                 <span>GoVPS · VPS雷达 · 库存与价格数据来自各商家官网公开页面，仅供参考</span>
-                <BookmarkDialog />
+                <span className="sm:hidden">
+                  <BookmarkDialog />
+                </span>
               </div>
               <p className="mt-1">
                 部分商家链接为推广链接，通过它们购买我们会获得佣金，你的购买价格不受任何影响，也不影响本站的数据展示与排序。
