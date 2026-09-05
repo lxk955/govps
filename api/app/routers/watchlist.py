@@ -21,12 +21,17 @@ def my_watchlist(
         .where(Watchlist.user_id == user.id)
         .order_by(Watchlist.created_at.desc())
     ).all()
-    mins = dict(
-        db.execute(
-            select(PriceSnapshot.product_id, func.min(PriceSnapshot.price)).group_by(
-                PriceSnapshot.product_id
-            )
-        ).all()
+    watched_ids = [w.product_id for w in rows]
+    mins = (
+        dict(
+            db.execute(
+                select(PriceSnapshot.product_id, func.min(PriceSnapshot.price))
+                .where(PriceSnapshot.product_id.in_(watched_ids))
+                .group_by(PriceSnapshot.product_id)
+            ).all()
+        )
+        if watched_ids
+        else {}
     )
     return [
         {

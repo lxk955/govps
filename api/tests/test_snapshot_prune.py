@@ -2,8 +2,13 @@
 
 from datetime import datetime, timedelta, timezone
 
-from app.models import Merchant, PriceSnapshot, Product, StockSnapshot
-from app.services.scan import PRICE_SNAPSHOT_KEEP_DAYS, STOCK_SNAPSHOT_KEEP_DAYS, prune_snapshots
+from app.models import Merchant, PageView, PriceSnapshot, Product, StockSnapshot
+from app.services.scan import (
+    PAGEVIEW_KEEP_DAYS,
+    PRICE_SNAPSHOT_KEEP_DAYS,
+    STOCK_SNAPSHOT_KEEP_DAYS,
+    prune_snapshots,
+)
 
 
 def test_prune_snapshots_keeps_recent_drops_old(db):
@@ -37,6 +42,12 @@ def test_prune_snapshots_keeps_recent_drops_old(db):
                 currency="USD",
                 checked_at=now - timedelta(days=PRICE_SNAPSHOT_KEEP_DAYS + 10),
             ),
+            PageView(route="/vps/[slug]", path="/vps/1-plan", created_at=now - timedelta(days=1)),
+            PageView(
+                route="/vps/[slug]",
+                path="/vps/1-plan",
+                created_at=now - timedelta(days=PAGEVIEW_KEEP_DAYS + 10),
+            ),
         ]
     )
     db.commit()
@@ -45,6 +56,8 @@ def test_prune_snapshots_keeps_recent_drops_old(db):
     db.commit()
     assert result["stock"] == 1
     assert result["price"] == 1
+    assert result["pageviews"] == 1
     assert db.query(StockSnapshot).count() == 1
     assert db.query(PriceSnapshot).count() == 1
+    assert db.query(PageView).count() == 1
     assert float(db.query(PriceSnapshot).one().price) == 9

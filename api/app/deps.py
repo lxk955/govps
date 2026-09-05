@@ -33,7 +33,9 @@ def get_optional_user(
 
 
 def verify_task_token(x_task_token: str | None = Header(default=None)) -> str:
+    import secrets
     from .config import settings
-    if x_task_token != settings.TASK_TOKEN:
+
+    if not x_task_token or not secrets.compare_digest(x_task_token, settings.TASK_TOKEN):
         raise HTTPException(status_code=403, detail="invalid task token")
     return x_task_token

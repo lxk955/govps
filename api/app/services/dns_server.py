@@ -79,16 +79,23 @@ def handle_dns_packet(data: bytes, addr: tuple[str, int]) -> bytes | None:
     client_ip = addr[0]
 
     resp = dns.message.make_response(req)
-    resp.flags |= dns.flags.AA  # Authoritative Answer
-    resp.flags |= dns.flags.RA  # Recursion Available
+    resp.flags |= dns.flags.AA  # Authoritative Answer（权威应答，禁止设置 RA 递归标志）
 
     # 1. 匹配 *.dnstest.govps.xyz 探针域名
     if qname == ZONE_DOMAIN or qname.endswith(f".{ZONE_DOMAIN}"):
-        # 记录发出查询的递归服务器 IP
-        record_hit(qname, client_ip)
+        # 记录发出查询的递归服务器 IP：若处于事件循环中则丢入线程池，避免同步 SQLite 阻塞主循环
+        try:
+            loop = asyncio.get_running_loop()
+            loop.run_in_executor(None, record_hit, qname, client_ip)
+        except RuntimeError:
+            record_hit(qname, client_ip)
 
-        if qtype in (dns.rdatatype.A, dns.rdatatype.ANY):
+        if qtype == dns.rdatatype.A:
             rr = dns.rrset.from_text(q.name, 1, dns.rdataclass.IN, dns.rdatatype.A, SERVER_IP)
+            resp.answer.append(rr)
+        elif qtype == dns.rdatatype.ANY:
+            # RFC 8482: 权威服务器对 ANY 查询返回极简 HINFO，防范 UDP 放大攻击
+            rr = dns.rrset.from_text(q.name, 1, dns.rdataclass.IN, dns.rdatatype.HINFO, '"RFC8482" ""')
             resp.answer.append(rr)
         elif qtype == dns.rdatatype.TXT:
             rr = dns.rrset.from_text(q.name, 1, dns.rdataclass.IN, dns.rdatatype.TXT, f'"{client_ip}"')
@@ -106,8 +113,11 @@ def handle_dns_packet(data: bytes, addr: tuple[str, int]) -> bytes | None:
 
     # 2. 匹配 ns1.govps.xyz 自身权威解析
     elif qname == f"ns1.{settings.SITE_DOMAIN}".lower():
-        if qtype in (dns.rdatatype.A, dns.rdatatype.ANY):
+        if qtype == dns.rdatatype.A:
             rr = dns.rrset.from_text(q.name, 300, dns.rdataclass.IN, dns.rdatatype.A, SERVER_IP)
+            resp.answer.append(rr)
+        elif qtype == dns.rdatatype.ANY:
+            rr = dns.rrset.from_text(q.name, 300, dns.rdataclass.IN, dns.rdatatype.HINFO, '"RFC8482" ""')
             resp.answer.append(rr)
 
     return resp.to_wire()

@@ -23,8 +23,6 @@ http://{$SITE_DOMAIN:govps.xyz}, http://www.{$SITE_DOMAIN:govps.xyz}, http://loc
     # 反向代理至 Next.js 容器
     reverse_proxy web:3000 {
         header_up Host {host}
-        header_up X-Real-IP {header.CF-Connecting-IP}
-        header_up X-Forwarded-For {header.CF-Connecting-IP}
         header_up X-Forwarded-Proto https
     }
 }
@@ -51,8 +49,6 @@ https://{$SITE_DOMAIN:govps.xyz}, https://www.{$SITE_DOMAIN:govps.xyz} {
     # 反向代理至 Next.js 容器
     reverse_proxy web:3000 {
         header_up Host {host}
-        header_up X-Real-IP {header.CF-Connecting-IP}
-        header_up X-Forwarded-For {header.CF-Connecting-IP}
         header_up X-Forwarded-Proto https
     }
 }

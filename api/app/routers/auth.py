@@ -110,7 +110,7 @@ def verify(payload: VerifyIn, db: Session = Depends(get_db)):
     if record.attempts >= MAX_ATTEMPTS:
         raise HTTPException(status_code=400, detail="尝试次数过多，请重新获取验证码")
 
-    if record.code != payload.code.strip():
+    if not secrets.compare_digest(record.code, payload.code.strip()):
         record.attempts += 1
         db.commit()
         raise HTTPException(status_code=400, detail="验证码错误")

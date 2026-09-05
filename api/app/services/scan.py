@@ -4,6 +4,7 @@
 由后台 worker 消费，扫描不再被邮件 RTT/失败牵连。
 """
 
+import concurrent.futures
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
@@ -18,6 +19,7 @@ from ..models import (
     ExchangeRateSnapshot,
     Merchant,
     NotifyEvent,
+    PageView,
     PriceSnapshot,
     Product,
     StockSnapshot,
@@ -26,20 +28,23 @@ from .materialize import fill_static_fields, refresh_derived_fields
 from .notify import dispatch_event
 from .rates import update_rates
 
-# 库存曲线只要近 90 天；价格快照多留一年供「史低」判断。扫描只在值变化时写入，
-# 不 prune 的话表会无限涨。
+# 库存曲线只要近 90 天；价格快照多留一年供「史低」判断；访问日志留存 90 天。
+# 扫描只在值变化时写入，不 prune 的话表会无限涨。
 STOCK_SNAPSHOT_KEEP_DAYS = 90
 PRICE_SNAPSHOT_KEEP_DAYS = 365
+PAGEVIEW_KEEP_DAYS = 90
 
 
 def prune_snapshots(db: Session) -> dict[str, int]:
-    """删除窗口外的价格/库存快照。返回删除行数。"""
+    """删除窗口外的价格/库存快照与历史访问日志。返回删除行数。"""
     now = datetime.now(timezone.utc)
     stock_cut = now - timedelta(days=STOCK_SNAPSHOT_KEEP_DAYS)
     price_cut = now - timedelta(days=PRICE_SNAPSHOT_KEEP_DAYS)
+    pv_cut = now - timedelta(days=PAGEVIEW_KEEP_DAYS)
     stock_n = db.execute(delete(StockSnapshot).where(StockSnapshot.checked_at < stock_cut)).rowcount or 0
     price_n = db.execute(delete(PriceSnapshot).where(PriceSnapshot.checked_at < price_cut)).rowcount or 0
-    return {"stock": int(stock_n), "price": int(price_n)}
+    pv_n = db.execute(delete(PageView).where(PageView.created_at < pv_cut)).rowcount or 0
+    return {"stock": int(stock_n), "price": int(price_n), "pageviews": int(pv_n)}
 
 
 def effective_interval_minutes(merchant: Merchant | None, crawler) -> int:
@@ -227,84 +232,101 @@ def maybe_update_rates(db: Session) -> dict:
 def run_scan(db: Session, force: bool = False) -> dict:
     """全量扫描入口。P7 分级调度：非 force 时仅抓取「已到期」的商家
     （now - last_success_at ≥ 抓取间隔；从未成功抓取过视为已到期）。
+    网络抓取阶段多线程并发执行（提升吞吐）；入库更新保留在主线程执行保障事务安全。
     单个商家失败不影响其他商家（AGENTS.md）。"""
     ensure_merchants(db)
     summary: dict[str, str] = {}
     changed_product_ids: set[int] = set()
 
-    with make_client(settings.SCAN_TIMEOUT) as client:
-        now = datetime.now(timezone.utc)
-        for crawler in CRAWLERS:
-            merchant = db.scalar(select(Merchant).where(Merchant.slug == crawler.slug))
-            if merchant is None or not merchant.enabled:
-                continue
-            if not force:
-                interval = effective_interval_minutes(merchant, crawler)
-                last = merchant.last_success_at
-                if last is not None:
-                    if last.tzinfo is None:
-                        last = last.replace(tzinfo=timezone.utc)
-                    if now - last < timedelta(minutes=interval):
-                        due_in = interval - (now - last).total_seconds() / 60
-                        summary[crawler.slug] = (
-                            f"skipped (not due, every {interval}min, due in {due_in:.0f}min)"
-                        )
+    due_crawlers = []
+    now = datetime.now(timezone.utc)
+    for crawler in CRAWLERS:
+        merchant = db.scalar(select(Merchant).where(Merchant.slug == crawler.slug))
+        if merchant is None or not merchant.enabled:
+            continue
+        if not force:
+            interval = effective_interval_minutes(merchant, crawler)
+            last = merchant.last_success_at
+            if last is not None:
+                if last.tzinfo is None:
+                    last = last.replace(tzinfo=timezone.utc)
+                if now - last < timedelta(minutes=interval):
+                    due_in = interval - (now - last).total_seconds() / 60
+                    summary[crawler.slug] = (
+                        f"skipped (not due, every {interval}min, due in {due_in:.0f}min)"
+                    )
+                    continue
+        due_crawlers.append((crawler, merchant))
+
+    if due_crawlers:
+        with make_client(settings.SCAN_TIMEOUT) as client:
+            def _fetch_one(c):
+                try:
+                    return c.fetch(client), None
+                except Exception as exc:
+                    return None, exc
+
+            max_workers = min(len(due_crawlers), 8)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_map = [
+                    (crawler, merchant, executor.submit(_fetch_one, crawler))
+                    for crawler, merchant in due_crawlers
+                ]
+                for crawler, merchant, fut in future_map:
+                    raws, fetch_err = fut.result()
+                    if fetch_err is not None:
+                        merchant.last_error = str(fetch_err)[:500]
+                        db.commit()
+                        summary[crawler.slug] = f"error: {fetch_err}"
                         continue
-            try:
-                raws = crawler.fetch(client)
-            except Exception as e:  # 单个商家失败不影响其他商家
-                merchant.last_error = str(e)[:500]
-                db.commit()
-                summary[crawler.slug] = f"error: {e}"
-                continue
 
-            if not raws:
-                merchant.last_error = "0 products parsed"
-                db.commit()
-                summary[crawler.slug] = "0 products (skipped)"
-                continue
+                    if not raws:
+                        merchant.last_error = "0 products parsed"
+                        db.commit()
+                        summary[crawler.slug] = "0 products (skipped)"
+                        continue
 
-            merchant.last_success_at = datetime.now(timezone.utc)
-            merchant.last_error = None
+                    merchant.last_success_at = datetime.now(timezone.utc)
+                    merchant.last_error = None
 
-            official_ids = {raw.external_id for raw in raws if not raw.from_preset}
-            event_count = 0
-            for raw in raws:
-                product, events = upsert_product(db, merchant, raw)
-                if events:
-                    changed_product_ids.add(product.id)
-                for ev in events:
-                    db.flush()  # 拿到 ev.id
-                    dispatch_event(db, ev, product)
-                    event_count += 1
+                    official_ids = {raw.external_id for raw in raws if not raw.from_preset}
+                    event_count = 0
+                    for raw in raws:
+                        product, events = upsert_product(db, merchant, raw)
+                        if events:
+                            changed_product_ids.add(product.id)
+                        for ev in events:
+                            db.flush()  # 拿到 ev.id
+                            dispatch_event(db, ev, product)
+                            event_count += 1
 
-            # 关键：如果在本次有效抓取中消失的存量商品（商家已下架/停售/缺货/过期ID），自动标记为缺货
-            # 完整性门槛只看官方实时源：预置目录条数再多也不能当作「抓全了」去把线上 SKU 标缺货
-            existing_count = db.scalar(
-                select(func.count(Product.id)).where(Product.merchant_id == merchant.id)
-            ) or 0
-            missing_products: list[Product] = []
-            if official_ids and len(official_ids) >= max(3, existing_count * 0.5):
-                missing_products = list(
-                    db.scalars(
-                        select(Product).where(
-                            Product.merchant_id == merchant.id,
-                            Product.external_id.not_in(official_ids),
-                            Product.in_stock.is_(True),
+                    # 关键：如果在本次有效抓取中消失的存量商品（商家已下架/停售/缺货/过期ID），自动标记为缺货
+                    # 完整性门槛只看官方实时源：预置目录条数再多也不能当作「抓全了」去把线上 SKU 标缺货
+                    existing_count = db.scalar(
+                        select(func.count(Product.id)).where(Product.merchant_id == merchant.id)
+                    ) or 0
+                    missing_products: list[Product] = []
+                    if official_ids and len(official_ids) >= max(3, existing_count * 0.5):
+                        missing_products = list(
+                            db.scalars(
+                                select(Product).where(
+                                    Product.merchant_id == merchant.id,
+                                    Product.external_id.not_in(official_ids),
+                                    Product.in_stock.is_(True),
+                                )
+                            ).all()
                         )
-                    ).all()
-                )
-                for mp in missing_products:
-                    mp.in_stock = False
-                    db.add(StockSnapshot(product_id=mp.id, in_stock=False))
-            else:
-                summary[crawler.slug] = (
-                    f"incomplete crawl ({len(official_ids)}/{existing_count} official), missing-mark skipped"
-                )
+                        for mp in missing_products:
+                            mp.in_stock = False
+                            db.add(StockSnapshot(product_id=mp.id, in_stock=False))
+                    else:
+                        summary[crawler.slug] = (
+                            f"incomplete crawl ({len(official_ids)}/{existing_count} official), missing-mark skipped"
+                        )
 
-            db.commit()
-            if crawler.slug not in summary:
-                summary[crawler.slug] = f"{len(raws)} products ({len(missing_products)} marked OOS), {event_count} events"
+                    db.commit()
+                    if crawler.slug not in summary:
+                        summary[crawler.slug] = f"{len(raws)} products ({len(missing_products)} marked OOS), {event_count} events"
 
     # 扫描收尾：按既有公式全量刷新评分/理由等物化列（refactor-plan §2 #1）。
     # 关注数/点击数等时变信号每扫描周期刷新一次，列表请求不再逐条实时计算。
@@ -323,11 +345,12 @@ def run_scan(db: Session, force: bool = False) -> dict:
             from .indexnow import submit_to_indexnow
 
             urls = [f"https://{settings.SITE_DOMAIN}/"]
-            for pid in changed_product_ids:
-                p = db.get(Product, pid)
-                if p:
-                    slug = slugify(p.name) or "plan"
-                    urls.append(f"https://{settings.SITE_DOMAIN}/vps/{p.id}-{slug}")
+            products = db.scalars(
+                select(Product).where(Product.id.in_(changed_product_ids))
+            ).all()
+            for p in products:
+                slug = slugify(p.name) or "plan"
+                urls.append(f"https://{settings.SITE_DOMAIN}/vps/{p.id}-{slug}")
             indexnow_result = submit_to_indexnow(urls)
         except Exception as e:
             indexnow_result = {"ok": False, "error": str(e)}
