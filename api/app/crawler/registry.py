@@ -2,6 +2,7 @@ from .bandwagon import BandwagonCrawler
 from .base import MerchantCrawler
 from .dedione import DediOneCrawler
 from .dmit import DmitCrawler
+from .evoxt import EvoxtCrawler
 from .gomami import GomamiCrawler
 from .sixsixyun import SixSixYunCrawler
 from .vmiss import VmissCrawler
@@ -17,4 +18,6 @@ CRAWLERS: list[MerchantCrawler] = [
     VmissCrawler(),
     SixSixYunCrawler(),
     GomamiCrawler(),
+    EvoxtCrawler(),
 ]
+

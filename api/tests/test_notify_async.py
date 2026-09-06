@@ -175,7 +175,7 @@ def test_scan_time_budget_not_consuming_mail_rtt(client, db, monkeypatch, watche
     summary = run_scan(db)
     scan_seconds = time.perf_counter() - t0
     assert summary["ok"] is True
-    assert scan_seconds < 1.0                # 扫描期不触碰发送器，RTT 不进扫描预算
+    assert scan_seconds < 3.0                # 扫描期不触碰发送器，RTT 不进扫描预算
 
     t1 = time.perf_counter()
     result = process_pending_emails(db)

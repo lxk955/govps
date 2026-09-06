@@ -131,6 +131,7 @@ def fetch_vpsoso_plans(client: httpx.Client, slug: str) -> list[dict]:
         "bandwagon": "https://vpsoso.com/vps/bwh",
         "dmit": "https://vpsoso.com/vps/dmit",
         "gomami": "https://vpsoso.com/vps/gomami",
+        "evoxt": "https://vpsoso.com/vps/evoxt",
     }
     url = url_map.get(slug)
     if not url:

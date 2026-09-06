@@ -11,6 +11,7 @@ persistence（upsert 幂等/悲观库存）由 test_scan_products 覆盖，此�
 """
 
 import json
+from decimal import Decimal
 from pathlib import Path
 
 import httpx
@@ -19,6 +20,7 @@ import pytest
 from app.crawler.bandwagon import BandwagonCrawler
 from app.crawler.dedione import DediOneCrawler
 from app.crawler.dmit import DmitCrawler
+from app.crawler.evoxt import EvoxtCrawler
 from app.crawler.gomami import GomamiCrawler
 from app.crawler.sixsixyun import SixSixYunCrawler
 from app.crawler.vmiss import VmissCrawler
@@ -313,4 +315,43 @@ class TestGomami:
         raws = GomamiCrawler().fetch(_mock_client([("gomami.io", 500, "oops")]))
         assert len(raws) >= 25
         assert all(p.from_preset for p in raws)
+
+
+# ── evoxt（官网 Pricing 表格，录制 fixture；支持优雅回退）──────
+
+
+class TestEvoxt:
+    def test_normal_recorded_fixture(self):
+        pricing_html = _fixture("evoxt", "pricing.html")
+        routes = [("evoxt.com/pricing", 200, pricing_html)]
+        raws = EvoxtCrawler().fetch(_mock_client(routes))
+        assert len(raws) == 33
+        by_id = {p.external_id: p for p in raws}
+        assert "1" in by_id
+        assert by_id["1"].price == Decimal("2.99")
+        assert by_id["1"].in_stock is True
+        assert by_id["1"].location == "多机房 (可迁)"
+        assert "普通BGP" in by_id["1"].line_tags
+        assert by_id["1"].cpu_cores == 1
+        assert by_id["1"].ram_gb == Decimal("0.5")
+        assert by_id["1"].disk_gb == 5
+        assert by_id["1"].bandwidth_gb == 500
+
+        # 优质网络（香港/大阪）
+        assert "hk-prem-0.5" in by_id
+        assert by_id["hk-prem-0.5"].location == "香港 / 大阪"
+        assert by_id["hk-prem-0.5"].bandwidth_gb == 250
+
+        # 马来西亚优质网络 (CTG GIA + 9929 + CMI)
+        assert "my-prem-0.5" in by_id
+        assert by_id["my-prem-0.5"].price == Decimal("3.49")
+        assert by_id["my-prem-0.5"].location == "吉隆坡"
+        assert by_id["my-prem-0.5"].bandwidth_gb == 150
+        assert set(by_id["my-prem-0.5"].line_tags) == {"CN2 GIA", "9929", "CMI"}
+
+    def test_error_offline_falls_back_to_presets(self):
+        raws = EvoxtCrawler().fetch(_mock_client([("evoxt.com", 500, "oops")]))
+        assert len(raws) == 33
+        assert all(p.from_preset for p in raws)
+
 

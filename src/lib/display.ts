@@ -87,6 +87,11 @@ function gomamiShort(name: string): string {
   return name.replace(/^[🌋⛰️🗻🔥\s]+/, "").trim() || name;
 }
 
+/** Evoxt：保留核心型号与机房标识 */
+function evoxtShort(name: string): string {
+  return name.trim() || name;
+}
+
 const RULES: Record<string, (name: string) => string> = {
   bandwagon: bandwagonShort,
   dmit: dmitShort,
@@ -94,6 +99,7 @@ const RULES: Record<string, (name: string) => string> = {
   zgocloud: zgocloudShort,
   vps: vpsShort,
   gomami: gomamiShort,
+  evoxt: evoxtShort,
 };
 
 /** 列表/卡片展示用短名称；未知商家原样返回 */

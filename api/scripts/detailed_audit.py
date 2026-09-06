@@ -25,8 +25,8 @@ def compare_plans(merchant_name, govps_raws, dvps_raws, vpszk_items, vpsoso_item
     govps_by_id = {}
     for p in govps_raws:
         pid = p.external_id
-        # 去掉如 dmit- 前缀以便对齐
-        clean_pid = re.sub(r"^[a-zA-Z0-9]+-", "", pid) if "-" in pid else pid
+        # 仅针对 DMIT 剥离 dmit- 前缀以便与聚合源对齐
+        clean_pid = re.sub(r"^dmit-", "", pid) if pid.startswith("dmit-") else pid
         govps_by_id[clean_pid] = p
 
     dvps_by_id = {}
@@ -195,6 +195,7 @@ def main():
             ("66云", "66yun", "liuliuyun", "66yun", None),
             ("ZgoCloud", "zgocloud", "zgovps", "zgo", None),
             ("GoMami", "gomami", "gomami", "gomami", "gomami"),
+            ("Evoxt", "evoxt", "evoxt", "evoxt", "evoxt"),
         ]
 
         all_results = {}

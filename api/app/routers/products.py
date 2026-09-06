@@ -574,6 +574,7 @@ def list_merchants(db: Session = Depends(get_db)):
         "vmiss": 6,
         "66yun": 7,
         "gomami": 8,
+        "evoxt": 9,
     }
 
     # 统一按聚合后唯一 SKU 卡片规则统计各商家的套餐款数与在售款数，与前端列表卡片数量严格 1:1 精确对齐

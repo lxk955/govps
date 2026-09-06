@@ -183,6 +183,8 @@ def _product_search_text(p) -> str:
         parts.append("66云 六六云 666clouds 66cloud 66")
     elif m_slug == "gomami":
         parts.append("狗妈咪 gomami gomami.io kurun 亚太专线")
+    elif m_slug == "evoxt":
+        parts.append("evoxt 易网 马来西亚高频云 高频vps 赛城 吉隆坡")
 
     # 机房/地区别名
     loc = (p.location or "").lower()
