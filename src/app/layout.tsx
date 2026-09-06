@@ -158,15 +158,13 @@ export default async function RootLayout({
             <footer className="border-border px-4 pb-24 pt-6 text-center text-xs text-slate-400 sm:pb-6 dark:text-slate-500">
               <div className="mb-2.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 font-medium text-slate-500 dark:text-slate-400">
                 <span className="text-slate-400">热门专线：</span>
-                <Link href="/routes/cn2-gia" className="hover:text-blue-600 transition-colors">电信 CN2 GIA</Link>
+                <Link href="/?line=cn2_gia" className="hover:text-blue-600 transition-colors">电信 CN2 GIA</Link>
                 <span>·</span>
-                <Link href="/routes/9929" className="hover:text-blue-600 transition-colors">联通 9929</Link>
+                <Link href="/?line=9929" className="hover:text-blue-600 transition-colors">联通 9929</Link>
                 <span>·</span>
-                <Link href="/routes/cmin2" className="hover:text-blue-600 transition-colors">移动 CMIN2</Link>
+                <Link href="/?line=cmin2" className="hover:text-blue-600 transition-colors">移动 CMIN2</Link>
                 <span>·</span>
-                <Link href="/routes/4837" className="hover:text-blue-600 transition-colors">联通 4837</Link>
-                <span>·</span>
-                <Link href="/routes" className="hover:text-blue-600 transition-colors">全部线路指南 →</Link>
+                <Link href="/?line=4837" className="hover:text-blue-600 transition-colors">联通 4837</Link>
               </div>
               <div className="mb-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
                 <span>GoVPS · VPS雷达 · 库存与价格数据来自各商家官网公开页面，仅供参考</span>

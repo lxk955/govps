@@ -3,7 +3,7 @@
 export type NavItem = {
   href: string;
   label: string;
-  /** 子路径也算当前项（/ip、/routes） */
+  /** 子路径也算当前项（/ip） */
   prefix?: boolean;
 };
 
@@ -17,8 +17,6 @@ export const MOBILE_NAV: readonly NavItem[] = [
 export const DESKTOP_NAV: readonly NavItem[] = [
   { href: "/", label: "雷达" },
   { href: "/deals", label: "动态" },
-  { href: "/routes", label: "线路专题", prefix: true },
-  { href: "/providers", label: "服务商" },
   { href: "/ip", label: "IP 工具", prefix: true },
   { href: "/watchlist", label: "我的关注" },
 ];

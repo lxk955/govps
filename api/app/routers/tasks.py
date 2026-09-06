@@ -91,12 +91,7 @@ def trigger_indexnow(
     urls = [
         f"https://{settings.SITE_DOMAIN}/",
         f"https://{settings.SITE_DOMAIN}/deals",
-        f"https://{settings.SITE_DOMAIN}/routes",
-        f"https://{settings.SITE_DOMAIN}/routes/cn2-gia",
-        f"https://{settings.SITE_DOMAIN}/routes/9929",
-        f"https://{settings.SITE_DOMAIN}/routes/cmin2",
-        f"https://{settings.SITE_DOMAIN}/routes/4837",
-        f"https://{settings.SITE_DOMAIN}/providers",
+        f"https://{settings.SITE_DOMAIN}/ip",
     ]
 
     products = db.scalars(select(Product)).all()

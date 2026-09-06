@@ -29,7 +29,6 @@ const ROUTES = [
   { name: 'vps-detail', path: '/vps/1' },
   { name: 'compare', path: '/compare?ids=1,2,3' },
   { name: 'deals', path: '/deals' },
-  { name: 'providers', path: '/providers' },
   { name: 'login', path: '/login' },
   { name: 'ip', path: '/ip' },
 ];
