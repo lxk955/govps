@@ -82,12 +82,18 @@ function vpsShort(name: string): string {
   return name.replace(/\s*[(（].*$/, "").trim() || name;
 }
 
+/** GoMami：清理 emoji 前缀 → `HKG.Turin.Mini` */
+function gomamiShort(name: string): string {
+  return name.replace(/^[🌋⛰️🗻🔥\s]+/, "").trim() || name;
+}
+
 const RULES: Record<string, (name: string) => string> = {
   bandwagon: bandwagonShort,
   dmit: dmitShort,
   dedione: dedioneShort,
   zgocloud: zgocloudShort,
   vps: vpsShort,
+  gomami: gomamiShort,
 };
 
 /** 列表/卡片展示用短名称；未知商家原样返回 */

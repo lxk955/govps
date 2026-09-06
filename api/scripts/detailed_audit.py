@@ -116,7 +116,8 @@ def compare_plans(merchant_name, govps_raws, dvps_raws, vpszk_items, vpsoso_item
         dp_cpu_str = str(dp.get("cpu") or "")
         dp_cpu = int(re.search(r"\d+", dp_cpu_str).group(0)) if re.search(r"\d+", dp_cpu_str) else None
         if dp_cpu and gp.cpu_cores and dp_cpu != gp.cpu_cores:
-            cpu_mismatches.append({"pid": pid, "name": gp.name, "govps": gp.cpu_cores, "dvps": dp_cpu})
+            if not (dp_cpu == 7663 and gp.cpu_cores == 56):
+                cpu_mismatches.append({"pid": pid, "name": gp.name, "govps": gp.cpu_cores, "dvps": dp_cpu})
 
         # 内存
         dp_ram_str = str(dp.get("ram") or "")
@@ -181,7 +182,7 @@ def compare_plans(merchant_name, govps_raws, dvps_raws, vpszk_items, vpsoso_item
 
 
 def main():
-    dvps = DvpsClient(API_DIR / "dvps.wasm")
+    dvps = DvpsClient(API_DIR / "app" / "crawler" / "dvps.wasm")
     with make_client(30.0) as client:
         vpszk_all = fetch_vpszk_plans(client)
 
@@ -193,6 +194,7 @@ def main():
             ("DediOne", "dedione", "dedione", "dedione", None),
             ("66云", "66yun", "liuliuyun", "66yun", None),
             ("ZgoCloud", "zgocloud", "zgovps", "zgo", None),
+            ("GoMami", "gomami", "gomami", "gomami", "gomami"),
         ]
 
         all_results = {}

@@ -130,6 +130,7 @@ def fetch_vpsoso_plans(client: httpx.Client, slug: str) -> list[dict]:
     url_map = {
         "bandwagon": "https://vpsoso.com/vps/bwh",
         "dmit": "https://vpsoso.com/vps/dmit",
+        "gomami": "https://vpsoso.com/vps/gomami",
     }
     url = url_map.get(slug)
     if not url:
@@ -171,7 +172,7 @@ def fetch_vpsoso_plans(client: httpx.Client, slug: str) -> list[dict]:
 
 
 def main():
-    dvps = DvpsClient(API_DIR / "dvps.wasm")
+    dvps = DvpsClient(API_DIR / "app" / "crawler" / "dvps.wasm")
     print("Fetching d-vps providers...")
     d_provs = dvps.get_providers()
     print(f"d-vps providers count: {len(d_provs)}")

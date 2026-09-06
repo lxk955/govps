@@ -125,8 +125,8 @@ class DvpsSource:
             offset = ptr
             ctypes.memmove(mem_addr + offset, seed_bytes, len(seed_bytes))
             offset += len(seed_bytes)
-            ctypes.memmove(mem_addr + offset, self._fp_bytes, len(self._fp_bytes))
-            offset += len(self._fp_bytes)
+            ctypes.memmove(mem_addr + offset, _FP_BYTES, len(_FP_BYTES))
+            offset += len(_FP_BYTES)
             ctypes.memmove(mem_addr + offset, ts_bytes, len(ts_bytes))
             offset += len(ts_bytes)
             ctypes.memmove(mem_addr + offset, path_bytes, len(path_bytes))
@@ -134,7 +134,7 @@ class DvpsSource:
             res_len = self._sign(
                 self._store,
                 len(seed_bytes),
-                len(self._fp_bytes),
+                len(_FP_BYTES),
                 len(ts_bytes),
                 len(path_bytes),
                 pow_bits,
@@ -146,7 +146,7 @@ class DvpsSource:
             headers = {
                 "X-VP-CH": ch_id,
                 "X-VP-TS": ts_str,
-                "X-VP-FP": self._fp_header,
+                "X-VP-FP": _FP_HEADER,
                 "X-VP-PN": nonce_hex,
                 "X-VP-SG": sig_hex,
             }
@@ -158,17 +158,17 @@ class DvpsSource:
             if resp.headers.get("X-VP-ENC") == "1":
                 raw_enc = resp.content
                 ctypes.memmove(mem_addr + ptr, seed_bytes, len(seed_bytes))
-                ctypes.memmove(mem_addr + ptr + len(seed_bytes), self._fp_bytes, len(self._fp_bytes))
+                ctypes.memmove(mem_addr + ptr + len(seed_bytes), _FP_BYTES, len(_FP_BYTES))
                 ctypes.memmove(
-                    mem_addr + ptr + len(seed_bytes) + len(self._fp_bytes),
+                    mem_addr + ptr + len(seed_bytes) + len(_FP_BYTES),
                     raw_enc,
                     len(raw_enc),
                 )
                 dec_len = self._resp_decrypt(
-                    self._store, len(seed_bytes), len(self._fp_bytes), len(raw_enc)
+                    self._store, len(seed_bytes), len(_FP_BYTES), len(raw_enc)
                 )
                 dec_bytes = ctypes.string_at(
-                    mem_addr + ptr + len(seed_bytes) + len(self._fp_bytes), dec_len
+                    mem_addr + ptr + len(seed_bytes) + len(_FP_BYTES), dec_len
                 )
                 data = json.loads(dec_bytes.decode("utf-8"))
             else:

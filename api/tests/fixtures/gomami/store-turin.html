@@ -1,0 +1,1239 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Shopping Cart - GoMami Networks, LLC</title>
+    <link href="/templates/webflow/images/favicon.png" rel="shortcut icon" type="image/x-icon">
+    <link href="/templates/webflow/images/webclip.png" rel="apple-touch-icon">
+    <!-- Styling -->
+<link href="/assets/fonts/css/open-sans-family.css" rel="stylesheet" type="text/css" />
+<link href="/templates/twenty-one/css/all.min.css?v=1bcb5b2" rel="stylesheet">
+<link href="/templates/twenty-one/css/theme.min.css?v=1bcb5b2" rel="stylesheet">
+<link href="/assets/css/fontawesome-all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+   body {
+        font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #f5f5f5;
+        color: #333;
+        line-height: 1.5;
+    }
+   header { background-color: #f5f4f1 !important;}
+   .master-breadcrumb { background-color: white !important; }
+   .breadcrumb { background-color: white !important; }
+   .breadcrumb-item.active { color: #444 !important; }
+   .product { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); transition: transform 0.3s, box-shadow 0.3s; }
+   .product:hover { transform: translateY(-5px); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); }
+   .btn-success { background-color: #ff592c!important; border-color: #ff592c!important; }
+   .btn-success:hover { background-color: #ff3600!important; border-color: #ff592c !important; }
+   .btn-success:focus { box-shadow: 0 0 0 .2rem rgb(255 108 108 / 50%) !important; }
+   .footer.footer { background-color: white!important; color: #444 !important; }
+   footer.footer .nav-link { color: #444 !important; }
+   footer.footer .container .list-inline .list-inline-item button { color: #444 !important; }
+   .badge-info { background-color: #ff592c!important; }
+   .banner { margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); transition: transform 0.3s, box-shadow 0.3s; }
+   .status-active, .status-completed, .status-open { background-color: #ff592c!important; }
+   .popover-user-notifications ul li i.far.fa-check-circle, .popover-user-notifications ul li i.fas.fa-check-circle { color: #ff592c!important; }
+   .tiles .tile .highlight { height: 0px!important; }
+   .col-6:first-child a { color: #ff592c!important; }
+   a { color: #444; }
+   .bg-color-gold { background-color: #f5f4f1; }
+   .client-home-cards .card-header .btn { color:#444; }
+   .card-accent-gold { border-top: 2px solid #ff592c; }
+   .card-accent-red { border-top: 0px; }
+   .card-accent-blue { border-top: 0px; }
+   .card-accent-teal { border-top: 0px; }
+   .card-accent-asbestos { border-top: 0px; }
+   .status-paid { background-color: #ff592c!important; }
+   .btn-primary { background-color: #ff592c!important; border-color: #ff3600; }
+   .btn-primary:hover { background-color: #ff592c!important; border-color: #ff3600; }
+   .status-fraud { margin-left: 6px; background-color: #f5f4f1; color: #444; }
+</style>
+<script>
+    var csrfToken = '166b9151a2934a77a7a73f6324f1dd571ed66334',
+        markdownGuide = 'Markdown Guide',
+        locale = 'en',
+        saved = 'saved',
+        saving = 'autosaving',
+        whmcsBaseUrl = "";
+    </script>
+<script src="/templates/twenty-one/js/scripts.min.js?v=bcb5b2"></script>
+
+    
+</head>
+<body class="primary-bg-color" data-phone-cc-input="1">
+        
+    <style>
+.navbar-logo {
+  display: inline-block;
+}
+
+.logo-img-left {
+  /* 关键：移出时的过渡效果，设为 1秒 */
+  transition: transform 1s ease-out;
+  transform: rotate(0deg);
+}
+
+.navbar-logo:hover .logo-img-left {
+  /* 移入时旋转 360 度 */
+  transform: rotate(360deg);
+  /* 确保移入和移出的速度感一致 */
+  transition: transform 1s ease-out;
+}
+
+/* 重点：处理点击 active 状态，防止点击时重置 */
+.navbar-logo:active .logo-img-left {
+  transform: rotate(360deg);
+  transition: none; /* 点击瞬间不重置过渡 */
+}
+    </style>
+    <header id="header" class="header">
+        
+        <div class="navbar navbar-light">
+            <div class="container">
+                <a class="navbar-brand mr-3 navbar-logo" href="/index.php">
+                                            <img src="/templates/webflow/images/onlyleft.svg" alt="GoMami Networks, LLC" class="logo-img-left">
+                        <img src="/templates/webflow/images/GoMami.svg?v=26021403" alt="GoMami Networks, LLC" class="logo-img">
+                                    </a>
+
+                <form method="post" action="/knowledgebase/search" class="form-inline ml-auto">
+<input type="hidden" name="token" value="166b9151a2934a77a7a73f6324f1dd571ed66334" />
+                    <div class="input-group search d-none d-xl-flex">
+                        <div class="input-group-prepend">
+                            <button class="btn btn-default" type="submit">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <input class="form-control appended-form-control font-weight-light" type="text" name="search" placeholder="Search our knowledgebase...">
+                    </div>
+                </form>
+
+                <ul class="navbar-nav toolbar">
+                    <li class="nav-item ml-3">
+                        <a class="btn nav-link cart-btn" href="/cart.php?a=view">
+                            <i class="far fa-shopping-cart fa-fw"></i>
+                            <span id="cartItemCount" class="badge badge-info">0</span>
+                            <span class="sr-only">Shopping Cart</span>
+                        </a>
+                    </li>
+                    <li class="nav-item ml-3 d-xl-none">
+                        <button class="btn nav-link" type="button" data-toggle="collapse" data-target="#mainNavbar">
+                            <span class="fas fa-bars fa-fw"></span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="navbar navbar-expand-xl main-navbar-wrapper">
+            <div class="container">
+                <div class="collapse navbar-collapse" id="mainNavbar">
+                    <form method="post" action="/knowledgebase/search" class="d-xl-none">
+<input type="hidden" name="token" value="166b9151a2934a77a7a73f6324f1dd571ed66334" />
+                        <div class="input-group search w-100 mb-2">
+                            <div class="input-group-prepend">
+                                <button class="btn btn-default" type="submit">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                            <input class="form-control prepended-form-control" type="text" name="search" placeholder="Search our knowledgebase...">
+                        </div>
+                    </form>
+                    <ul id="nav" class="navbar-nav mr-auto">
+                            <li menuItemName="Home" class="d-block no-collapse" id="Primary_Navbar-Home">
+        <a class="pr-4" href="/index.php">
+                        Home
+                    </a>
+            </li>
+    <li menuItemName="Store" class="d-block dropdown no-collapse" id="Primary_Navbar-Store">
+        <a class="pr-4 dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" href="#">
+                        Store
+                    </a>
+                    <ul class="dropdown-menu">
+                                                <li menuItemName="Browse Products Services" class="dropdown-item" id="Primary_Navbar-Store-Browse_Products_Services">
+                        <a href="/store" class="dropdown-item px-2 py-0">
+                                                        Browse All
+                                                    </a>
+                    </li>
+                                                                <div class="dropdown-divider"></div>
+                                                                <li menuItemName="🌋 GoMami HKG Turin" class="dropdown-item" id="Primary_Navbar-Store-🌋_GoMami_HKG_Turin">
+                        <a href="/store/hkg-turin" class="dropdown-item px-2 py-0">
+                                                        🌋 GoMami HKG Turin
+                                                    </a>
+                    </li>
+                                                                <li menuItemName="🗻GoMami HKG Pulse" class="dropdown-item" id="Primary_Navbar-Store-🗻GoMami_HKG_Pulse">
+                        <a href="/store/hkg-pulse" class="dropdown-item px-2 py-0">
+                                                        🗻GoMami HKG Pulse
+                                                    </a>
+                    </li>
+                                                                <li menuItemName="⛰️ GoMami HKG Forge" class="dropdown-item" id="Primary_Navbar-Store-⛰️_GoMami_HKG_Forge">
+                        <a href="/store/hkg-forge" class="dropdown-item px-2 py-0">
+                                                        ⛰️ GoMami HKG Forge
+                                                    </a>
+                    </li>
+                                                                <li menuItemName="🗻GoMami JPN Pulse" class="dropdown-item" id="Primary_Navbar-Store-🗻GoMami_JPN_Pulse">
+                        <a href="/store/jpn-pulse" class="dropdown-item px-2 py-0">
+                                                        🗻GoMami JPN Pulse
+                                                    </a>
+                    </li>
+                                                                <li menuItemName="🗻GoMami SIN Pulse" class="dropdown-item" id="Primary_Navbar-Store-🗻GoMami_SIN_Pulse">
+                        <a href="/store/sin-pulse" class="dropdown-item px-2 py-0">
+                                                        🗻GoMami SIN Pulse
+                                                    </a>
+                    </li>
+                                                                <li menuItemName="🗻GoMami LAX Pulse" class="dropdown-item" id="Primary_Navbar-Store-🗻GoMami_LAX_Pulse">
+                        <a href="/store/lax-pulse" class="dropdown-item px-2 py-0">
+                                                        🗻GoMami LAX Pulse
+                                                    </a>
+                    </li>
+                                        </ul>
+            </li>
+    <li menuItemName="Announcements" class="d-block" id="Primary_Navbar-Announcements">
+        <a class="pr-4" href="/announcements">
+                        Announcements
+                    </a>
+            </li>
+    <li menuItemName="Knowledgebase" class="d-block" id="Primary_Navbar-Knowledgebase">
+        <a class="pr-4" href="/knowledgebase">
+                        Knowledgebase
+                    </a>
+            </li>
+    <li menuItemName="Network Status" class="d-block" id="Primary_Navbar-Network_Status">
+        <a class="pr-4" href="/serverstatus.php">
+                        Network Status
+                    </a>
+            </li>
+    <li menuItemName="Affiliates" class="d-block" id="Primary_Navbar-Affiliates">
+        <a class="pr-4" href="/affiliates.php">
+                        Affiliates
+                    </a>
+            </li>
+    <li menuItemName="Contact Us" class="d-block" id="Primary_Navbar-Contact_Us">
+        <a class="pr-4" href="/contact.php">
+                        Contact Us
+                    </a>
+            </li>
+    <li class="d-none dropdown collapsable-dropdown">
+        <a class="dropdown-toggle" href="#" id="navbarDropdownMenu" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            More
+        </a>
+        <ul class="collapsable-dropdown-menu dropdown-menu" aria-labelledby="navbarDropdownMenu">
+        </ul>
+    </li>
+                    </ul>
+                    <ul class="navbar-nav ml-auto">
+                            <li menuItemName="Account" class="d-block no-collapse dropdown no-collapse" id="Secondary_Navbar-Account">
+        <a class=" dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" href="#">
+                        Account
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-right">
+                                                <li menuItemName="Login" class="dropdown-item" id="Secondary_Navbar-Account-Login">
+                        <a href="/clientarea.php" class="dropdown-item px-2 py-0">
+                                                        Login
+                                                    </a>
+                    </li>
+                                                                <li menuItemName="Register" class="dropdown-item" id="Secondary_Navbar-Account-Register">
+                        <a href="/register.php" class="dropdown-item px-2 py-0">
+                                                        Register
+                                                    </a>
+                    </li>
+                                                                <div class="dropdown-divider"></div>
+                                                                <li menuItemName="Forgot Password?" class="dropdown-item" id="Secondary_Navbar-Account-Forgot_Password?">
+                        <a href="/password/reset" class="dropdown-item px-2 py-0">
+                                                        Forgot Password?
+                                                    </a>
+                    </li>
+                                        </ul>
+            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    
+    <nav class="master-breadcrumb" aria-label="breadcrumb">
+        <div class="container">
+            <ol class="breadcrumb">
+            <li class="breadcrumb-item active" aria-current="page">
+                        Shopping Cart
+                    </li>
+                <div>
+            <a href="https://lg.gomami.io" class="btn btn-success btn-sm btn-order-now" id="product14-order-button">
+            <i class="fad fa-glasses"></i>
+                Look Glass
+            </a>
+            <!--
+            <a href="/store/onestep" class="btn btn-success btn-sm btn-order-now" id="product14-order-button">
+            <i class="fas fa-fighter-jet"></i>
+                One Step Mode
+                -->
+            </a>
+        </div>
+                    </ol>
+<style>
+.breadcrumb {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.lookglass {
+    background: white !important;
+    margin-right: 6px;
+    color: #ff592c;
+}
+</style>
+        </div>
+    </nav>
+
+        
+    
+    <section id="main-body">
+        <div class="container">
+            <div class="row">
+
+                        <div class="col-12 primary-content">
+
+
+
+<link rel="stylesheet" type="text/css" href="/templates/orderforms/standard_cart-use/css/all.min.css?v=bcb5b2" />
+<script type="text/javascript" src="/templates/orderforms/standard_cart-use/js/scripts.min.js?v=bcb5b2"></script><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Noto+Sans+SC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+        .gmm-banner-section {
+            font-family: 'Outfit', sans-serif;
+            max-width: 900px;
+            margin: 0 auto 20px;
+        }
+
+        .gmm-banner-label {
+            color: #999;
+            font-size: 12px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .gmm-banner {
+            background: linear-gradient(135deg, #ff592c 0%, #e04520 100%);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            min-height: 150px;
+        }
+
+        .gmm-banner::before {
+            content: '';
+            position: absolute;
+            right: -50px;
+            top: -50px;
+            width: 250px;
+            height: 250px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+
+        .gmm-banner .content {
+            flex: 1;
+            padding: 24px 28px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .gmm-banner .title-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .gmm-banner .icon {
+            font-size: 28px;
+        }
+
+        .gmm-banner .title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .gmm-banner .tagline {
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 14px;
+        }
+
+        .gmm-banner .specs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .gmm-banner .cpu-tag {
+            background: rgba(0,0,0,0.2);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .gmm-banner .route-tag {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .gmm-banner .image-area {
+            width: 260px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 1;
+        }
+
+#order-standard_cart .products .product {
+    border-radius: 12px !important;
+    overflow: hidden;
+}
+#order-standard_cart .products .product header {
+    background: white !important;
+}
+
+.btn-success {
+    border-radius: 8px;
+}
+    </style>
+<div id="order-standard_cart">
+    <div class="row">
+        <div class="cart-sidebar sidebar">
+            
+
+<style>
+
+        .gmm-sidebar-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .gmm-sidebar-label {
+            color: #999;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .gmm-sidebar {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+            padding: 12px;
+        }
+
+        .gmm-sidebar .region-group {
+            margin-bottom: 8px;
+        }
+
+        .gmm-sidebar .region-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #222;
+        }
+
+        .gmm-sidebar .region-header .flag {
+            font-size: 16px;
+        }
+
+        .gmm-sidebar .region-header .badge {
+            margin-left: auto;
+            background: #ff592c;
+            color: white;
+            font-size: 9px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .gmm-sidebar .menu-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .gmm-sidebar .menu-item {
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #444;
+            font-size: 14px;
+            background: #f8f8f8;
+        }
+
+        .gmm-sidebar .menu-item:hover {
+            background: #f0f0f0;
+        }
+
+        .gmm-sidebar .menu-item.active {
+            background: linear-gradient(135deg, #ff592c 0%, #ff7849 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(255,89,44,0.3);
+        }
+
+        .gmm-sidebar .menu-item .icon {
+            font-size: 15px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .gmm-sidebar .service-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+        }
+
+        .gmm-sidebar .service-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .gmm-sidebar .service-header .new-badge {
+            background: linear-gradient(135deg, #10b981, #34d399);
+            color: white;
+            font-size: 9px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .gmm-sidebar .service-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .gmm-sidebar .service-item {
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 8px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            color: #666;
+            font-size: 10px;
+            background: #f8f8f8;
+        }
+
+        .gmm-sidebar .service-item:hover {
+            background: #fff5f3;
+            color: #ff592c;
+        }
+
+        .gmm-sidebar .service-item .icon {
+            font-size: 18px;
+            color: #999;
+        }
+
+        .gmm-sidebar .service-item:hover .icon {
+            color: #ff592c;
+        }
+
+    </style>
+    <div class="gmm-sidebar-container">
+        <div class="gmm-sidebar">
+            <div class="region-group">
+                <div class="region-header">
+                    <span class="flag">🇭🇰</span>
+                    HONG KONG
+                    <span class="badge">Updated</span>
+                </div>
+                <div class="menu-grid">
+                    <a class="menu-item active" href="/store/hkg-turin">
+                        <span class="icon">🌋</span>
+                        GoMami HKG Turin
+                    </a>
+                                        <a class="menu-item " href="/store/hkg-pulse">
+                        <span class="icon">🗻</span>
+                        GoMami HKG Pulse
+                    </a>
+                    <a class="menu-item " href="/store/hkg-forge">
+                        <span class="icon">🔥</span>
+                        GoMami HKG Forge
+                    </a>
+                </div>
+            </div>
+            <div class="region-group">
+                <div class="region-header">
+                    <span class="flag">🇯🇵</span>
+                    JAPAN
+                </div>
+                <div class="menu-grid">
+                    <a class="menu-item " href="/store/jpn-pulse">
+                        <span class="icon">🗻</span>
+                        GoMami JPN Pulse
+                    </a>
+                </div>
+            </div>
+            <div class="region-group">
+                <div class="region-header">
+                    <span class="flag">🇸🇬</span>
+                    SINGAPORE
+                </div>
+                <div class="menu-grid">
+                    <a class="menu-item " href="/store/sin-pulse">
+                        <span class="icon">🗻</span>
+                        GoMami SIN Pulse
+                    </a>
+                </div>
+            </div>
+            <div class="region-group">
+                <div class="region-header">
+                    <span class="flag">🇺🇸</span>
+                    UNITED STATES
+                </div>
+                <div class="menu-grid">
+                    <a class="menu-item " href="/store/lax-pulse">
+                        <span class="icon">🗻</span>
+                        GoMami LAX Pulse
+                    </a>
+                </div>
+            </div>
+            <div class="service-section">
+                <div class="service-header">
+                    SELF-SERVICE
+                    <span class="new-badge">new</span>
+                </div>
+                <div class="service-grid">
+                    <a class="service-item" href="/changeip">
+                        <span class="icon">🔄</span>
+                        IP Change
+                    </a>
+                    <a class="service-item" href="/buytraffic">
+                        <span class="icon">📊</span>
+                        Traffic
+                    </a>
+                    <a class="service-item" href="/pushservice">
+                        <span class="icon">📤</span>
+                        Push
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        </div>
+        <div class="cart-body">
+                                    <div class="sidebar-collapsed">
+                <div class="panel card panel-default">
+                <div class="m-0 panel-heading card-header">
+        <h3 class="panel-title">
+                            <i class="fas fa-shopping-cart"></i>&nbsp;
+            
+            Please select a plan
+
+                    </h3>
+    </div>
+
+    <div class="panel-body card-body">
+        <form role="form">
+            <select class="form-control custom-select" onchange="selectChangeNavigate(this)">
+                                                    <option menuItemName="🌋 GoMami HKG Turin" value="/store/hkg-turin" class="list-group-item" selected="selected">
+                        🌋 GoMami HKG Turin
+
+                                            </option>
+                                                                                                    <option menuItemName="🗻GoMami HKG Pulse" value="/store/hkg-pulse" class="list-group-item" >
+                        🗻GoMami HKG Pulse
+
+                                            </option>
+                                                        <option menuItemName="⛰️ GoMami HKG Forge" value="/store/hkg-forge" class="list-group-item" >
+                        ⛰️ GoMami HKG Forge
+
+                                            </option>
+                                                        <option menuItemName="🗻GoMami JPN Pulse" value="/store/jpn-pulse" class="list-group-item" >
+                        🗻GoMami JPN Pulse
+
+                                            </option>
+                                                        <option menuItemName="🗻GoMami SIN Pulse" value="/store/sin-pulse" class="list-group-item" >
+                        🗻GoMami SIN Pulse
+
+                                            </option>
+                                                        <option menuItemName="🗻GoMami LAX Pulse" value="/store/lax-pulse" class="list-group-item" >
+                        🗻GoMami LAX Pulse
+
+                                            </option>
+                                                                </select>
+        </form>
+    </div>
+
+            </div>
+                
+        
+
+</div>
+<style>
+.primary-content .card, .primary-content .mc-promo-login, .primary-content .mc-promo-manage {
+    overflow: hidden;
+    border-radius: 12px;
+}
+
+.card-header:first-child {
+    background: white;
+}
+
+#order-standard_cart .sidebar-collapsed {
+    padding: 0px;
+}
+</style>            
+                        
+                        
+                        
+                        
+                        <div class="gmm-banner-section">
+                <div class="gmm-banner">
+                    <div class="content">
+                        <div class="title-row">
+                            <span class="icon">🌋</span>
+                            <h1 class="title">GoMami HKG Turin</h1>
+                        </div>
+                        <p class="tagline">Only GoMami can do.</p>
+                        <div class="specs">
+                            <span class="cpu-tag">AMD EPYC™ 9575F · 5GHz</span>
+                            <span class="route-tag">CN2</span>
+                            <span class="route-tag">9929</span>
+                            <span class="route-tag">CMIN2</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                        
+                        
+            
+            <div class="products" id="products">
+                <div class="row row-eq-height">
+                                                                <div class="col-md-6">
+                        <div class="product clearfix" id="product14">
+                            <header>
+                                <span id="product14-name">🌋HKG.Turin.Mini</span>
+                                <span class="qty">
+                                                                <img src="https://gomami.io/assets/img/aws.svg" style="width: 25px;height: 25px; border-radius: 100%;padding: 2px;background: #fff;" data-toggle="tooltip" data-placement="left" title="Auto Daily Backup to AWS S3">
+                                                                </span>
+                            </header>
+                            <div class="product-desc">
+                                                                    <p id="product14-description">
+                                        <strong>2x </strong> vCPUs<br />
+<strong>4GB </strong>Memory<br />
+<strong>100GB </strong> NVME SSD<br />
+<strong>1000GB </strong> Traffic<br />
+<strong>2Gbps </strong> VirtIO Port<br />
+<strong>China Mainland Optimized Pro</strong><br />
+
+                                    </p>
+                                                                <ul>
+                                                                    </ul>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product14-price">
+                                                                                                                    <span class="price">$69.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/store/hkg-turin/hkgturinmini" class="btn btn-success btn-sm btn-order-now" id="product14-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product15">
+                            <header>
+                                <span id="product15-name">🌋HKG.Turin.Air</span>
+                                <span class="qty">
+                                                                <img src="https://gomami.io/assets/img/aws.svg" style="width: 25px;height: 25px; border-radius: 100%;padding: 2px;background: #fff;" data-toggle="tooltip" data-placement="left" title="Auto Daily Backup to AWS S3">
+                                                                </span>
+                            </header>
+                            <div class="product-desc">
+                                                                    <p id="product15-description">
+                                        <strong>4x </strong> vCPUs<br />
+<strong>8GB </strong>Memory<br />
+<strong>140GB </strong> NVME SSD<br />
+<strong>2000GB </strong> Traffic<br />
+<strong>2Gbps </strong> VirtIO Port<br />
+<strong>China Mainland Optimized Pro</strong><br />
+
+                                    </p>
+                                                                <ul>
+                                                                    </ul>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product15-price">
+                                                                                                                    <span class="price">$129.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/store/hkg-turin/hkgturinair" class="btn btn-success btn-sm btn-order-now" id="product15-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                    </div>
+                <div class="row row-eq-height">
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product16">
+                            <header>
+                                <span id="product16-name">🌋HKG.Turin.Pro</span>
+                                <span class="qty">
+                                                                <img src="https://gomami.io/assets/img/aws.svg" style="width: 25px;height: 25px; border-radius: 100%;padding: 2px;background: #fff;" data-toggle="tooltip" data-placement="left" title="Auto Daily Backup to AWS S3">
+                                                                </span>
+                            </header>
+                            <div class="product-desc">
+                                                                    <p id="product16-description">
+                                        <strong>6x </strong> vCPUs<br />
+<strong>16GB </strong>Memory<br />
+<strong>180GB </strong> NVME SSD<br />
+<strong>5000GB </strong> Traffic<br />
+<strong>5Gbps </strong> VirtIO Port<br />
+<strong>Windows-ready ⊞</strong><br />
+<strong>China Mainland Optimized Pro</strong><br />
+
+                                    </p>
+                                                                <ul>
+                                                                    </ul>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product16-price">
+                                                                                                                    <span class="price">$299.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/store/hkg-turin/hkgturinpro" class="btn btn-success btn-sm btn-order-now" id="product16-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product22">
+                            <header>
+                                <span id="product22-name">🌋HKG.Turin.Ultra</span>
+                                <span class="qty">
+                                                                <img src="https://gomami.io/assets/img/aws.svg" style="width: 25px;height: 25px; border-radius: 100%;padding: 2px;background: #fff;" data-toggle="tooltip" data-placement="left" title="Auto Daily Backup to AWS S3">
+                                                                </span>
+                            </header>
+                            <div class="product-desc">
+                                                                    <p id="product22-description">
+                                        <strong>12x </strong> vCPUs<br />
+<strong>32GB </strong>Memory<br />
+<strong>220GB </strong> NVME SSD<br />
+<strong>10000GB </strong> Traffic<br />
+<strong>5Gbps </strong> VirtIO Port<br />
+<strong>Windows-ready ⊞</strong><br />
+<strong>China Mainland Optimized Pro</strong><br />
+
+                                    </p>
+                                                                <ul>
+                                                                    </ul>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product22-price">
+                                                                                                                    <span class="price">$599.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/store/hkg-turin/hkgturinultra" class="btn btn-success btn-sm btn-order-now" id="product22-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                    </div>
+                <div class="row row-eq-height">
+                                                        </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="recommendationsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="float-left pull-left">
+                                            Added to Cart
+                                    </h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <div class="clearfix"></div>
+            </div>
+            <div class="modal-body">
+                <div class="product-recommendations-container">
+    <div class="product-recommendations">
+                    <p>Based on this product, we recommend:</p>
+                    </div>
+</div>
+            </div>
+            <div class="modal-footer">
+                <a class="btn btn-primary" href="#" id="btnContinueRecommendationsModal" data-dismiss="modal" role="button">
+                    <span class="w-hidden hidden"><i class="fas fa-spinner fa-spin"></i>&nbsp;</span>Continue
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="product-recommendation clonable w-hidden hidden">
+        <div class="header">
+            <div class="cta">
+                <div class="price">
+                    <span class="w-hidden hidden">FREE!</span>
+                    <span class="breakdown-price"></span>
+                    <span class="setup-fee"><small>&nbsp;Setup Fee</small></span>
+                </div>
+                <button type="button" class="btn btn-sm btn-add">
+                    <span class="text">Add to Cart</span>
+                    <span class="arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+            </div>
+            <div class="expander">
+                <i class="fas fa-chevron-right rotate" data-toggle="tooltip" data-placement="right" title="Click to learn more."></i>
+            </div>
+            <div class="content">
+                <div class="headline truncate"></div>
+                <div class="tagline truncate">
+                    A description (tagline) is not available for this product.
+                </div>
+            </div>
+        </div>
+        <div class="body clearfix"><p></p></div>
+    </div>
+</div>
+
+
+                    </div>
+
+                    </div>
+                                    <div class="clearfix"></div>
+            </div>
+        </div>
+    </section>
+
+    <footer id="footer" class="footer">
+        <div class="container">
+            <ul class="list-inline mb-7 text-center float-lg-right">
+                
+                                    <li class="list-inline-item">
+                        <button type="button" class="btn" data-toggle="modal" data-target="#modalChooseLanguage">
+                            <div class="d-inline-block align-middle">
+                                <div class="iti-flag us"></div>
+                            </div>
+                            English
+                            /
+                            $
+                            USD
+                        </button>
+                    </li>
+                            </ul>
+
+            <ul class="nav justify-content-center justify-content-lg-start mb-7">
+                <li class="nav-item">
+                    <a class="nav-link" href="/contact.php">
+                        Contact Us
+                    </a>
+                </li>
+                                    <li class="nav-item">
+                        <a class="nav-link" href="https://gomami.io/knowledgebase/3/Terms-of-Service.html" target="_blank">Terms of Service</a>
+                    </li>
+                            </ul>
+
+            <p class="copyright mb-0">
+                Copyright &copy; 2026 GoMami Networks, LLC. All Rights Reserved.
+            </p>
+        </div>
+    </footer>
+
+    <div id="fullpage-overlay" class="w-hidden">
+        <div class="outer-wrapper">
+            <div class="inner-wrapper">
+                <img src="/assets/img/overlay-spinner.svg" alt="">
+                <br>
+                <span class="msg"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal system-modal fade" id="modalAjax" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"></h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span aria-hidden="true">&times;</span>
+                        <span class="sr-only">Close</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    Loading...
+                </div>
+                <div class="modal-footer">
+                    <div class="float-left loader">
+                        <i class="fas fa-circle-notch fa-spin"></i>
+                        Loading...
+                    </div>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">
+                        Close
+                    </button>
+                    <button type="button" class="btn btn-primary modal-submit">
+                        Submit
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form method="get" action="/store/hkg-turin?">
+        <div class="modal modal-localisation" id="modalChooseLanguage" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <button type="button" class="close text-light" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+
+                                                    <h5 class="h5 pt-5 pb-3">Choose language</h5>
+                            <div class="row item-selector">
+                                <input type="hidden" name="language" data-current="english" value="english" />
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="arabic">
+                                            العربية
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="azerbaijani">
+                                            Azerbaijani
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="catalan">
+                                            Català
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="chinese">
+                                            中文
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="croatian">
+                                            Hrvatski
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="czech">
+                                            Čeština
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="danish">
+                                            Dansk
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="dutch">
+                                            Nederlands
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item active" data-value="english">
+                                            English
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="estonian">
+                                            Estonian
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="farsi">
+                                            Persian
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="french">
+                                            Français
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="german">
+                                            Deutsch
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="hebrew">
+                                            עברית
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="hungarian">
+                                            Magyar
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="italian">
+                                            Italiano
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="macedonian">
+                                            Macedonian
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="norwegian">
+                                            Norwegian
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="portuguese-br">
+                                            Português
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="portuguese-pt">
+                                            Português
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="romanian">
+                                            Română
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="russian">
+                                            Русский
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="spanish">
+                                            Español
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="swedish">
+                                            Svenska
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="turkish">
+                                            Türkçe
+                                        </a>
+                                    </div>
+                                                                    <div class="col-4">
+                                        <a href="#" class="item" data-value="ukranian">
+                                            Українська
+                                        </a>
+                                    </div>
+                                                            </div>
+                                                                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-default">Apply</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    
+    <form action="#" id="frmGeneratePassword">
+    <div class="modal fade" id="modalGeneratePassword">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h4 class="modal-title">
+                        Generate Password
+                    </h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger w-hidden" id="generatePwLengthError">
+                        Please enter a number between 8 and 64 for the password length
+                    </div>
+                    <div class="form-group row">
+                        <label for="generatePwLength" class="col-sm-4 col-form-label">Password Length</label>
+                        <div class="col-sm-8">
+                            <input type="number" min="8" max="64" value="12" step="1" class="form-control input-inline input-inline-100" id="inputGeneratePasswordLength">
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="generatePwOutput" class="col-sm-4 col-form-label">Generated Password</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control" id="inputGeneratePasswordOutput">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-8 offset-sm-4">
+                            <button type="submit" class="btn btn-default btn-sm">
+                                <i class="fas fa-plus fa-fw"></i>
+                                Generate new password
+                            </button>
+                            <button type="button" class="btn btn-default btn-sm copy-to-clipboard" data-clipboard-target="#inputGeneratePasswordOutput">
+                                <img src="/assets/img/clippy.svg" alt="Copy to clipboard" width="15">
+                                Copy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">
+                        Close
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnGeneratePasswordInsert" data-clipboard-target="#inputGeneratePasswordOutput">
+                        Copy to clipboard and Insert
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+    
+
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a36cf3744d548c16',t:'MTc4ODY5MjIyNw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

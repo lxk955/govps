@@ -19,6 +19,8 @@ export const MERCHANT_NOTES: Record<string, string> = {
     "VMiss：主打高性价比优化线路（洛杉矶 CN2 GIA/9929/CMIN2、香港与日本 BGP），全系 CAD 计费，价格优势明显。",
   "66yun":
     "66云：主打原生 IP、流媒体解锁及双 ISP 住宅属性，覆盖美西/英国 9929、香港 CMI 与日本软银。",
+  gomami:
+    "GoMami：主打亚太高端精品专线与极致单核性能，覆盖香港/日本/新加坡/洛杉矶，三网各自直连优化（CN2 GIA/9929/CMIN2），配备 AMD 9575F 顶级硬件。",
 };
 
 export const MERCHANT_ORDER: Record<string, number> = {
@@ -29,6 +31,7 @@ export const MERCHANT_ORDER: Record<string, number> = {
   dedione: 5,
   vmiss: 6,
   "66yun": 7,
+  gomami: 8,
 };
 
 /** 服务商按钮的悬停提示：优先用商家简介，缺失时回退通用文案（与旧站一致）。 */

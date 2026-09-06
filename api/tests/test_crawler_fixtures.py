@@ -19,6 +19,7 @@ import pytest
 from app.crawler.bandwagon import BandwagonCrawler
 from app.crawler.dedione import DediOneCrawler
 from app.crawler.dmit import DmitCrawler
+from app.crawler.gomami import GomamiCrawler
 from app.crawler.sixsixyun import SixSixYunCrawler
 from app.crawler.vmiss import VmissCrawler
 from app.crawler.vps import VPSCrawler
@@ -290,3 +291,26 @@ class TestVps:
         raws = VPSCrawler().fetch(_mock_client([("vps.hosting", 500, "oops")]))
         assert len(raws) >= 10
         assert all(p.from_preset for p in raws)
+
+
+# ── gomami（WHMCS 卡片，录制 fixture；支持优雅回退）──────
+
+
+class TestGomami:
+    def test_normal_recorded_fixture(self):
+        turin_html = _fixture("gomami", "store-turin.html")
+        routes = [("gomami.io/store/", 200, turin_html)]
+        raws = GomamiCrawler().fetch(_mock_client(routes))
+        assert len(raws) >= 4
+        by_id = {p.external_id: p for p in raws}
+        assert "14" in by_id
+        assert by_id["14"].price == 69.0
+        assert by_id["14"].in_stock is True
+        assert by_id["14"].location == "香港"
+        assert "CN2 GIA" in by_id["14"].line_tags
+
+    def test_error_offline_falls_back_to_presets(self):
+        raws = GomamiCrawler().fetch(_mock_client([("gomami.io", 500, "oops")]))
+        assert len(raws) >= 25
+        assert all(p.from_preset for p in raws)
+
