@@ -132,6 +132,7 @@ def fetch_vpsoso_plans(client: httpx.Client, slug: str) -> list[dict]:
         "dmit": "https://vpsoso.com/vps/dmit",
         "gomami": "https://vpsoso.com/vps/gomami",
         "evoxt": "https://vpsoso.com/vps/evoxt",
+        "vmrack": "https://vpsoso.com/vps/vmrack",
     }
     url = url_map.get(slug)
     if not url:

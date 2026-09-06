@@ -301,6 +301,8 @@ async def check_ip(
         vendor_brand = "GoMami (GoMami Networks, LLC)"
     elif "evoxt" in isp_full:
         vendor_brand = "Evoxt (Evoxt Enterprise)"
+    elif "vmrack" in isp_full:
+        vendor_brand = "VMRack"
     elif "cloudflare" in isp_full:
         vendor_brand = "Cloudflare Anycast 边缘网络"
     elif "google" in isp_full:

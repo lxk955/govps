@@ -112,9 +112,12 @@ def compare_plans(merchant_name, govps_raws, dvps_raws, vpszk_items, vpsoso_item
             })
 
         # 规格对比
-        # CPU
         dp_cpu_str = str(dp.get("cpu") or "")
-        dp_cpu = int(re.search(r"\d+", dp_cpu_str).group(0)) if re.search(r"\d+", dp_cpu_str) else None
+        dp_cpu = None
+        if m := re.search(r"(\d+)\s*(?:C(?:ore)?|核|vCPU)", dp_cpu_str, re.I):
+            dp_cpu = int(m.group(1))
+        elif m := re.search(r"\d+", dp_cpu_str):
+            dp_cpu = int(m.group(0))
         if dp_cpu and gp.cpu_cores and dp_cpu != gp.cpu_cores:
             if not (dp_cpu == 7663 and gp.cpu_cores == 56):
                 cpu_mismatches.append({"pid": pid, "name": gp.name, "govps": gp.cpu_cores, "dvps": dp_cpu})
@@ -196,6 +199,7 @@ def main():
             ("ZgoCloud", "zgocloud", "zgovps", "zgo", None),
             ("GoMami", "gomami", "gomami", "gomami", "gomami"),
             ("Evoxt", "evoxt", "evoxt", "evoxt", "evoxt"),
+            ("VMRack", "vmrack", "vmrack", None, "vmrack"),
         ]
 
         all_results = {}

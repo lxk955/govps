@@ -23,6 +23,7 @@ from app.crawler.dmit import DmitCrawler
 from app.crawler.evoxt import EvoxtCrawler
 from app.crawler.gomami import GomamiCrawler
 from app.crawler.sixsixyun import SixSixYunCrawler
+from app.crawler.vmrack import VMRackCrawler
 from app.crawler.vmiss import VmissCrawler
 from app.crawler.vps import VPSCrawler
 from app.crawler.zgocloud import ZgoCloudCrawler
@@ -353,5 +354,31 @@ class TestEvoxt:
         raws = EvoxtCrawler().fetch(_mock_client([("evoxt.com", 500, "oops")]))
         assert len(raws) == 33
         assert all(p.from_preset for p in raws)
+
+
+# ── vmrack（官网 JSON API，录制 fixture；支持优雅降级）──────
+
+
+class TestVMRack:
+    def test_normal_recorded_fixture(self):
+        search_json = _fixture("vmrack", "compute_search.json")
+        routes = [("api.vmrack.net/v1/product/set/compute/search/no_user", 200, search_json)]
+        raws = VMRackCrawler().fetch(_mock_client(routes))
+        assert len(raws) == 42
+        by_name = {p.name: p for p in raws}
+        assert "L1.VPS.2C4G.Base" in by_name
+        assert by_name["L1.VPS.2C4G.Base"].price == Decimal("5.66")
+        assert by_name["L1.VPS.2C4G.Base"].in_stock is True
+        assert by_name["L1.VPS.2C4G.Base"].external_id == "2572711621899999286"
+
+        assert "L3.VPS.DC2.2C2G.Base" in by_name
+        assert by_name["L3.VPS.DC2.2C2G.Base"].in_stock is False
+        assert set(by_name["L3.VPS.DC2.2C2G.Base"].line_tags) == {"CN2 GIA", "9929", "CMIN2"}
+
+    def test_error_offline_falls_back_to_presets(self):
+        raws = VMRackCrawler().fetch(_mock_client([("api.vmrack.net", 500, "oops")]))
+        assert len(raws) >= 50
+        assert all(p.from_preset for p in raws)
+
 
 

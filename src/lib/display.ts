@@ -92,6 +92,11 @@ function evoxtShort(name: string): string {
   return name.trim() || name;
 }
 
+/** VMRack：保持标准套餐标识 (如 L3.VPS.DC2.2C2G.Base) */
+function vmrackShort(name: string): string {
+  return name.trim() || name;
+}
+
 const RULES: Record<string, (name: string) => string> = {
   bandwagon: bandwagonShort,
   dmit: dmitShort,
@@ -100,6 +105,7 @@ const RULES: Record<string, (name: string) => string> = {
   vps: vpsShort,
   gomami: gomamiShort,
   evoxt: evoxtShort,
+  vmrack: vmrackShort,
 };
 
 /** 列表/卡片展示用短名称；未知商家原样返回 */

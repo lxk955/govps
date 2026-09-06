@@ -5,6 +5,7 @@ from .dmit import DmitCrawler
 from .evoxt import EvoxtCrawler
 from .gomami import GomamiCrawler
 from .sixsixyun import SixSixYunCrawler
+from .vmrack import VMRackCrawler
 from .vmiss import VmissCrawler
 from .vps import VPSCrawler
 from .zgocloud import ZgoCloudCrawler
@@ -19,5 +20,6 @@ CRAWLERS: list[MerchantCrawler] = [
     SixSixYunCrawler(),
     GomamiCrawler(),
     EvoxtCrawler(),
+    VMRackCrawler(),
 ]
 
