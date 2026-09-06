@@ -235,6 +235,20 @@ PRESET_VPS_PRODUCTS: list[RawProduct] = [
     RawProduct(external_id="132", name="SEA 基础 Essential", price=Decimal("7.95"), currency="EUR", billing_cycle="monthly", purchase_url="https://vps.hosting/?cmd=cart&action=add&id=132", in_stock=False, location="西雅图", line_tags=['普通BGP'], cpu_cores=2, ram_gb=Decimal("2.0"), disk_gb=30, bandwidth_gb=2000, port_mbps=1000),
     RawProduct(external_id="133", name="SEA 进阶 Pro", price=Decimal("9.95"), currency="EUR", billing_cycle="monthly", purchase_url="https://vps.hosting/?cmd=cart&action=add&id=133", in_stock=False, location="西雅图", line_tags=['普通BGP'], cpu_cores=4, ram_gb=Decimal("4.0"), disk_gb=40, bandwidth_gb=4000, port_mbps=1000),
     RawProduct(external_id="134", name="SEA 高配 Premium", price=Decimal("19.95"), currency="EUR", billing_cycle="monthly", purchase_url="https://vps.hosting/?cmd=cart&action=add&id=134", in_stock=False, location="西雅图", line_tags=['普通BGP'], cpu_cores=8, ram_gb=Decimal("8.0"), disk_gb=80, bandwidth_gb=8000, port_mbps=1000),
+    # 补充：东京 Mini / 大阪轻量 / 新加坡 EPYC / 东京 EPYC Gen 2
+    RawProduct(external_id="161", name="NRT Mini Pro", price=Decimal("39.95"), currency="EUR", billing_cycle="annually", purchase_url="https://vps.hosting/?cmd=cart&action=add&id=161", in_stock=False, location="东京", line_tags=['CN2 GIA', '9929'], cpu_cores=1, ram_gb=Decimal("1.0"), disk_gb=15, bandwidth_gb=600, port_mbps=500),
+    RawProduct(external_id="235", name="SIN EPYC Explorer", price=Decimal("46.95"), currency="EUR", billing_cycle="monthly", purchase_url="https://vps.hosting/?cmd=cart&action=add&id=235", in_stock=False, location="新加坡", line_tags=['普通BGP'], cpu_cores=2, ram_gb=Decimal("4.0"), disk_gb=40, bandwidth_gb=1000, port_mbps=1000),
+    RawProduct(external_id="236", name="SIN EPYC Enhancer", price=Decimal("84.95"), currency="EUR", billing_cycle="monthly", purchase_url="https://vps.hosting/?cmd=cart&action=add&id=236", in_stock=False, location="新加坡", line_tags=['普通BGP'], cpu_cores=4, ram_gb=Decimal("8.0"), disk_gb=80, bandwidth_gb=2000, port_mbps=1000),
+    RawProduct(external_id="237", name="SIN EPYC Enterprise", price=Decimal("169.95"), currency="EUR", billing_cycle="monthly", purchase_url="https://vps.hosting/?cmd=cart&action=add&id=237", in_stock=False, location="新加坡", line_tags=['普通BGP'], cpu_cores=8, ram_gb=Decimal("16.0"), disk_gb=160, bandwidth_gb=4000, port_mbps=1000),
+    RawProduct(external_id="238", name="SIN EPYC Elite", price=Decimal("329.95"), currency="EUR", billing_cycle="monthly", purchase_url="https://vps.hosting/?cmd=cart&action=add&id=238", in_stock=False, location="新加坡", line_tags=['普通BGP'], cpu_cores=16, ram_gb=Decimal("32.0"), disk_gb=320, bandwidth_gb=8000, port_mbps=1000),
+    RawProduct(external_id="259", name="NRT EPYC Flash Gen 2", price=Decimal("49.95"), currency="EUR", billing_cycle="monthly", purchase_url="https://vps.hosting/?cmd=cart&action=add&id=259", in_stock=False, location="东京", line_tags=['普通BGP'], cpu_cores=2, ram_gb=Decimal("4.0"), disk_gb=40, bandwidth_gb=1000, port_mbps=1000),
+    RawProduct(external_id="260", name="NRT EPYC Flow Gen 2", price=Decimal("95.95"), currency="EUR", billing_cycle="monthly", purchase_url="https://vps.hosting/?cmd=cart&action=add&id=260", in_stock=False, location="东京", line_tags=['普通BGP'], cpu_cores=4, ram_gb=Decimal("8.0"), disk_gb=80, bandwidth_gb=2000, port_mbps=1000),
+    RawProduct(external_id="261", name="NRT EPYC Fleet Gen 2", price=Decimal("191.95"), currency="EUR", billing_cycle="monthly", purchase_url="https://vps.hosting/?cmd=cart&action=add&id=261", in_stock=False, location="东京", line_tags=['普通BGP'], cpu_cores=8, ram_gb=Decimal("16.0"), disk_gb=160, bandwidth_gb=4000, port_mbps=1000),
+    RawProduct(external_id="262", name="NRT EPYC Formula Gen 2", price=Decimal("383.95"), currency="EUR", billing_cycle="monthly", purchase_url="https://vps.hosting/?cmd=cart&action=add&id=262", in_stock=False, location="东京", line_tags=['普通BGP'], cpu_cores=16, ram_gb=Decimal("32.0"), disk_gb=320, bandwidth_gb=8000, port_mbps=1000),
+    RawProduct(external_id="268", name="KIX 轻量 Edge Green", price=Decimal("8.95"), currency="EUR", billing_cycle="monthly", purchase_url="https://vps.hosting/?cmd=cart&action=add&id=268", in_stock=False, location="大阪", line_tags=['普通BGP'], cpu_cores=1, ram_gb=Decimal("1.0"), disk_gb=15, bandwidth_gb=1000, port_mbps=1000),
+    RawProduct(external_id="270", name="KIX 轻量 Edge Blue", price=Decimal("17.95"), currency="EUR", billing_cycle="monthly", purchase_url="https://vps.hosting/?cmd=cart&action=add&id=270", in_stock=False, location="大阪", line_tags=['普通BGP'], cpu_cores=2, ram_gb=Decimal("2.0"), disk_gb=30, bandwidth_gb=2000, port_mbps=1000),
+    RawProduct(external_id="271", name="KIX 轻量 Edge Yellow", price=Decimal("39.55"), currency="EUR", billing_cycle="monthly", purchase_url="https://vps.hosting/?cmd=cart&action=add&id=271", in_stock=False, location="大阪", line_tags=['普通BGP'], cpu_cores=4, ram_gb=Decimal("4.0"), disk_gb=60, bandwidth_gb=4000, port_mbps=1000),
+    RawProduct(external_id="272", name="KIX 轻量 Edge Orange", price=Decimal("69.95"), currency="EUR", billing_cycle="monthly", purchase_url="https://vps.hosting/?cmd=cart&action=add&id=272", in_stock=False, location="大阪", line_tags=['普通BGP'], cpu_cores=8, ram_gb=Decimal("8.0"), disk_gb=120, bandwidth_gb=8000, port_mbps=1000),
 ]
 
 _RE_ERRORS = re.compile(r"var\s+errors\s*=\s*\[(.*?)\]", re.S | re.I)
@@ -284,6 +298,74 @@ def _inspect_product_by_pid(client: httpx.Client, pid: str) -> tuple[bool, list[
     return in_stock, price_options
 
 
+_VPS_LOC_META = {
+    "tokyo gen 2": ("日本东京", "NRT", ["普通BGP"], 1000),
+    "tokyo": ("日本东京", "NRT", ["CN2 GIA", "9929"], 1000),
+    "osaka edge": ("日本大阪", "KIX", ["普通BGP"], 1000),
+    "osaka": ("日本大阪", "KIX", ["9929"], 1000),
+    "san jose": ("美国圣何塞", "SJC", ["CN2 GIA", "9929", "CMIN2"], 1000),
+    "hong kong": ("香港", "HKG", ["CMIN2"], 1000),
+    "frankfurt": ("德国法兰克福", "FRA", ["9929"], 1000),
+    "düsseldorf": ("德国杜塞尔多夫", "DUS", ["9929"], 1000),
+    "duesseldorf": ("德国杜塞尔多夫", "DUS", ["9929"], 1000),
+    "amsterdam": ("荷兰阿姆斯特丹", "AMS", ["9929"], 1000),
+    "london": ("英国伦敦", "LON", ["9929"], 1000),
+    "tallinn": ("爱沙尼亚塔林", "TLL", ["9929"], 1000),
+    "sydney": ("澳大利亚悉尼", "SYD", ["9929"], 1000),
+    "new york": ("美国纽约", "NYC", ["普通BGP"], 1000),
+    "seattle": ("美国西雅图", "SEA", ["普通BGP"], 1000),
+    "singapore": ("新加坡", "SIN", ["普通BGP"], 1000),
+}
+
+
+def _enrich_vps_product(dp: RawProduct) -> RawProduct:
+    raw_name = dp.name
+    loc_field = (dp.location or "").lower()
+    name_lower = raw_name.lower()
+    matched = None
+    for k, v in _VPS_LOC_META.items():
+        if k in loc_field or k in name_lower:
+            matched = v
+            break
+    loc, pfx, lines, port = matched if matched else (dp.location, "", ["普通BGP"], 1000)
+    clean = raw_name
+    for k in _VPS_LOC_META:
+        clean = re.sub(rf"\b{re.escape(k)}\b", "", clean, flags=re.I)
+    clean = re.sub(r"\s+", " ", clean).strip()
+    tier = _tier_name(clean)
+    final_name = f"{pfx} {tier}".strip() if pfx else tier
+    return RawProduct(
+        external_id=dp.external_id,
+        name=final_name,
+        price=dp.price,
+        currency=dp.currency,
+        billing_cycle=dp.billing_cycle,
+        price_options=dp.price_options,
+        purchase_url=f"{BASE}/?cmd=cart&action=add&id={dp.external_id}",
+        in_stock=dp.in_stock,
+        location=normalize_location(loc),
+        line_tags=normalize_line_tags(final_name, lines),
+        cpu_cores=dp.cpu_cores,
+        ram_gb=dp.ram_gb,
+        disk_gb=dp.disk_gb,
+        bandwidth_gb=dp.bandwidth_gb,
+        port_mbps=port or dp.port_mbps,
+        stock_verified=True,
+    )
+
+
+def _fetch_dvps(client: httpx.Client) -> list[RawProduct]:
+    products: list[RawProduct] = []
+    try:
+        from .dvps_source import DvpsSource
+        dvps_prods = DvpsSource().fetch_products("vps", client)
+        for dp in dvps_prods:
+            products.append(_enrich_vps_product(dp))
+    except Exception as e:
+        print(f"[vps] dvps feed error: {e}")
+    return products
+
+
 class VPSCrawler(MerchantCrawler):
     slug = "vps"
     name = "V.PS"
@@ -298,8 +380,13 @@ class VPSCrawler(MerchantCrawler):
             print(f"[vps] live catalog: {len(live)} products from category pages")
             return live
 
+        dvps = _fetch_dvps(client)
+        if len(dvps) >= 10:
+            print(f"[vps] live catalog: {len(dvps)} products from dvps source")
+            return dvps
+
         # 回退：预置数据 + 加购页逐卡片库存与价格校验
-        print(f"[vps] category pages unavailable ({len(live)} parsed), fallback to presets")
+        print(f"[vps] category pages and dvps unavailable ({len(live)} parsed), fallback to presets")
         results: list[RawProduct] = []
         for p in PRESET_VPS_PRODUCTS:
             stock, opts = _inspect_product_by_pid(client, p.external_id)

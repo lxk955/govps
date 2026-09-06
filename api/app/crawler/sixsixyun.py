@@ -27,11 +27,15 @@ BASE = "https://666clouds.com"
 # 66云核心业务分组定义
 CATEGORIES: list[tuple[int, str, list[str]]] = [
     (6, "香港", ["CMI"]),
+    (7, "美西", ["CN2 GIA"]),
+    (15, "美西", ["4837"]),
     (16, "首尔", ["国际线路"]),
     (19, "日本", ["软银"]),
     (21, "美西", ["9929", "4837", "CN2 GIA"]),
     (22, "伦敦", ["9929", "三网优化"]),
     (25, "德国", ["国际线路"]),
+    (26, "菲律宾", ["国际线路"]),
+    (27, "伦敦", ["9929", "三网优化"]),
 ]
 
 
@@ -75,20 +79,20 @@ def _parse_card(card, location: str, default_tags: list[str]) -> RawProduct | No
     btn_class = order_btn.attributes.get("class", "") or ""
     qty_node = card.css_first(".qty")
     qty_text = qty_node.text(strip=True) if qty_node else ""
-    qty_m = re.search(r"(\d+)\s*(?:可用|Available)", qty_text)
+    qty_m = re.search(r"(-?\d+)\s*(?:可用|Available)", qty_text)
 
     card_text = card.text(separator=" ", strip=True).lower()
     has_oos = (
         "disabled" in btn_class
-        or (qty_m and int(qty_m.group(1)) == 0)
+        or (qty_m is not None and int(qty_m.group(1)) <= 0)
         or "缺货" in card_text
         or "out of stock" in card_text
         or "售罄" in card_text
     )
-    # 正向确认：有剩余件数，或文案明确「有货」；仅「立即购买」按钮不足以证明有货
-    has_stock_signal = (qty_m is not None and int(qty_m.group(1)) > 0) or (
-        "有货" in card_text or "in stock" in card_text
-    )
+    if qty_m:
+        in_stock = int(qty_m.group(1)) > 0 and not has_oos
+    else:
+        in_stock = not has_oos and bool(order_btn) and "disabled" not in btn_class
 
     desc_node = card.css_first(".product-desc, [id$='-description']")
     desc = desc_node.text(separator="\n", strip=True) if desc_node else ""
@@ -96,14 +100,22 @@ def _parse_card(card, location: str, default_tags: list[str]) -> RawProduct | No
 
     tags = _detect_line_tags(name, desc, default_tags)
 
+    cycle = "monthly"
+    if "年" in name or "annually" in name.lower() or "年" in price_text:
+        cycle = "annually"
+    elif "季" in name or "quarterly" in name.lower() or "季" in price_text:
+        cycle = "quarterly"
+    elif "半年" in name or "semi" in name.lower() or "半年" in price_text:
+        cycle = "semi-annually"
+
     p = RawProduct(
         external_id=pid,
         name=name,
         price=price,
         currency="CNY",
-        billing_cycle="monthly",
+        billing_cycle=cycle,
         purchase_url=f"{BASE}/cart.php?a=add&pid={pid}",
-        in_stock=bool(has_stock_signal) and not has_oos,
+        in_stock=in_stock,
         location=location,
         line_tags=tags,
     )
@@ -131,21 +143,21 @@ def _parse_card(card, location: str, default_tags: list[str]) -> RawProduct | No
                 unit = (m.group(2) if m.lastindex >= 2 and m.group(2) else "G").upper()
                 p.ram_gb = val / 1024 if unit.startswith("M") else val
         if p.disk_gb is None:
-            m = re.search(r"硬盘[：:\s]*(\d+(?:\.\d+)?)\s*(TB|T|GB|G)?", line, re.I) or re.search(
-                r"(\d+)\s*(?:GB|G)\s*SSD", line, re.I
+            m = re.search(r"(?:硬盘|系统盘)[：:\s]*(\d+(?:\.\d+)?)\s*(TB|T|GB|G)?", line, re.I) or re.search(
+                r"(\d+(?:\.\d+)?)\s*(?:GB|G)\s*SSD", line, re.I
             )
             if m:
-                val = int(Decimal(m.group(1)))
+                val = float(m.group(1))
                 unit = (m.group(2) or "G").upper() if m.lastindex >= 2 and m.group(2) else "G"
-                p.disk_gb = val * 1024 if unit.startswith("T") else val
+                p.disk_gb = round(val * 1000) if unit.startswith("T") else round(val)
         if p.bandwidth_gb is None:
             m = re.search(r"流量[：:\s]*(\d+(?:\.\d+)?)\s*(TB|T|GB|G)?", line, re.I) or re.search(
                 r"(\d+(?:\.\d+)?)\s*(TB|T|GB|G)\s*流量", line, re.I
             )
             if m:
-                val = int(Decimal(m.group(1)))
+                val = float(m.group(1))
                 unit = (m.group(2) or "G").upper() if m.lastindex >= 2 and m.group(2) else "G"
-                p.bandwidth_gb = val * 1024 if unit.startswith("T") else val
+                p.bandwidth_gb = round(val * 1000) if unit.startswith("T") else round(val)
         if p.port_mbps is None:
             m = re.search(r"带宽[：:\s]*(\d+(?:\.\d+)?)\s*(Mbits|Mbps|M|Gbits|Gbps|G|G口)?", line, re.I) or re.search(
                 r"(\d+)\s*(?:Mbps|Mbits|M)\s*峰值带宽", line, re.I
@@ -206,6 +218,12 @@ PRESET_66YUN_PRODUCTS: list[RawProduct] = [
     RawProduct(external_id="204", name="英国-三网双向优化2核2G内存", price=Decimal("120.00"), currency="CNY", billing_cycle="monthly", purchase_url="https://666clouds.com/cart.php?a=add&pid=204", in_stock=False, location="伦敦", line_tags=['9929', '三网优化'], cpu_cores=2, ram_gb=Decimal('2.0'), disk_gb=None, bandwidth_gb=1500, port_mbps=400),
     RawProduct(external_id="194", name="德国原生IP（新IP补货）", price=Decimal("60.00"), currency="CNY", billing_cycle="monthly", purchase_url="https://666clouds.com/cart.php?a=add&pid=194", in_stock=False, location="德国", line_tags=['国际线路'], cpu_cores=1, ram_gb=Decimal('1.0'), disk_gb=None, bandwidth_gb=1000, port_mbps=1000),
     RawProduct(external_id="205", name="德国原生IP - 高配置", price=Decimal("100.00"), currency="CNY", billing_cycle="monthly", purchase_url="https://666clouds.com/cart.php?a=add&pid=205", in_stock=False, location="德国", line_tags=['国际线路'], cpu_cores=2, ram_gb=Decimal('2.0'), disk_gb=None, bandwidth_gb=2000, port_mbps=1000),
+    RawProduct(external_id="21", name="CERA-CN2-1H1G-30M", price=Decimal("45.00"), currency="CNY", billing_cycle="monthly", purchase_url="https://666clouds.com/cart.php?a=add&pid=21", in_stock=False, location="美西", line_tags=['CN2 GIA'], cpu_cores=1, ram_gb=Decimal('1.0'), disk_gb=20, bandwidth_gb=800, port_mbps=30),
+    RawProduct(external_id="214", name="菲律宾双ISP - 1TB流量", price=Decimal("80.00"), currency="CNY", billing_cycle="monthly", purchase_url="https://666clouds.com/cart.php?a=add&pid=214", in_stock=False, location="菲律宾", line_tags=['国际线路'], cpu_cores=1, ram_gb=Decimal('1.0'), disk_gb=15, bandwidth_gb=1000, port_mbps=200),
+    RawProduct(external_id="215", name="菲律宾双ISP - 4TB流量", price=Decimal("160.00"), currency="CNY", billing_cycle="monthly", purchase_url="https://666clouds.com/cart.php?a=add&pid=215", in_stock=False, location="菲律宾", line_tags=['国际线路'], cpu_cores=2, ram_gb=Decimal('2.0'), disk_gb=20, bandwidth_gb=4000, port_mbps=300),
+    RawProduct(external_id="218", name="HK-CMI 香港CMI(配置组版)", price=Decimal("50.00"), currency="CNY", billing_cycle="monthly", purchase_url="https://666clouds.com/cart.php?a=add&pid=218", in_stock=False, location="香港", line_tags=['CMI'], cpu_cores=1, ram_gb=Decimal('1.0'), disk_gb=None, bandwidth_gb=800, port_mbps=100),
+    RawProduct(external_id="219", name="英国9929双向优化 - 年付特价", price=Decimal("249.00"), currency="CNY", billing_cycle="annually", purchase_url="https://666clouds.com/cart.php?a=add&pid=219", in_stock=False, location="伦敦", line_tags=['9929', '三网优化'], cpu_cores=1, ram_gb=Decimal('1.0'), disk_gb=15, bandwidth_gb=800, port_mbps=100),
+    RawProduct(external_id="220", name="英国9929双向优化 - 高配年付特价", price=Decimal("499.00"), currency="CNY", billing_cycle="annually", purchase_url="https://666clouds.com/cart.php?a=add&pid=220", in_stock=False, location="伦敦", line_tags=['9929', '三网优化'], cpu_cores=2, ram_gb=Decimal('2.0'), disk_gb=30, bandwidth_gb=1500, port_mbps=200),
 ]
 
 

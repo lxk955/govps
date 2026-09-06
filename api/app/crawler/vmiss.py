@@ -185,6 +185,17 @@ def _fetch_stockvps(client: httpx.Client) -> dict[str, bool]:
         return {}
 
 
+def _fetch_dvps_stock(client: httpx.Client) -> dict[str, bool]:
+    """从 d-vps.com 结构化源提取 VMiss 全量套餐库存（补齐 90-94 等套餐）。"""
+    try:
+        from .dvps_source import DvpsSource
+        prods = DvpsSource().fetch_products("vmiss", client)
+        return {p.external_id: p.in_stock for p in prods}
+    except Exception as e:
+        print(f"[vmiss] dvps source warning: {e}")
+        return {}
+
+
 class VmissCrawler(MerchantCrawler):
     slug = "vmiss"
     name = "VMiss"
@@ -201,10 +212,12 @@ class VmissCrawler(MerchantCrawler):
             print(f"[vmiss] live catalog: {len(live)} products from store pages")
             return live
 
-        # 源 2：从第三方监控源（stockvps.org）合并实时库存状态
+        # 源 2：从第三方监控源（stockvps.org + d-vps.com）合并实时库存状态
         stock_map = _fetch_stockvps(client)
+        dvps_stock = _fetch_dvps_stock(client)
+        stock_map.update(dvps_stock)
         if stock_map:
-            print(f"[vmiss] store pages challenge fallback: overlay {len(stock_map)} live stocks from third-party monitor")
+            print(f"[vmiss] store pages challenge fallback: overlay {len(stock_map)} live stocks from third-party monitors")
             return [
                 RawProduct(
                     external_id=p.external_id,

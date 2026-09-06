@@ -57,6 +57,15 @@ class BandwagonCrawler(MerchantCrawler):
                 return normalize_location(raw_cities[0])
             return "多机房 (可迁)"
 
+        def clean_ram(ram_mb):
+            if not ram_mb:
+                return None
+            val = Decimal(ram_mb) / 1024
+            r = Decimal(round(val))
+            if abs(val - r) < Decimal("0.2"):
+                return r
+            return val.quantize(Decimal("0.1"))
+
         products: list[RawProduct] = []
         for item in data.get("products", []):
             prices = item.get("prices") or []
@@ -98,10 +107,28 @@ class BandwagonCrawler(MerchantCrawler):
                     location=cities_of(item),
                     line_tags=normalize_line_tags(item["name"]),
                     cpu_cores=item.get("cpu"),
-                    ram_gb=Decimal(item["ram"]) / 1024 if item.get("ram") else None,
+                    ram_gb=clean_ram(item.get("ram")),
                     disk_gb=int(item["ssd"] / 1000) if item.get("ssd") else None,
                     bandwidth_gb=int(item["transfer"] / 1000) if item.get("transfer") else None,
                     port_mbps=item.get("link"),
+                    stock_verified=True,
                 )
             )
+
+        # 搬瓦工官方 get-data 仅暴露常规分类，限量版 (The Plan/Amsterdam/DC9/Japan等)
+        # 通过实时源补充，实现对限量爆款的实时监控与补货感知
+        existing_ids = {p.external_id for p in products}
+        try:
+            from .dvps_source import DvpsSource
+
+            dvps_prods = DvpsSource().fetch_products("bandwagonhost", client)
+            for dp in dvps_prods:
+                if dp.external_id not in existing_ids:
+                    dp.purchase_url = dp.purchase_url or CART_URL.format(pid=dp.external_id, cycle="annually")
+                    products.append(dp)
+                    existing_ids.add(dp.external_id)
+        except Exception as e:
+            # 外部源网络波动不阻断核心商品列表
+            pass
+
         return products

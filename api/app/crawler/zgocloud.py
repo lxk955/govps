@@ -24,6 +24,24 @@ BASE = "https://clients.zgovps.com"
 _RE_PRICE = re.compile(r"\$\s*(\d+(?:\.\d{1,2})?)", re.I)
 
 
+_SLUG_TITLES = {
+    "special-offer": "Special Offer",
+    "los-angeles-amd-optimised-vps": "Los Angeles AMD Optimised VPS",
+    "los-angeles-intel-performance-vps": "Los Angeles Intel Performance VPS",
+    "los-angeles-isp-vps": "Los Angeles AMD ISP VPS",
+    "los-angeles-ryzen9-performance-vps": "Los Angeles Ryzen9 Performance VPS",
+    "los-angeles-amd-intel-vps": "Los Angeles AMD Intel VPS",
+    "los-angeles-amd-vds": "Los Angeles AMD VDS",
+    "los-angeles-global-vps": "Los Angeles Global VPS",
+    "osaka-amd-performance-vps": "Osaka AMD Performance VPS",
+    "osaka-amd-ryzen9-performance-vps": "Osaka AMD Ryzen9 Performance VPS",
+    "hongkong-amd-vps": "HongKong AMD VPS",
+    "tokyo-intel-vps": "Tokyo Intel VPS",
+    "falkenstein-intel-vps": "Falkenstein Intel VPS",
+    "de-frankfurt-amd-vps": "DE Frankfurt AMD VPS",
+}
+
+
 class ZgoCloudCrawler(MerchantCrawler):
     slug = "zgocloud"
     name = "ZgoCloud"
@@ -35,16 +53,18 @@ class ZgoCloudCrawler(MerchantCrawler):
     PAGES = [
         GroupPage(f"{BASE}/index.php?/cart/special-offer/", None, []),
         GroupPage(f"{BASE}/index.php?/cart/los-angeles-amd-optimised-vps/", "洛杉矶", ["CN2 GIA", "9929", "CMIN2"]),
-        # 官网标注 "9929&CMIN2, China Optimised"
         GroupPage(f"{BASE}/index.php?/cart/los-angeles-intel-performance-vps/", "洛杉矶", ["9929", "CMIN2"]),
-        # 官网标注 "International network, not optimized for China"
+        GroupPage(f"{BASE}/index.php?/cart/los-angeles-isp-vps/", "洛杉矶", ["9929", "CMIN2"]),
+        GroupPage(f"{BASE}/index.php?/cart/los-angeles-ryzen9-performance-vps/", "洛杉矶", ["9929", "CMIN2"]),
+        GroupPage(f"{BASE}/index.php?/cart/los-angeles-amd-intel-vps/", "洛杉矶", ["国际线路"]),
+        GroupPage(f"{BASE}/index.php?/cart/los-angeles-amd-vds/", "洛杉矶", ["国际线路"]),
         GroupPage(f"{BASE}/index.php?/cart/los-angeles-global-vps/", "洛杉矶", ["国际线路"]),
-        # 官网标注 "IIJ, not optimized for China"（IIJ 为日本国际线路）
         GroupPage(f"{BASE}/index.php?/cart/osaka-amd-performance-vps/", "日本大阪", ["国际线路"]),
-        # 官网标注 "BGP Network"
+        GroupPage(f"{BASE}/index.php?/cart/osaka-amd-ryzen9-performance-vps/", "日本大阪", ["国际线路"]),
         GroupPage(f"{BASE}/index.php?/cart/hongkong-amd-vps/", "中国香港", ["BGP"]),
         GroupPage(f"{BASE}/index.php?/cart/tokyo-intel-vps/", "日本东京", ["BGP"]),
         GroupPage(f"{BASE}/index.php?/cart/falkenstein-intel-vps/", "德国法尔肯施泰因", ["国际线路"]),
+        GroupPage(f"{BASE}/index.php?/cart/de-frankfurt-amd-vps/", "德国法兰克福", ["9929", "CMIN2"]),
     ]
 
     def fetch(self, client: httpx.Client) -> list[RawProduct]:
@@ -115,17 +135,23 @@ class ZgoCloudCrawler(MerchantCrawler):
 
             specs_text = form.text(separator=" ", strip=True)
             # 注意：zgocloud 是定制 WHMCS，加购必须 POST 表单（action=add&id=pid），
-            # GET 的 cart.php?a=add&pid= 会 404。go 路由会针对该商家构造自动提交表单。
+            slug = group.url.rstrip("/").split("/")[-1]
+            cat_title = _SLUG_TITLES.get(slug, slug)
+            if any(kw in name for kw in ("Los Angeles", "Frankfurt", "Osaka", "HongKong", "Tokyo", "Falkenstein", "VPS", "VDS")):
+                full_name = name
+            else:
+                full_name = f"{cat_title} - {name}"
+
             p = RawProduct(
                 external_id=pid,
-                name=name[:250],
+                name=full_name[:250],
                 price=price,
                 currency="USD",
                 billing_cycle=billing_cycle,
                 price_options=price_options,
                 purchase_url=f"{BASE}/index.php?/cart/",
                 in_stock=in_stock,
-                location=group.location or extract_location(name),
+                location=group.location or extract_location(full_name),
                 line_tags=list(group.line_tags),
             )
             parse_specs(specs_text, p)

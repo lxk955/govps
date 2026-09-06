@@ -1,12 +1,10 @@
 """DMIT 适配器。官网 https://www.dmit.io（WHMCS，Cloudflare 强盾无法直连）。
 
-多源冗余策略（按官方 pid 匹配合并，取字段最优）：
-1. monitor.vpszk.com  —— 结构化 JSON，字段最全（库存/价格/配置/机房/线路），主源
-2. vpsoso.com         —— HTML 表格兜底（覆盖面广）
-3. DMIT_PRESETS       —— 预置元数据最终回退
-
-注：legacyvps.com 曾评估为备源，但其 DMIT 套餐 pid 与官方不一致（如 Pro.TINY 标记为 258，
-官网实为 253），且覆盖仅 3 款，合并会产生重复套餐，故弃用。
+多源冗余策略（按官方 WHMCS pid 匹配合并，取字段最优）：
+1. d-vps.com          —— 结构化 JSON（WASM 解密，97 款套餐 + 官方真实 PID），主源
+2. monitor.vpszk.com  —— 结构化 JSON（全量分页抓取，81 款套餐 + 官方真实 PID），备源
+3. vpsoso.com         —— 仅当线上结构化源全不可用时兜底
+4. DMIT_PRESETS       —— 预置元数据最终回退（20 款权威官方套餐，缺货悲观态）
 """
 
 import re
@@ -20,90 +18,134 @@ from .base import MerchantCrawler, RawProduct, extract_line_tags, normalize_loca
 _CYCLE_CN = {
     "月付": "monthly",
     "季付": "quarterly",
-    "半年付": "semi_annually",
+    "半年付": "semi-annually",
     "年付": "annually",
     "两年付": "biennially",
 }
 
-_TAG_MAP = {
-    "CN2GIA": "CN2 GIA",
-    "CN2 GIA": "CN2 GIA",
-    "9929": "9929",
-    "CMIN2": "CMIN2",
-    "4837": "4837",
-    "普通线路": "国际线路",
-}
+
+def _detect_dmit_lines(name: str, raw_tags: list[str] | str = "") -> list[str]:
+    """统一清洗 DMIT 各系列线路标签：
+    - Pro 系列 / AN4/AN5/AS3 Pro -> CN2 GIA
+    - EB 系列 / Eyeball -> CMIN2, 9929
+    - T1 系列 / Lite -> 国际线路
+    """
+    raw_str = " ".join(raw_tags) if isinstance(raw_tags, list) else str(raw_tags)
+    combined = f"{name} {raw_str}".lower()
+    if "pro" in combined or "gia" in combined:
+        return ["CN2 GIA"]
+    if "eb" in combined or "eyeball" in combined or "9929" in combined or "cmin2" in combined:
+        tags = ["CMIN2", "9929"]
+        if "4837" in combined:
+            tags.append("4837")
+        return tags
+    if "t1" in combined or "lite" in combined or "国际" in combined:
+        return ["国际线路"]
+    return extract_line_tags(combined)
 
 
-def _line_tags(raw_tags: list[str] | str, fallback_text: str = "") -> list[str]:
-    """把第三方源的标签规范化为站内线路标签，过滤营销词。"""
-    if isinstance(raw_tags, str):
-        raw_tags = [t.strip() for t in raw_tags.split(",")]
-    out: list[str] = []
-    for t in raw_tags:
-        mapped = _TAG_MAP.get(t, _TAG_MAP.get(t.strip()))
-        if mapped and mapped not in out:
-            out.append(mapped)
-    if not out and fallback_text:
-        out = extract_line_tags(fallback_text)
-    return out or ["国际线路"]
+# ── 源 1：d-vps.com（结构化实时源，真实官方 PID）──
+def _fetch_dvps(client: httpx.Client) -> list[RawProduct]:
+    products: list[RawProduct] = []
+    try:
+        from .dvps_source import DvpsSource
+
+        dvps_prods = DvpsSource().fetch_products("dmit", client)
+        for dp in dvps_prods:
+            pid = dp.external_id
+            clean_pid = str(pid).replace("dmit-", "")
+            name = dp.name
+            line_tags = _detect_dmit_lines(name, dp.line_tags)
+            products.append(
+                RawProduct(
+                    external_id=f"dmit-{clean_pid}",
+                    name=name,
+                    price=dp.price,
+                    currency=dp.currency,
+                    billing_cycle=dp.billing_cycle,
+                    price_options=dp.price_options,
+                    purchase_url=f"https://www.dmit.io/cart.php?a=add&pid={clean_pid}",
+                    in_stock=dp.in_stock,
+                    location=dp.location,
+                    line_tags=line_tags,
+                    cpu_cores=dp.cpu_cores,
+                    ram_gb=dp.ram_gb,
+                    disk_gb=dp.disk_gb,
+                    bandwidth_gb=dp.bandwidth_gb,
+                    port_mbps=dp.port_mbps,
+                    stock_verified=True,
+                )
+            )
+    except Exception as e:
+        print(f"[dmit] dvps feed notice: {e}")
+    return products
 
 
-# ── 源 1：monitor.vpszk.com（结构化 JSON，字段最全）──
+# ── 源 2：monitor.vpszk.com（结构化 JSON，分页抓取，真实官方 PID）──
 def _fetch_vpszk(client: httpx.Client) -> list[RawProduct]:
     products: list[RawProduct] = []
     try:
-        resp = client.get(
-            "https://monitor.vpszk.com/api/plans",
-            params={"provider": "dmit", "pageSize": 100},
-            timeout=15.0,
-        )
-        resp.raise_for_status()
-        items = [p for p in resp.json().get("items", []) if p.get("providerSlug") == "dmit"]
-        for p in items:
-            pid = str(p.get("externalId") or "").strip()
-            if not pid:
-                continue
-            city = None
-            locs = p.get("locations") or []
-            if locs and isinstance(locs, list):
-                city = locs[0].get("city")
-            if not city:
-                city = {"LAX": "洛杉矶", "HKG": "香港", "TYO": "东京", "SJC": "圣何塞"}.get(
-                    (p.get("name") or "").split(".")[0]
-                )
-            cycle = _CYCLE_CN.get(p.get("billingCycle") or "", "monthly")
-            price = p.get("price") or p.get("priceYear") or 0
-            try:
-                dec_price = Decimal(str(price))
-            except Exception:
-                continue
-            if dec_price <= 0:
-                continue
-            products.append(
-                RawProduct(
-                    external_id=f"dmit-{pid}",
-                    name=p.get("name") or f"DMIT {pid}",
-                    price=dec_price,
-                    currency=p.get("currency") or "USD",
-                    billing_cycle=cycle,
-                    purchase_url=f"https://www.dmit.io/cart.php?a=add&pid={pid}",
-                    in_stock=p.get("stock") == "in",
-                    location=normalize_location(city or ""),
-                    line_tags=_line_tags(p.get("tags") or [], p.get("name") or ""),
-                    cpu_cores=p.get("vcpu"),
-                    ram_gb=Decimal(str(p["ramGb"])) if p.get("ramGb") else None,
-                    disk_gb=p.get("diskGb"),
-                    bandwidth_gb=p.get("trafficGb"),
-                    port_mbps=p.get("portMbps"),
-                )
+        page = 1
+        while True:
+            resp = client.get(
+                "https://monitor.vpszk.com/api/plans",
+                params={"page": page, "pageSize": 100},
+                timeout=15.0,
             )
+            resp.raise_for_status()
+            data = resp.json()
+            items = [p for p in data.get("items", []) if p.get("providerSlug") == "dmit"]
+            for p in items:
+                pid = str(p.get("externalId") or "").strip()
+                if not pid:
+                    continue
+                city = None
+                locs = p.get("locations") or []
+                if locs and isinstance(locs, list):
+                    city = locs[0].get("city")
+                if not city:
+                    city = {"LAX": "洛杉矶", "HKG": "香港", "TYO": "东京", "SJC": "圣何塞"}.get(
+                        (p.get("name") or "").split(".")[0]
+                    )
+                cycle = _CYCLE_CN.get(p.get("billingCycle") or "", "monthly")
+                price = p.get("price") or p.get("priceYear") or 0
+                try:
+                    dec_price = Decimal(str(price))
+                except Exception:
+                    continue
+                if dec_price <= 0:
+                    continue
+                name = p.get("name") or f"DMIT {pid}"
+                line_tags = _detect_dmit_lines(name, p.get("tags") or [])
+                products.append(
+                    RawProduct(
+                        external_id=f"dmit-{pid}",
+                        name=name,
+                        price=dec_price,
+                        currency=p.get("currency") or "USD",
+                        billing_cycle=cycle,
+                        purchase_url=f"https://www.dmit.io/cart.php?a=add&pid={pid}",
+                        in_stock=p.get("stock") == "in",
+                        location=normalize_location(city or ""),
+                        line_tags=line_tags,
+                        cpu_cores=p.get("vcpu"),
+                        ram_gb=Decimal(str(p["ramGb"])) if p.get("ramGb") else None,
+                        disk_gb=p.get("diskGb"),
+                        bandwidth_gb=p.get("trafficGb"),
+                        port_mbps=p.get("portMbps"),
+                        stock_verified=True,
+                    )
+                )
+            total_pages = data.get("totalPages", 1)
+            if page >= total_pages or not data.get("items"):
+                break
+            page += 1
     except Exception as e:
         print(f"[dmit] vpszk feed notice: {e}")
     return products
 
 
-# ── 源 2：vpsoso.com（HTML 表格兜底）──
+# ── 源 3：vpsoso.com（HTML 表格兜底）──
 def _fetch_vpsoso(client: httpx.Client) -> list[RawProduct]:
     products: list[RawProduct] = []
     try:
@@ -117,7 +159,7 @@ def _fetch_vpsoso(client: httpx.Client) -> list[RawProduct]:
                 continue
             raw_name = cells[1].replace("推荐", "").strip()
             loc = normalize_location(cells[2].replace("美国-", "").replace("日本-", ""))
-            line_tags = extract_line_tags(cells[4])
+            line_tags = _detect_dmit_lines(raw_name, cells[4])
 
             cpu = ram = disk = None
             if m := re.match(r"(\d+)C/(\d+(?:\.\d+)?)G/(\d+)G", cells[5], re.I):
@@ -147,13 +189,16 @@ def _fetch_vpsoso(client: httpx.Client) -> list[RawProduct]:
 
             link_node = row.css_first("a[href]")
             href = link_node.attributes.get("href", "") if link_node else ""
-            pid_match = re.search(r"id=(\d+)", href)
-            v_id = pid_match.group(1) if pid_match else raw_name
+            pid_match = re.search(r"pid=(\d+)", href) or re.search(r"[?&]id=(\d+)", href)
+            v_id = pid_match.group(1) if pid_match else None
+            if not v_id:
+                continue
 
+            p_name = raw_name if raw_name.startswith("PVM.") else f"PVM.{raw_name}"
             products.append(
                 RawProduct(
                     external_id=f"dmit-{v_id}",
-                    name=f"PVM.{raw_name}",
+                    name=p_name,
                     price=price,
                     currency="USD",
                     billing_cycle=cycle,
@@ -173,100 +218,100 @@ def _fetch_vpsoso(client: httpx.Client) -> list[RawProduct]:
     return products
 
 
-# ── 预置 DMIT 官方各机房全系列经典套餐元数据（最终回退，预置默认均为缺货，由实时源覆写真实库存）──
+# ── 预置 DMIT 官方 20 款真实权威经典套餐（最终回退，预置默认均为缺货）──
 DMIT_PRESETS: list[RawProduct] = [
-    # 洛杉矶 Pro 旗舰系列（三网 CN2 GIA / AS9929 / CMIN2）
-    RawProduct(external_id="dmit-183", name="PVM.LAX.Pro.WEE", price=Decimal("36.90"), currency="USD",
+    # 洛杉矶 Pro 旗舰（三网 CN2 GIA）
+    RawProduct(external_id="dmit-183", name="PVM.LAX.Pro.WEE", price=Decimal("39.90"), currency="USD",
                billing_cycle="annually", purchase_url="https://www.dmit.io/cart.php?a=add&pid=183",
-               in_stock=False, location="洛杉矶", line_tags=["CN2 GIA", "9929", "CMIN2"],
+               in_stock=False, location="洛杉矶", line_tags=["CN2 GIA"],
                cpu_cores=1, ram_gb=Decimal("1.0"), disk_gb=10, bandwidth_gb=450, port_mbps=500, recommended=True),
-    RawProduct(external_id="dmit-184", name="PVM.LAX.Pro.TINY", price=Decimal("88.88"), currency="USD",
-               billing_cycle="annually", purchase_url="https://www.dmit.io/cart.php?a=add&pid=184",
-               in_stock=False, location="洛杉矶", line_tags=["CN2 GIA", "9929", "CMIN2"],
-               cpu_cores=1, ram_gb=Decimal("2.0"), disk_gb=20, bandwidth_gb=1000, port_mbps=1000),
-    RawProduct(external_id="dmit-101", name="PVM.LAX.Pro.SHARE", price=Decimal("139.90"), currency="USD",
-               billing_cycle="annually", purchase_url="https://www.dmit.io/cart.php?a=add&pid=101",
-               in_stock=False, location="洛杉矶", line_tags=["CN2 GIA", "9929", "CMIN2"],
-               cpu_cores=1, ram_gb=Decimal("1.0"), disk_gb=20, bandwidth_gb=800, port_mbps=1000),
-    RawProduct(external_id="dmit-102", name="PVM.LAX.Pro.POCKET", price=Decimal("159.90"), currency="USD",
-               billing_cycle="annually", purchase_url="https://www.dmit.io/cart.php?a=add&pid=102",
-               in_stock=False, location="洛杉矶", line_tags=["CN2 GIA", "9929", "CMIN2"],
-               cpu_cores=2, ram_gb=Decimal("2.0"), disk_gb=40, bandwidth_gb=1200, port_mbps=1000),
-    RawProduct(external_id="dmit-103", name="PVM.LAX.Pro.STARTER", price=Decimal("29.90"), currency="USD",
-               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=103",
-               in_stock=False, location="洛杉矶", line_tags=["CN2 GIA", "9929", "CMIN2"],
-               cpu_cores=2, ram_gb=Decimal("2.0"), disk_gb=60, bandwidth_gb=2000, port_mbps=2000),
-    # 洛杉矶 EB（Eyeball）CMIN2 / 9929 / 4837 系列
+    RawProduct(external_id="dmit-253", name="PVM.LAX.AS3.Pro.TINY", price=Decimal("10.90"), currency="USD",
+               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=253",
+               in_stock=False, location="洛杉矶", line_tags=["CN2 GIA"],
+               cpu_cores=1, ram_gb=Decimal("1.0"), disk_gb=20, bandwidth_gb=1000, port_mbps=1000, recommended=True),
+    RawProduct(external_id="dmit-254", name="PVM.LAX.AS3.Pro.Pocket", price=Decimal("16.90"), currency="USD",
+               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=254",
+               in_stock=False, location="洛杉矶", line_tags=["CN2 GIA"],
+               cpu_cores=1, ram_gb=Decimal("2.0"), disk_gb=30, bandwidth_gb=1500, port_mbps=1000),
+    RawProduct(external_id="dmit-255", name="PVM.LAX.AS3.Pro.STARTER", price=Decimal("34.90"), currency="USD",
+               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=255",
+               in_stock=False, location="洛杉矶", line_tags=["CN2 GIA"],
+               cpu_cores=2, ram_gb=Decimal("2.0"), disk_gb=40, bandwidth_gb=2000, port_mbps=2000),
+    RawProduct(external_id="dmit-256", name="PVM.LAX.AS3.Pro.MINI", price=Decimal("62.90"), currency="USD",
+               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=256",
+               in_stock=False, location="洛杉矶", line_tags=["CN2 GIA"],
+               cpu_cores=2, ram_gb=Decimal("4.0"), disk_gb=60, bandwidth_gb=3000, port_mbps=2000),
+    # 洛杉矶 EB (Eyeball) 系列
     RawProduct(external_id="dmit-188", name="PVM.LAX.EB.WEE", price=Decimal("39.90"), currency="USD",
                billing_cycle="annually", purchase_url="https://www.dmit.io/cart.php?a=add&pid=188",
-               in_stock=False, location="洛杉矶", line_tags=["CMIN2", "9929", "4837"],
+               in_stock=False, location="洛杉矶", line_tags=["CMIN2", "9929"],
                cpu_cores=1, ram_gb=Decimal("1.0"), disk_gb=15, bandwidth_gb=1000, port_mbps=1000, recommended=True),
-    RawProduct(external_id="dmit-189", name="PVM.LAX.EB.TINY", price=Decimal("69.90"), currency="USD",
-               billing_cycle="annually", purchase_url="https://www.dmit.io/cart.php?a=add&pid=189",
-               in_stock=False, location="洛杉矶", line_tags=["CMIN2", "9929", "4837"],
-               cpu_cores=1, ram_gb=Decimal("2.0"), disk_gb=20, bandwidth_gb=2000, port_mbps=2000),
-    RawProduct(external_id="dmit-154", name="PVM.LAX.EB.POCKET", price=Decimal("159.90"), currency="USD",
-               billing_cycle="annually", purchase_url="https://www.dmit.io/cart.php?a=add&pid=154",
-               in_stock=False, location="洛杉矶", line_tags=["CMIN2", "9929", "4837"],
-               cpu_cores=2, ram_gb=Decimal("2.0"), disk_gb=40, bandwidth_gb=3000, port_mbps=4000),
-    RawProduct(external_id="dmit-155", name="PVM.LAX.EB.STARTER", price=Decimal("29.90"), currency="USD",
-               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=155",
-               in_stock=False, location="洛杉矶", line_tags=["CMIN2", "9929", "4837"],
-               cpu_cores=2, ram_gb=Decimal("2.0"), disk_gb=60, bandwidth_gb=4000, port_mbps=5000),
-    # 东京 Pro / Lite
-    RawProduct(external_id="dmit-148", name="PVM.TYO.Lite.TINY", price=Decimal("10.90"), currency="USD",
-               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=148",
-               in_stock=False, location="东京", line_tags=["国际线路"],
-               cpu_cores=1, ram_gb=Decimal("1.0"), disk_gb=20, bandwidth_gb=1000, port_mbps=1000),
-    RawProduct(external_id="dmit-142", name="PVM.TYO.Pro.Pocket", price=Decimal("21.90"), currency="USD",
-               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=142",
+    RawProduct(external_id="dmit-259", name="PVM.LAX.AS3.EB.TINY", price=Decimal("10.90"), currency="USD",
+               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=259",
+               in_stock=False, location="洛杉矶", line_tags=["CMIN2", "9929"],
+               cpu_cores=1, ram_gb=Decimal("1.0"), disk_gb=20, bandwidth_gb=2000, port_mbps=2000),
+    RawProduct(external_id="dmit-260", name="PVM.LAX.AS3.EB.Pocket", price=Decimal("16.90"), currency="USD",
+               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=260",
+               in_stock=False, location="洛杉矶", line_tags=["CMIN2", "9929"],
+               cpu_cores=1, ram_gb=Decimal("2.0"), disk_gb=30, bandwidth_gb=3000, port_mbps=2000),
+    RawProduct(external_id="dmit-261", name="PVM.LAX.AS3.EB.STARTER", price=Decimal("34.90"), currency="USD",
+               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=261",
+               in_stock=False, location="洛杉矶", line_tags=["CMIN2", "9929"],
+               cpu_cores=2, ram_gb=Decimal("2.0"), disk_gb=40, bandwidth_gb=4000, port_mbps=3000),
+    # 洛杉矶 T1 系列
+    RawProduct(external_id="dmit-271", name="PVM.LAX.AS3.T1.TINY", price=Decimal("6.90"), currency="USD",
+               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=271",
+               in_stock=False, location="洛杉矶", line_tags=["国际线路"],
+               cpu_cores=1, ram_gb=Decimal("1.0"), disk_gb=20, bandwidth_gb=2000, port_mbps=1000),
+    # 香港 Pro 系列 (CN2 GIA)
+    RawProduct(external_id="dmit-265", name="PVM.HKG.AS3.Pro.TINY", price=Decimal("39.90"), currency="USD",
+               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=265",
+               in_stock=False, location="香港", line_tags=["CN2 GIA"],
+               cpu_cores=1, ram_gb=Decimal("1.0"), disk_gb=20, bandwidth_gb=300, port_mbps=100, recommended=True),
+    RawProduct(external_id="dmit-266", name="PVM.HKG.AS3.Pro.STARTER", price=Decimal("79.90"), currency="USD",
+               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=266",
+               in_stock=False, location="香港", line_tags=["CN2 GIA"],
+               cpu_cores=2, ram_gb=Decimal("2.0"), disk_gb=40, bandwidth_gb=600, port_mbps=200),
+    RawProduct(external_id="dmit-267", name="PVM.HKG.AS3.Pro.MINI", price=Decimal("126.90"), currency="USD",
+               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=267",
+               in_stock=False, location="香港", line_tags=["CN2 GIA"],
+               cpu_cores=2, ram_gb=Decimal("4.0"), disk_gb=60, bandwidth_gb=1000, port_mbps=300),
+    # 香港 T1 系列
+    RawProduct(external_id="dmit-198", name="PVM.HKG.AS3.T1.TINY", price=Decimal("6.90"), currency="USD",
+               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=198",
+               in_stock=False, location="香港", line_tags=["国际线路"],
+               cpu_cores=1, ram_gb=Decimal("1.0"), disk_gb=20, bandwidth_gb=2000, port_mbps=1000),
+    RawProduct(external_id="dmit-199", name="PVM.HKG.AS3.T1.STARTER", price=Decimal("12.90"), currency="USD",
+               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=199",
+               in_stock=False, location="香港", line_tags=["国际线路"],
+               cpu_cores=1, ram_gb=Decimal("2.0"), disk_gb=30, bandwidth_gb=4000, port_mbps=1000),
+    # 东京 Pro 系列 (CN2 GIA)
+    RawProduct(external_id="dmit-138", name="PVM.TYO.AS3.Pro.TINY", price=Decimal("21.90"), currency="USD",
+               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=138",
                in_stock=False, location="东京", line_tags=["CN2 GIA"],
                cpu_cores=1, ram_gb=Decimal("1.0"), disk_gb=20, bandwidth_gb=300, port_mbps=100, recommended=True),
-    RawProduct(external_id="dmit-143", name="PVM.TYO.Pro.SHARE", price=Decimal("36.90"), currency="USD",
-               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=143",
+    RawProduct(external_id="dmit-139", name="PVM.TYO.AS3.Pro.STARTER", price=Decimal("45.90"), currency="USD",
+               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=139",
                in_stock=False, location="东京", line_tags=["CN2 GIA"],
-               cpu_cores=2, ram_gb=Decimal("2.0"), disk_gb=30, bandwidth_gb=600, port_mbps=200),
-    RawProduct(external_id="dmit-144", name="PVM.TYO.Pro.STARTER", price=Decimal("69.90"), currency="USD",
-               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=144",
+               cpu_cores=2, ram_gb=Decimal("2.0"), disk_gb=40, bandwidth_gb=600, port_mbps=200),
+    RawProduct(external_id="dmit-140", name="PVM.TYO.AS3.Pro.MINI", price=Decimal("89.90"), currency="USD",
+               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=140",
                in_stock=False, location="东京", line_tags=["CN2 GIA"],
-               cpu_cores=2, ram_gb=Decimal("2.0"), disk_gb=40, bandwidth_gb=1000, port_mbps=300),
-    # 香港 Pro / Lite
-    RawProduct(external_id="dmit-137", name="PVM.HKG.Lite.TINY", price=Decimal("10.90"), currency="USD",
-               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=137",
-               in_stock=False, location="香港", line_tags=["国际线路"],
-               cpu_cores=1, ram_gb=Decimal("1.0"), disk_gb=20, bandwidth_gb=1000, port_mbps=1000),
-    RawProduct(external_id="dmit-131", name="PVM.HKG.Pro.Pocket", price=Decimal("21.90"), currency="USD",
+               cpu_cores=2, ram_gb=Decimal("4.0"), disk_gb=60, bandwidth_gb=1000, port_mbps=300),
+    # 东京 T1 系列
+    RawProduct(external_id="dmit-131", name="PVM.TYO.AS3.T1.TINY", price=Decimal("6.90"), currency="USD",
                billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=131",
-               in_stock=False, location="香港", line_tags=["CN2 GIA"],
-               cpu_cores=1, ram_gb=Decimal("1.0"), disk_gb=20, bandwidth_gb=200, port_mbps=100),
-    RawProduct(external_id="dmit-132", name="PVM.HKG.Pro.SHARE", price=Decimal("39.90"), currency="USD",
+               in_stock=False, location="东京", line_tags=["国际线路"],
+               cpu_cores=1, ram_gb=Decimal("1.0"), disk_gb=20, bandwidth_gb=2000, port_mbps=1000),
+    RawProduct(external_id="dmit-132", name="PVM.TYO.AS3.T1.STARTER", price=Decimal("12.90"), currency="USD",
                billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=132",
-               in_stock=False, location="香港", line_tags=["CN2 GIA"],
-               cpu_cores=2, ram_gb=Decimal("2.0"), disk_gb=30, bandwidth_gb=400, port_mbps=200),
-    RawProduct(external_id="dmit-133", name="PVM.HKG.Pro.STARTER", price=Decimal("79.90"), currency="USD",
-               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=133",
-               in_stock=False, location="香港", line_tags=["CN2 GIA"],
-               cpu_cores=2, ram_gb=Decimal("2.0"), disk_gb=40, bandwidth_gb=800, port_mbps=300),
-    # 圣何塞 Pro / EB
-    RawProduct(external_id="dmit-166", name="PVM.SJC.EB.TINY", price=Decimal("10.90"), currency="USD",
-               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=166",
-               in_stock=False, location="圣何塞", line_tags=["CMIN2", "9929", "4837"],
-               cpu_cores=1, ram_gb=Decimal("1.0"), disk_gb=20, bandwidth_gb=1000, port_mbps=1000),
-    RawProduct(external_id="dmit-167", name="PVM.SJC.Pro.STARTER", price=Decimal("139.90"), currency="USD",
-               billing_cycle="annually", purchase_url="https://www.dmit.io/cart.php?a=add&pid=167",
-               in_stock=False, location="圣何塞", line_tags=["CN2 GIA", "9929"],
-               cpu_cores=1, ram_gb=Decimal("2.0"), disk_gb=20, bandwidth_gb=1000, port_mbps=1000),
-    RawProduct(external_id="dmit-168", name="PVM.SJC.Pro.MINI", price=Decimal("29.90"), currency="USD",
-               billing_cycle="monthly", purchase_url="https://www.dmit.io/cart.php?a=add&pid=168",
-               in_stock=False, location="圣何塞", line_tags=["CN2 GIA", "9929"],
-               cpu_cores=2, ram_gb=Decimal("4.0"), disk_gb=40, bandwidth_gb=2000, port_mbps=2000),
+               in_stock=False, location="东京", line_tags=["国际线路"],
+               cpu_cores=1, ram_gb=Decimal("2.0"), disk_gb=30, bandwidth_gb=4000, port_mbps=1000),
 ]
 
 
 def _merge(primary: list[RawProduct], *backups: list[RawProduct]) -> list[RawProduct]:
-    """按 external_id 合并多源：主源优先，备源补充主源缺失的套餐。
-    同 pid 命中多源时，用备源的非空字段填补主源的空字段（如主源缺机房/端口）。
-    库存状态取多源交集：任一源报缺货即判缺货（备源可能更陈旧，宁可误报缺货也不误报有货）。"""
+    """按 external_id 合并多源：主源优先，备源补充缺失套餐与非空字段。"""
     merged: dict[str, RawProduct] = {p.external_id: p for p in primary}
     for source in backups:
         for p in source:
@@ -279,27 +324,29 @@ def _merge(primary: list[RawProduct], *backups: list[RawProduct]) -> list[RawPro
                         setattr(m, field, getattr(p, field))
                 if not m.line_tags and p.line_tags:
                     m.line_tags = p.line_tags
-                # 备源库存更陈旧，不再用 AND 把主源有货打成缺货
+                if p.stock_verified and not m.stock_verified:
+                    m.in_stock = p.in_stock
+                    m.stock_verified = True
     return list(merged.values())
 
 
 class DmitCrawler(MerchantCrawler):
     slug = "dmit"
     name = "DMIT"
-    # P7 分级调度默认值（分钟）：2026-08-31 起运营决策全商家统一 5 分钟
     default_interval_minutes = 5
     website = "https://www.dmit.io"
-    # 返利链接：DMIT 标准 WHMCS aff.php，带 pid 直达具体套餐。
     aff_url_template = "https://www.dmit.io/aff.php?aff=23928&pid={pid}"
 
     def fetch(self, client: httpx.Client) -> list[RawProduct]:
-        # 双源全部发起（内部各自容错），按优先级合并
+        dvps = _fetch_dvps(client)
         vpszk = _fetch_vpszk(client)
-        vpsoso = _fetch_vpsoso(client)
-        live = _merge(vpszk, vpsoso)
+        live = _merge(dvps, vpszk)
+        vpsoso: list[RawProduct] = []
+        if len(live) < 8:
+            vpsoso = _fetch_vpsoso(client)
+            live = _merge(live, vpsoso)
 
         if len(live) >= 8:
-            # 线上源可用：补充线上未覆盖的经典预置套餐（保留站内历史但设为缺货）
             live_ids = {p.external_id for p in live}
             for p in DMIT_PRESETS:
                 if p.external_id not in live_ids:
@@ -323,18 +370,28 @@ class DmitCrawler(MerchantCrawler):
                             from_preset=True,
                         )
                     )
-            print(f"[dmit] multi-source live: vpszk={len(vpszk)} vpsoso={len(vpsoso)} merged={len(live)}")
+            print(f"[dmit] multi-source live: dvps={len(dvps)} vpszk={len(vpszk)} vpsoso={len(vpsoso)} merged={len(live)}")
             return live
 
-        # 全部线上源失败：回退预置数据（均为缺货，且不参与消失标记）
         print(f"[dmit] all live sources failed, fallback to {len(DMIT_PRESETS)} presets")
         return [
             RawProduct(
-                external_id=p.external_id, name=p.name, price=p.price, currency=p.currency,
-                billing_cycle=p.billing_cycle, purchase_url=p.purchase_url, in_stock=False,
-                location=p.location, line_tags=list(p.line_tags), cpu_cores=p.cpu_cores,
-                ram_gb=p.ram_gb, disk_gb=p.disk_gb, bandwidth_gb=p.bandwidth_gb,
-                port_mbps=p.port_mbps, recommended=p.recommended, from_preset=True,
+                external_id=p.external_id,
+                name=p.name,
+                price=p.price,
+                currency=p.currency,
+                billing_cycle=p.billing_cycle,
+                purchase_url=p.purchase_url,
+                in_stock=False,
+                location=p.location,
+                line_tags=list(p.line_tags),
+                cpu_cores=p.cpu_cores,
+                ram_gb=p.ram_gb,
+                disk_gb=p.disk_gb,
+                bandwidth_gb=p.bandwidth_gb,
+                port_mbps=p.port_mbps,
+                recommended=p.recommended,
+                from_preset=True,
             )
             for p in DMIT_PRESETS
         ]
