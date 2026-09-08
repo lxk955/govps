@@ -1,0 +1,2651 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Shopping Cart - GreenCloud</title>
+
+    <!-- Styling -->
+<link href="/billing/assets/fonts/css/open-sans-family.css" rel="stylesheet" type="text/css" />
+<link href="/billing/assets/fonts/css/raleway-family.css" rel="stylesheet" type="text/css" />
+<link href="/billing/templates/twenty-five/css/all.min.css?v=c02bb8" rel="stylesheet">
+<link href="/billing/assets/css/fontawesome-all.min.css" rel="stylesheet">
+<link href="/billing/templates/twenty-five/css/custom.css" rel="stylesheet">
+
+<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+<!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+<!--[if lt IE 9]>
+  <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+  <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+<![endif]-->
+
+<script type="text/javascript">
+    var csrfToken = '5d03e7cee1bf0c62fe94ea649fd211256cdddfb8',
+        markdownGuide = 'Markdown Guide',
+        locale = 'en',
+        saved = 'saved',
+        saving = 'autosaving',
+        whmcsBaseUrl = "/billing";
+    </script>
+<script src="/billing/templates/twenty-five/js/scripts.min.js?v=c02bb8"></script>
+
+
+    <style>
+        .tab-pane#domain > .row:first-child,
+        .tab-pane#tabOverview > .row:first-child,
+        .product-details-tab .tab-content > #domain > .row:not(.hcp-vps-dashboard),
+        #domain .table-product-details,
+        #domain .domain-details,
+        #domain a.btn[href*="http://"],
+        #domain a.btn:has(.fa-external-link),
+        #tabOverview .product-details,
+        #tabOverview .table-product-details {
+            display: none !important;
+        }
+    </style>
+
+
+</head>
+
+<body data-phone-cc-input="1">
+        <script type="text/javascript">var JSONParserPGA = {
+    url:            false,
+    type:           'post',
+    startString:    '<JSONRESPONSE#',
+    stopString:     '#ENDJSONRESPONSE>',
+    currentPage:    false,
+    requestCounter: 0,
+    
+    create: function(url,type){
+        this.url = url;
+        if(type !== undefined)
+        {
+            this.type = type;
+        }
+    },
+    getJSON: function(json,disableError){
+            this.requestCounter--;
+            if(this.requestCounter == 0)
+            {
+                jQuery('#MGLoader').loader('hide');
+            }
+            
+            var start = json.indexOf(this.startString);            
+            json = json.substr(start+this.startString.length,json.indexOf(this.stopString)-start-this.startString.length);
+                               
+            try{
+                return jQuery.parseJSON(json);
+            }catch(e)
+            {
+                console.log(e);
+                jQuery('#MGAlerts').alerts('error',"Error: "+e.toString());
+                jQuery('.modal.in').modal('hide');
+                return false;
+            }
+    },
+    request: function (action, data, callback, loader, disableErrors) {
+        var details = {};
+        var that = this;
+       
+        if(data === undefined){
+            data = {};
+        }
+        
+        if(typeof data === "object"){
+            data['mg-action'] = action;
+            if(this.currentPage){
+                data['mg-page']    = this.currentPage;
+            }
+        }else if(typeof data ===  "string"){
+            data += "&mg-action="+action;
+            if(this.currentPage)
+              data +="&mg-page=" +this.currentPage;
+        }
+        
+        if(loader === undefined)
+        {
+            jQuery('#MGLoader').loader();
+        }else if(loader!="off"){
+            jQuery(loader).loader();  
+      }
+
+        this.requestCounter++;
+
+        switch(this.type)
+        {
+            default:
+                jQuery.post(this.url,data,function(response){
+                    parsed = that.getJSON(response,disableErrors);
+                    if(parsed)
+                    {
+                        if(parsed.success)
+                        {
+                            jQuery('#MGAlerts').alerts('success',parsed.success);
+                        }
+
+                        if(parsed.error)
+                        {
+                            jQuery('#MGAlerts').alerts('error',parsed.error);
+                            jQuery('.modal.in').modal('hide');
+                        }
+                        
+                        if(parsed.data)
+                        {
+                            callback(parsed.data);
+                        }
+                    }
+                    else
+                    {
+                        jQuery('#MGAlerts').alerts('error',"Somethings Goes Wrong, check logs, contact admin");
+                        jQuery('.modal.in').modal('hide');
+                    }
+                }).fail(function(response) {
+                    if(response.responseText)
+                    {
+                        jQuery('#MGAlerts').alerts('error',response.responseText);
+                        jQuery('#MGLoader').loader('hide');
+                    }
+                });
+        }
+    }
+};
+
+
+function ucfirst(string)
+{
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+jQuery.fn.alerts = function(type,message,configs){        
+    configs = jQuery.extend({
+        items: null
+        ,confirmCallback: null
+        ,link: null
+    }, configs);
+    
+    items           = configs.items;
+    confirmCallback = configs.confirmCallback;
+    
+    var container = this;
+
+    var now = new Date().getTime();
+    
+    var current = new Array();
+    
+    var count = 0;
+    
+    var max = 2;
+    
+    jQuery(container).children('div[data-time]').each(function(){
+        var time = new String(jQuery(this).attr('data-time'));
+        current[time] = 1;
+        count++;
+    });
+    
+    current.sort();
+        
+    if(count > max)
+    {
+        for(x in current)
+        {
+            var set = parseInt(x);
+            if(set > 0)
+            {
+                if( now-set > 10 && count-max > 0)
+                {
+                    jQuery(container).find('div[data-time="'+set+'"]').remove();
+                    count--;
+                }
+            }
+        }
+    }
+        
+    if(type === 'clear')
+    {
+        jQuery(container).find('div[data-time]').remove();
+        return;
+    }
+
+    var prototype = jQuery(container).find('div[data-prototype="'+type+'"]').clone();
+
+    prototype.find('strong').append(message);
+
+    if(items != undefined)
+    {
+        var html = '<ul>';
+        for(x in items)
+        {
+            html += '<li>'+items[x]+'</li>';
+        }
+        html += '</ul>';
+        prototype.append(html);
+    }   
+    
+    prototype.find('.close').click(function(){
+       jQuery(this).parent().remove(); 
+    });
+    
+    prototype.attr('data-time',now);
+    
+    if(configs.link)
+    {
+        prototype.append('<a href="'+configs.link.url+'">'+configs.link.name+'</a>');
+    }
+            
+    prototype.removeAttr('data-prototype');        
+    prototype.show();
+            
+    jQuery(container).append(prototype);
+};
+
+jQuery.fn.loader = function(action)
+{
+    if(action === undefined || action == 'show')
+    {
+        jQuery('body').css('position','relative');
+        jQuery(this).show();
+    }
+    else
+    {
+        jQuery(this).hide();
+    }
+}
+
+jQuery.fn.MGGetForms = function(action)
+{
+    var that = this;
+    var data = {};
+    jQuery(this).find('input,select,textarea').each(function(){
+        if(!jQuery(this).is(':disabled'))
+        {
+            var name = jQuery(this).attr('name');
+            
+            var value = null;
+            
+            if(name !== undefined)
+            {
+                var type = jQuery(this).attr('type');
+
+                var regExp = /([a-zA-Z_0-9]+)\[([a-zA-Z_0-9]+)\]/g;
+                
+                if(type == 'checkbox')
+                {
+                    var value = [];
+                    jQuery(that).find('input[name="'+name+'"]').each(function(){
+                        if(jQuery(this).is(':checked'))
+                        {
+                            value.push(jQuery(this).val());
+                        }
+                    });
+                }
+                else if(type == 'radio')
+                {
+                    if(jQuery(this).is(':checked'))
+                    {
+                        var value = jQuery(this).val();
+                    }
+                }
+                else
+                {
+                    var value = jQuery(this).val();
+                }
+                
+                if(value !== null)
+                {
+                    if(result = regExp.exec(name))
+                    {
+                        if(data[result[1]] === undefined)
+                        {
+                            data[result[1]] = {}
+                        }
+                        
+                        data[result[1]][result[2]] = value;
+                    }
+                    else
+                    {
+                        data[name] = value;
+                    }
+                }
+            }
+        }  
+    }); 
+    return data;
+}
+
+jQuery.fn.MGModalActions = function(){    
+                var that = this;
+                var rowUpdateFunction;
+
+                this.putField = function(modal,name,value){
+                    var element = modal.find('*[name="'+name+'"]');
+                    if(element.length > 0){
+                        switch(element.prop('tagName').toLowerCase())
+                        {
+                            case 'input':
+                                
+                                if(element.attr('type') == 'checkbox')
+                                {
+                                    if(typeof value == 'object'){
+                                        for(x in value)
+                                        {
+                                            modal.find('input[type=checkbox][name="'+name+'"][value="'+value[x]+'"]').attr('checked','checked');
+                                        }
+                                    }else{
+                                        if(value == 1)
+                                        {
+                                            element.prop('checked',true);
+                                        }
+                                        else
+                                        {
+                                            element.prop('checked',false);
+                                        }
+                                    }
+                                }
+                                else if(element.attr('type') == 'radio')
+                                {
+                                    element.filter('*[value="'+value+'"]').attr('checked','checked');
+                                }
+                                else
+                                {
+                                    element.val(value);
+                                }
+                            break;
+                            case 'select':          
+                                element.val(value);
+                                break;
+                            case 'textarea':
+                                element.text(value);
+                            break;
+                        }
+                        
+                        element.change();
+                    }
+                    
+                    var element = modal.find('*[name="'+name+'[]"]');
+
+
+                    if(element.length > 0){
+                        switch(element.prop('tagName').toLowerCase())
+                        {
+                            case 'select':          
+                                if(element.attr('multiple'))
+                                {
+                                    element.find('option').removeAttr('selected');
+                                    for(x in value)
+                                    {
+                                        element.find('option[value="'+value[x]+'"]').attr('selected','selected');
+                                    }
+                                }
+                            break;
+                            case 'input':
+                                if(element.attr('type') == 'checkbox')
+                                {
+                                    modal.find('input[type=checkbox][name="'+name+'[]"]').removeAttr('checked');
+                                    for(x in value)
+                                    {
+                                        modal.find('input[type=checkbox][name="'+name+'[]"][value="'+value[x]+'"]').attr('checked','checked');
+                                    }
+                                }
+                            break;
+                        }
+                        element.change();
+                    }
+                }
+                
+                this.putFieldOptions = function(modal, name, newOptions){
+                    var element = modal.find('*[name="'+name+'"]');
+                    if(element.length > 0){
+                        switch(element.prop('tagName').toLowerCase())
+                        {
+
+                            case 'select':          
+                                $('option', element).remove();
+                                $.each(newOptions, function(text, key) {
+                                    var option = new Option(key, text);
+                                    element.append($(option));
+                                });
+                                break;
+                            break;
+                        }
+                        
+                        element.change();
+                    }
+                }
+                
+                this.addErrorField = function(modal,name,error){
+                    var element = modal.find('*[name="'+name+'"]');
+                    
+                    if(element.length == 0){
+                        var element = modal.find('*[name="'+name+'[]"]');
+                    }
+                    
+                    var contener = element.closest('div.form-group');
+                    
+                    contener.addClass('has-error');
+                    
+                    contener.find('.error-block').text(error).show();
+                }
+                
+                this.clearModalError = function(modal){
+                    modal.find('.form-group.has-error').removeClass('has-error');
+                    modal.find('.error-block').text('').hide();
+                    modal.find('.modal-alerts').alerts('clear');
+                }
+                
+                this.setRowUpdateFunction = function(updatefunction ){
+                    this.rowUpdateFunction = updatefunction;
+                }
+                
+                this.on('click','*[data-modal-id]', function(event){
+                    event.preventDefault();
+                    
+                    var target = jQuery(event.currentTarget).attr('data-modal-target');
+                    
+                    if(!target)
+                    {
+                        throw "Define target ID (data-modal-target)";
+                    }
+                                        
+                    var modal = jQuery(event.currentTarget).attr('data-modal-id');
+                   
+                    if(!modal)
+                    {
+                        throw "Define modal id (data-modal-id)";
+                    }
+ 
+                    var action = jQuery('#'+modal).attr('data-modal-load');
+                    
+                    var functionName = jQuery('#'+modal).attr('data-modal-on-load');
+
+                    var onload = window[functionName];
+
+                    jQuery('#'+modal).find('[data-target]').val(target);
+                    jQuery('#'+modal).find('[data-modal-title]').text(target);
+                    
+                    that.clearModalError(jQuery('#'+modal));
+
+                    if(action)
+                    {
+
+                        jQuery('#'+modal).find('.modal-body').hide();
+                        jQuery('#'+modal).find('.modal-loader').show();
+
+                        JSONParserPGA.request(
+                            action
+                            , {
+                                id: target
+                            }
+                            , function(data) {
+                                
+                                if(typeof onload === 'function')
+                                {
+                                    data = onload(data);
+                                }
+                                
+                                if(data.formOptions)
+                                {
+                                    for(x in data.formOptions)
+                                        that.putFieldOptions(jQuery('#'+modal),x,data.formOptions[x]);
+                                }
+                                if(data.form)
+                                {
+                                    for(x in data.form)
+                                    {
+                                        that.putField(jQuery('#'+modal),x,data.form[x]);
+                                    }
+                                }
+
+                                if(data.error)
+                                {
+                                    jQuery('#MGAlerts').alerts('success',data.error);
+                                    jQuery('#'+modal).find('*[data-modal-action]').attr('disabled','disabled');
+                                }
+                                else
+                                {
+                                    jQuery('#'+modal).find('*[data-modal-action]').removeAttr('disabled');
+                                }
+
+                                if(data.vars)
+                                {
+                                    jQuery('#'+modal).find('*[data-modal-var]').each(function(){
+                                        var name = jQuery(this).attr('data-modal-var');
+                                        if(data.vars[name] && name=="html"){
+                                            jQuery(this).html(data.vars[name]);
+                                        }
+                                        else if(data.vars[name])
+                                        {
+                                            jQuery(this).text(data.vars[name]);
+                                        }
+                                        else
+                                        {
+                                            jQuery(this).text();
+                                        }
+                                    });
+                                }
+
+                                jQuery('#'+modal).find('.modal-body').show();
+                                jQuery('#'+modal).find('.modal-loader').hide();
+                            }
+                        );
+                    }
+                    else
+                    {
+                        jQuery('#'+modal).find('.modal-body').show();
+                        jQuery('#'+modal).find('.modal-loader').hide();
+                    }
+
+                    jQuery('#'+modal).modal();
+                });
+                
+                this.updateRow = function(rowData){
+                    for(var x in rowData)
+                    {
+                        if(x == 'DT_RowData')
+                        {
+                            var selector = 'tr';
+                            for(var z in rowData['DT_RowData'])
+                            {
+                                selector += '[data-'+z+'="'+rowData['DT_RowData'][z]+'"]';
+                            }
+                            var row = that.find(selector);
+                        }
+                    }
+                    if(row)
+                    {
+                        for(var x in rowData)
+                        {
+                            if(x == 'DT_RowClass')
+                            {
+                                jQuery(row).attr('class','');
+                                jQuery(row).addClass(rowData[x]);
+                            }
+                            else if(x != 'DT_RowData')
+                            {
+                                jQuery(row).find('td:eq('+x+')').html(rowData[x]);
+                            }
+                        }
+                    }
+                    row = null;
+                }
+                
+                this.modalAction = function(action,target,data){
+                    if(target)
+                    {
+                        data['id'] = target;
+                    }
+
+                    JSONParserPGA.request(
+                        action
+                        ,data
+                        , function(data) {
+                            if(data.saved)
+                            {
+                                if(typeof that.rowUpdateFunction === 'function')
+                                {
+                                    data = that.rowUpdateFunction(data);
+                                }
+                                
+                                that.updateRow(data.saved);
+                            }
+
+                            if(data.deleted)
+                            {
+                                if(typeof that.rowUpdateFunction === 'function')
+                                {
+                                    data.deleted = that.rowUpdateFunction(data.deleted);
+                                }
+                                
+                                for(var x in data.deleted)
+                                {
+                                    if(x == 'DT_RowData')
+                                    {
+                                        var selector = 'tr';
+                                        for(var z in data.deleted['DT_RowData'])
+                                        {
+                                            selector += '[data-'+z+'="'+data.deleted['DT_RowData'][z]+'"]';
+                                        }
+                                        var row = that.find(selector);
+                                    }
+                                }
+                                if(row)
+                                {
+                                    if(data.deletedRowMessage)
+                                    {
+                                        row.html('<td colspan="'+row.find('td').length+'">'+data.deletedRowMessage+'</td>');
+                                    }
+                                    else
+                                    {
+                                        row.remove();
+                                    }
+                                }
+                                row = null;
+                            }
+                                                        
+                            if(data.modalError || data.modalSuccess) 
+                            {
+                                if(data.modalError)
+                                {
+                                    jQuery('.modal.in .modal-alerts').alerts('error',data.modalError);
+                                }
+
+                                if(parsed.modalSuccess)
+                                {
+                                    jQuery('.modal.in .modal-alerts').alerts('success',data.modalSuccess);
+                                }
+                            }
+                            else
+                            {
+                                jQuery('.modal.in').modal('hide');
+                            }
+                            
+                            if(data.modalFieldsErrors)
+                            {
+                                for(x in data.modalFieldsErrors)
+                                {
+                                    if(data.modalFieldsErrors[x])
+                                    {
+                                        that.addErrorField(jQuery('.modal.in'),x,data.modalFieldsErrors[x]);
+                                    }
+                                }
+                            }
+                        }
+                    );
+                }
+                
+                this.on('click','*[data-modal-action]', function(event){
+                    event.preventDefault();
+                    
+                    if(jQuery(this).hasClass('disabled'))
+                        return false;
+                    
+                    var action = jQuery(this).attr('data-modal-action');
+
+                    var target = jQuery(this).attr('data-modal-target');
+
+                    var data = jQuery(this).closest('.modal').MGGetForms();
+                    
+                    that.modalAction(action,target,data);
+                });
+                
+                return this;
+            }
+            
+jQuery.fn.MGresetInputData = function () {
+   
+    jQuery(this).find('input,select,textarea').each(function () {
+       
+        if (!jQuery(this).is(':disabled') && jQuery(this).attr('name') !== undefined && jQuery(this).attr('name') !== false)
+        {
+          
+            var name = jQuery(this).attr('name');
+            name = name.replace("[]", "");
+             
+            if (jQuery(this).attr('type') == 'checkbox')
+            {
+                $(this).prop('checked', false);
+            }
+            else
+            {
+
+               $(this).val('');
+            }         
+            
+        }
+
+       
+    });
+}  
+$(document).ready(function () {
+    refreshClientData();
+
+    $(document).on('change', '#inputCountry', function (e) {
+        if($('input[name=account_id]:checked').val() === 'new' || $('input[name=custtype]:checked').val() === 'new' ||
+            !($('#btnAlreadyRegistered').hasClass('w-hidden')))
+        {
+            changeGatewaysForNotLoggedUser();
+        }
+    });
+
+    $(document).on('change', '#stateselect', function (e) {
+        request();
+    });
+
+    $('input[name=account_id]').on('ifChecked', function(e){
+        refreshClientData();
+    });
+
+    $(document).on('change', '#stateinput', (event) => {
+        changeGatewaysForNotLoggedUser();
+    });
+});
+
+function refreshClientData()
+{
+    var account = $('input[name=account_id]:checked').val();
+    var data = {'account': account}
+    var url = 'index.php?m=PaymentGatewayAllocator&mg-page=UpdateClientData&mg-action=updateClientData&json=1';
+    var response = $.ajax({
+        type: "POST",
+        url: url,
+        data: data,
+        success: function (data) {
+            data = JSONParserPGA.getJSON(data);
+            if(data.data.Client)
+            {
+                $('#inputCountry').val(data.data.Client.country).change();
+                $('#stateselect').val(data.data.Client.state);
+                $('#stateinput').val(data.data.Client.state);
+                request(data.data.Client.country, data.data.Client.state, '', data.data.Client.id, data.data.Client.groupid);
+            }else{
+                changeGatewaysForNotLoggedUser();
+            }
+        },
+    });
+}
+function request(countryParam = '', stateParam = '', priceParam = '', clientIdParam = '', clientGroupId = '') {
+    let country = '';
+    let state = '';
+
+    if(countryParam || stateParam)
+    {
+        country = countryParam;
+        state = stateParam;
+    } else {
+        country = $('#inputCountry').val();
+        state = $('#stateselect').val();
+    }
+
+    //price, suffix and prefix are injected to js in hooks
+    if(typeof price === 'undefined' || typeof currencyId === 'undefined')
+    {
+        var data = {'country': country, 'state': state}
+    }
+    else
+    {
+        var data = {'country': country, 'state': state, 'price': price, 'currencyId': currencyId}
+    }
+    if(clientIdParam !== '')
+    {
+        data.clientId = clientIdParam;
+        data.groupId = clientGroupId;
+    }
+    var url = 'index.php?m=PaymentGatewayAllocator&mg-page=GatewayInjection&mg-action=gatewayInjection&json=1';
+    var response = $.ajax({
+        type: "POST",
+        url: url,
+        data: data,
+        success: function (data) {
+            data = JSONParserPGA.getJSON(data);
+            if(data.data.disable)
+            {
+                hideGateways(data.data.disable);
+            }
+            else if(data.data.allow)
+            {
+                showGateWays(data.data.allow);
+            }
+
+            isFallbackEnabled();
+        },
+
+    });
+}
+
+function showGateWays(gateways) {
+
+    var currentGateWays = $('#paymentGatewaysContainer').find('input[name=paymentmethod]');
+    var firstSelected = false;
+
+    $.each(currentGateWays, function (index, value){
+
+        var res = $(this).val();
+
+        if($.inArray(res, Object.values(gateways)) > -1 || gateways.length < 1){
+            if ($('body').hasClass('lagom')){
+                $(this).closest('.panel-check').removeClass('hidden');
+                $(this).closest('.panel-check').prop('hidden', false);
+                if(!firstSelected)
+                {
+                    $(this).closest('.panel-check').iCheck('check');
+                    firstSelected = true;
+                }
+            }
+            else{
+                $(this).parent().parent().removeClass('hidden');
+
+                $(this).parent().parent().prop('hidden', false);
+                if(!firstSelected)
+                {
+                    if (!$('#useCreditOnCheckout').is(':checked'))
+                    {
+                        $(this).parent().parent().iCheck('check');
+                        firstSelected = true;
+                    }
+                }
+            }
+
+        }
+        else
+        {
+            if ($('body').hasClass('lagom')){
+                $(this).closest('.panel-check').addClass('hidden');
+                $(this).closest('.panel-check').prop('hidden', true);
+            }
+            else{
+                $(this).parent().parent().addClass('hidden');
+                $(this).parent().parent().prop('hidden', true);
+            }
+
+        }
+    });
+
+}
+
+function hideGateways(gateways) {
+
+    var currentGateWays = $('#paymentGatewaysContainer').find('input[name=paymentmethod]');
+    var firstSelected = false;
+
+    $.each(currentGateWays, function (index, value) {
+
+        var res = $(this).val();
+
+        if($.inArray(res, Object.values(gateways)) > -1 || gateways.length < 1){
+            if ($('body').hasClass('lagom')){
+                $(this).closest('.panel-check').addClass('hidden');
+                $(this).closest('.panel-check').prop('hidden', true);
+            }
+            else{
+                $(this).parent().parent().addClass('hidden');
+                $(this).parent().parent().prop('hidden', true);
+            }
+        }
+        else
+        {
+            if ($('body').hasClass('lagom')){
+                $(this).closest('.panel-check').removeClass('hidden');
+                $(this).closest('.panel-check').prop('hidden', false);
+                if(!firstSelected)
+                {
+                    $(this).closest('.panel-check').iCheck('check');
+                    firstSelected = true;
+                }
+            }
+            else{
+                $(this).parent().parent().removeClass('hidden');
+                $(this).parent().parent().prop('hidden', false);
+                if(!firstSelected)
+                {
+                    if (!$('#useCreditOnCheckout').is(':checked')) 
+                    {
+                        $(this).parent().parent().iCheck('check');
+                        firstSelected = true;
+                    }
+                }
+            }
+        }
+    });
+}
+
+function changeGatewaysForNotLoggedUser() {
+    let inputCountry = $('#inputCountry').val();
+    let inputState = $('#stateinput').val();
+    let account = $('input[name=account_id]:checked').val();
+
+    if(!$.isNumeric(account))
+    {
+        request(inputCountry, inputState);
+    }
+}
+
+function isFallbackEnabled() {
+    let allLabels;
+    let hiddenLabels;
+
+    if ($('body').hasClass('lagom')){
+        allLabels = $('#paymentGatewaysContainer .panel-group.panel-group-condensed .panel');
+        hiddenLabels = $('#paymentGatewaysContainer .panel-group.panel-group-condensed .panel.hidden');
+    }
+    else{
+        allLabels = $('#paymentGatewaysContainer .text-center > label.radio-inline');
+        hiddenLabels = $('#paymentGatewaysContainer .text-center > label.radio-inline.hidden');
+    }
+
+    //checks is all gateways are hidden
+    if(allLabels.length === hiddenLabels.length) {
+        var url = 'index.php?m=PaymentGatewayAllocator&mg-page=GatewayInjection&mg-action=isFallbackSelected&json=1';
+
+        var response = $.ajax({
+            type: "POST",
+            url: url,
+            data: {},
+            success: function (data) {
+                data = JSONParserPGA.getJSON(data);
+                if (data.data.disable && data.data.disabled.length > 0) {
+                    hideGateways(data.data.disable);
+                } else if (data.data.allow && data.data.allow.length > 0) {
+                    showGateWays(data.data.allow);
+                }
+            },
+
+        });
+    }
+}
+</script>
+
+    <section id="header">
+        <nav class="navbar navbar-default navbar-main" role="navigation">
+            <div class="container-custom navbar-gc">
+                                    <a href="/billing/index.php" class="logo"><img src="/billing/assets/img/logo.png" alt="GreenCloud"></a>
+                
+                <!-- Brand and toggle get grouped for better mobile display -->
+                <div class="navbar-header pull-right navbar-header-gc">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#nav-gc">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                </div>
+
+                <!-- Collect the nav links, forms, and other content for toggling -->
+                <div class="collapse navbar-collapse pull-right" id="nav-gc">
+                    <ul class="nav navbar-nav">
+                        <li menuItemName="Windows VPS" class="dropdown" id="windows-vps">
+                            <a href="https://green.cloud/windows-vps.php" class="dropdown-toggle"
+                                data-toggle="dropdown">
+                                Windows VPS <b class="caret"></b>
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li menuItemName="Budget Windows VPS" id="budget-windows-vps">
+                                    <a href="https://green.cloud/budget-windows-vps.php">
+                                        Budget Windows VPS
+                                    </a>
+                                </li>
+                                <li menuItemName="SEO Optimized VPS" id="seo-optimized-vps">
+                                    <a href="https://green.cloud/seo-optimized-vps.php">
+                                        SEO Optimized VPS
+                                    </a>
+                                </li>
+                                <li menuItemName="Forex VPS" id="forex-vps">
+                                    <a href="https://green.cloud/forex-vps.php">
+                                        Forex VPS
+                                    </a>
+                                </li>
+                                <li menuItemName="10Gbps Windows VPS" id="10gbps-windows-vps">
+                                    <a href="https://green.cloud/10gbps-windows-vps.php">
+                                        10Gbps Windows VPS
+                                    </a>
+                                </li>
+                                <li menuItemName="Managed Windows VPS" id="managed-windows-vps">
+                                    <a href="https://green.cloud/managed-windows-vps.php">
+                                        Managed Windows VPS
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        <li menuItemName="MacOS VPS" id="macos-vps">
+                            <a href="https://green.cloud/macos-vps.php">
+                                MacOS VPS
+                            </a>
+                        </li>
+
+                        <li menuItemName="KVM VPS" class="dropdown" id="kvm-vps">
+                            <a href="https://green.cloud/kvm-vps.php" class="dropdown-toggle"
+                                data-toggle="dropdown">
+                                KVM VPS <b class="caret"></b>
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li menuItemName="EPYC NVMe KVM VDS" id="epyc-nvme-kvm-vds">
+                                    <a href="https://green.cloud/epyc-nvme-kvm-vds.php">
+                                        EPYC NVMe KVM VDS
+                                    </a>
+                                </li>
+                                <li menuItemName="EPYC Cloud Resources" id="epyc-cloud-resources">
+                                    <a href="https://green.cloud/epyc-cloud-resources.php">
+                                        EPYC Cloud Resources
+                                    </a>
+                                </li>
+                                <li menuItemName="Ryzen KVM VPS" id="ryzen-kvm-vps">
+                                    <a href="https://green.cloud/ryzen-kvm-vps.php">
+                                        Ryzen KVM VPS
+                                    </a>
+                                </li>
+                                <li menuItemName="Budget KVM VPS" id="budget-kvm-vps">
+                                    <a href="https://green.cloud/budget-kvm-vps.php">
+                                        Budget KVM VPS
+                                    </a>
+                                </li>
+                                <li menuItemName="Storage KVM VPS" id="storage-kvm-vps">
+                                    <a href="https://green.cloud/storage-kvm-vps.php">
+                                        Storage KVM VPS
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li menuItemName="Dedicated Servers" id="dedicated-servers">
+                            <a href="https://greenserver.io/">
+                                Dedicated Servers
+                            </a>
+                        </li>
+
+                        <li menuItemName="Proxies" id="proxies">
+                            <a href="https://green.cloud/proxies.php">
+                                Proxies
+                            </a>
+                        </li>
+
+                        <li menuItemName="Docs" id="docs">
+                            <a href="https://green.cloud/docs" target="_blank" rel="noopener noreferrer">
+                                Docs
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </section>
+
+    <section>
+        <video class="video-background" autoplay muted loop playsinline>
+            <source src="/billing/templates/twenty-five/videos/background-header.mp4" type="video/mp4">
+        </video>
+        <div class="content-overlay">
+            <h1>Shopping Cart</h1>
+        </div>
+    </section>
+
+    <section id="main-menu">
+        <nav id="nav" class="navbar navbar-default navbar-main" role="navigation">
+            <div class="container">
+                <!-- Brand and toggle get grouped for better mobile display -->
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#primary-nav">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                </div>
+
+                <!-- Collect the nav links, forms, and other content for toggling -->
+                <div class="collapse navbar-collapse" id="primary-nav">
+
+                    <ul class="nav navbar-nav">
+
+                            <li menuItemName="Home" class="" id="Primary_Navbar-Home">
+        <a href="/billing/index.php">
+                        Home
+                                </a>
+            </li>
+    <li menuItemName="Store" class="dropdown" id="Primary_Navbar-Store">
+        <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                        Store
+                        &nbsp;<b class="caret"></b>        </a>
+                    <ul class="dropdown-menu">
+                            <li menuItemName="Browse Products Services" id="Primary_Navbar-Store-Browse_Products_Services">
+                    <a href="/billing/store">
+                                                Browse All
+                                            </a>
+                </li>
+                            <li menuItemName="Shop Divider 1" class="nav-divider" id="Primary_Navbar-Store-Shop_Divider_1">
+                    <a href="">
+                                                -----
+                                            </a>
+                </li>
+                            <li menuItemName="Budget KVM Sale" id="Primary_Navbar-Store-Budget_KVM_Sale">
+                    <a href="/billing/store/budget-kvm-sale">
+                                                Budget KVM Sale
+                                            </a>
+                </li>
+                            <li menuItemName="Storage KVM Sale" id="Primary_Navbar-Store-Storage_KVM_Sale">
+                    <a href="/billing/store/storage-kvm-sale">
+                                                Storage KVM Sale
+                                            </a>
+                </li>
+                            <li menuItemName="Premium KVM Sale" id="Primary_Navbar-Store-Premium_KVM_Sale">
+                    <a href="/billing/store/premium-kvm-sale">
+                                                Premium KVM Sale
+                                            </a>
+                </li>
+                            <li menuItemName="CN Premium Optimized" id="Primary_Navbar-Store-CN_Premium_Optimized">
+                    <a href="/billing/store/cn-premium-optimized">
+                                                CN Premium Optimized
+                                            </a>
+                </li>
+                            <li menuItemName="EPYC Cloud Resources" id="Primary_Navbar-Store-EPYC_Cloud_Resources">
+                    <a href="/billing/store/epyc-cloud-resources">
+                                                EPYC Cloud Resources
+                                            </a>
+                </li>
+                            <li menuItemName="EPYC NVMe KVM VDS" id="Primary_Navbar-Store-EPYC_NVMe_KVM_VDS">
+                    <a href="/billing/store/epyc-nvme-kvm-vds">
+                                                EPYC NVMe KVM VDS
+                                            </a>
+                </li>
+                            <li menuItemName="Windows VPS Sale" id="Primary_Navbar-Store-Windows_VPS_Sale">
+                    <a href="/billing/store/windows-vps-sale">
+                                                Windows VPS Sale
+                                            </a>
+                </li>
+                            <li menuItemName="Ryzen KVM VPS" id="Primary_Navbar-Store-Ryzen_KVM_VPS">
+                    <a href="/billing/store/ryzen-kvm-vps">
+                                                Ryzen KVM VPS
+                                            </a>
+                </li>
+                            <li menuItemName="Budget KVM VPS" id="Primary_Navbar-Store-Budget_KVM_VPS">
+                    <a href="/billing/store/ssd-kvm-vps">
+                                                Budget KVM VPS
+                                            </a>
+                </li>
+                            <li menuItemName="Budget Windows VPS" id="Primary_Navbar-Store-Budget_Windows_VPS">
+                    <a href="/billing/store/budget-windows-vps">
+                                                Budget Windows VPS
+                                            </a>
+                </li>
+                            <li menuItemName="Managed Windows VPS" id="Primary_Navbar-Store-Managed_Windows_VPS">
+                    <a href="/billing/store/managed-windows-vps">
+                                                Managed Windows VPS
+                                            </a>
+                </li>
+                            <li menuItemName="SEO Optimized VPS " id="Primary_Navbar-Store-SEO_Optimized_VPS_">
+                    <a href="/billing/store/seo-optimized-vps">
+                                                SEO Optimized VPS 
+                                            </a>
+                </li>
+                            <li menuItemName="10Gbps Windows VPS" id="Primary_Navbar-Store-10Gbps_Windows_VPS">
+                    <a href="/billing/store/10gbps-windows-vps">
+                                                10Gbps Windows VPS
+                                            </a>
+                </li>
+                            <li menuItemName="Forex VPS" id="Primary_Navbar-Store-Forex_VPS">
+                    <a href="/billing/store/forex-vps">
+                                                Forex VPS
+                                            </a>
+                </li>
+                            <li menuItemName="MAC VPS/macOS VPS" id="Primary_Navbar-Store-MAC_VPS_macOS_VPS">
+                    <a href="/billing/store/mac-vpsmacos-vps">
+                                                MAC VPS/macOS VPS
+                                            </a>
+                </li>
+                            <li menuItemName="Mac Mini Dedicated" id="Primary_Navbar-Store-Mac_Mini_Dedicated">
+                    <a href="/billing/store/mac-mini-dedicated">
+                                                Mac Mini Dedicated
+                                            </a>
+                </li>
+                            <li menuItemName="Semi Dedicated Proxies" id="Primary_Navbar-Store-Semi_Dedicated_Proxies">
+                    <a href="/billing/store/semi-dedicated-proxies">
+                                                Semi Dedicated Proxies
+                                            </a>
+                </li>
+                            <li menuItemName="Dedicated Proxies" id="Primary_Navbar-Store-Dedicated_Proxies">
+                    <a href="/billing/store/dedicated-proxies">
+                                                Dedicated Proxies
+                                            </a>
+                </li>
+                            <li menuItemName="Additional services" id="Primary_Navbar-Store-Additional_services">
+                    <a href="/billing/store/additional-services">
+                                                Additional services
+                                            </a>
+                </li>
+                        </ul>
+            </li>
+    <li menuItemName="Announcements" class="" id="Primary_Navbar-Announcements">
+        <a href="/billing/announcements">
+                        Announcements
+                                </a>
+            </li>
+    <li menuItemName="Knowledgebase" class="" id="Primary_Navbar-Knowledgebase">
+        <a href="/billing/knowledgebase">
+                        Knowledgebase
+                                </a>
+            </li>
+    <li menuItemName="Network Status" class="" id="Primary_Navbar-Network_Status">
+        <a href="/billing/serverstatus.php">
+                        Network Status
+                                </a>
+            </li>
+    <li menuItemName="Affiliates" class="" id="Primary_Navbar-Affiliates">
+        <a href="/billing/affiliates.php">
+                        Affiliates
+                                </a>
+            </li>
+    <li menuItemName="Contact Us" class="" id="Primary_Navbar-Contact_Us">
+        <a href="/billing/contact.php">
+                        Contact Us
+                                </a>
+            </li>
+
+                    </ul>
+
+                    <ul class="nav navbar-nav navbar-right">
+
+                            <li menuItemName="Account" class="dropdown" id="Secondary_Navbar-Account">
+        <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                        Account
+                        &nbsp;<b class="caret"></b>        </a>
+                    <ul class="dropdown-menu">
+                            <li menuItemName="Login" id="Secondary_Navbar-Account-Login">
+                    <a href="/billing/clientarea.php">
+                                                Login
+                                            </a>
+                </li>
+                            <li menuItemName="Divider" class="nav-divider" id="Secondary_Navbar-Account-Divider">
+                    <a href="">
+                                                -----
+                                            </a>
+                </li>
+                            <li menuItemName="Forgot Password?" id="Secondary_Navbar-Account-Forgot_Password?">
+                    <a href="/billing/password/reset">
+                                                Forgot Password?
+                                            </a>
+                </li>
+                        </ul>
+            </li>
+
+                    </ul>
+
+                </div><!-- /.navbar-collapse -->
+            </div>
+        </nav>
+
+    </section>
+    <section id="sub-menu">
+        <div class="container">
+            <ul class="top-nav">
+                                    <li>
+                        <a href="#" class="choose-language" data-toggle="popover" id="languageChooser">
+                            English
+                            <b class="caret"></b>
+                        </a>
+                        <div id="languageChooserContent" class="hidden">
+                            <ul>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=arabic">العربية</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=azerbaijani">Azerbaijani</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=catalan">Català</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=chinese">中文</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=croatian">Hrvatski</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=czech">Čeština</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=danish">Dansk</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=dutch">Nederlands</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=english">English</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=estonian">Estonian</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=farsi">Persian</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=french">Français</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=german">Deutsch</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=hebrew">עברית</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=hungarian">Magyar</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=italian">Italiano</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=macedonian">Macedonian</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=norwegian">Norwegian</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=portuguese-br">Português</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=portuguese-pt">Português</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=romanian">Română</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=russian">Русский</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=spanish">Español</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=swedish">Svenska</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=turkish">Türkçe</a>
+                                    </li>
+                                                                    <li>
+                                        <a href="/billing/store/cn-premium-optimized?language=ukranian">Українська</a>
+                                    </li>
+                                                            </ul>
+                        </div>
+                    </li>
+                                                    <li>
+                        <a href="/billing/clientarea.php">Login</a>
+                    </li>
+                                        <li class="primary-action">
+                        <a href="/billing/cart.php?a=view" class="btn">
+                            View Cart
+                        </a>
+                    </li>
+                                            </ul>
+        </div>
+    </section>
+
+    
+        
+    <section id="main-body">
+        <div class="container">
+            <div class="row">
+
+                                <!-- Container for main page display content -->
+                <div
+                    class="col-xs-12 main-content">
+                    
+
+<link rel="stylesheet" type="text/css" href="/billing/templates/orderforms/standard_cart/css/all.min.css?v=c02bb8" />
+<script type="text/javascript" src="/billing/templates/orderforms/standard_cart/js/scripts.min.js?v=c02bb8"></script>
+<div id="order-standard_cart">
+    <div class="row">
+        <div class="cart-sidebar sidebar">
+                <div menuItemName="Categories" class="panel card card-sidebar mb-3 panel-sidebar">
+        <div class="panel-heading card-header">
+            <h3 class="panel-title">
+                                    <i class="fas fa-shopping-cart"></i>&nbsp;
+                
+                Categories
+
+                
+                <i class="fas fa-chevron-up card-minimise panel-minimise pull-right float-right"></i>
+            </h3>
+        </div>
+
+        
+                    <div class="list-group collapsable-card-body">
+                                                            <a menuItemName="Budget KVM Sale" href="/billing/store/budget-kvm-sale" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Budget_KVM_Sale">
+                            
+                            Budget KVM Sale
+
+                                                    </a>
+                                                                                <a menuItemName="Storage KVM Sale" href="/billing/store/storage-kvm-sale" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Storage_KVM_Sale">
+                            
+                            Storage KVM Sale
+
+                                                    </a>
+                                                                                <a menuItemName="Premium KVM Sale" href="/billing/store/premium-kvm-sale" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Premium_KVM_Sale">
+                            
+                            Premium KVM Sale
+
+                                                    </a>
+                                                                                <a menuItemName="CN Premium Optimized" href="/billing/store/cn-premium-optimized" class="list-group-item list-group-item-action active" id="Secondary_Sidebar-Categories-CN_Premium_Optimized">
+                            
+                            CN Premium Optimized
+
+                                                    </a>
+                                                                                <a menuItemName="EPYC Cloud Resources" href="/billing/store/epyc-cloud-resources" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-EPYC_Cloud_Resources">
+                            
+                            EPYC Cloud Resources
+
+                                                    </a>
+                                                                                <a menuItemName="EPYC NVMe KVM VDS" href="/billing/store/epyc-nvme-kvm-vds" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-EPYC_NVMe_KVM_VDS">
+                            
+                            EPYC NVMe KVM VDS
+
+                                                    </a>
+                                                                                <a menuItemName="Windows VPS Sale" href="/billing/store/windows-vps-sale" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Windows_VPS_Sale">
+                            
+                            Windows VPS Sale
+
+                                                    </a>
+                                                                                <a menuItemName="Ryzen KVM VPS" href="/billing/store/ryzen-kvm-vps" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Ryzen_KVM_VPS">
+                            
+                            Ryzen KVM VPS
+
+                                                    </a>
+                                                                                <a menuItemName="Budget KVM VPS" href="/billing/store/ssd-kvm-vps" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Budget_KVM_VPS">
+                            
+                            Budget KVM VPS
+
+                                                    </a>
+                                                                                <a menuItemName="Budget Windows VPS" href="/billing/store/budget-windows-vps" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Budget_Windows_VPS">
+                            
+                            Budget Windows VPS
+
+                                                    </a>
+                                                                                <a menuItemName="Managed Windows VPS" href="/billing/store/managed-windows-vps" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Managed_Windows_VPS">
+                            
+                            Managed Windows VPS
+
+                                                    </a>
+                                                                                <a menuItemName="SEO Optimized VPS " href="/billing/store/seo-optimized-vps" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-SEO_Optimized_VPS_">
+                            
+                            SEO Optimized VPS 
+
+                                                    </a>
+                                                                                <a menuItemName="10Gbps Windows VPS" href="/billing/store/10gbps-windows-vps" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-10Gbps_Windows_VPS">
+                            
+                            10Gbps Windows VPS
+
+                                                    </a>
+                                                                                <a menuItemName="Forex VPS" href="/billing/store/forex-vps" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Forex_VPS">
+                            
+                            Forex VPS
+
+                                                    </a>
+                                                                                <a menuItemName="MAC VPS/macOS VPS" href="/billing/store/mac-vpsmacos-vps" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-MAC_VPS_macOS_VPS">
+                            
+                            MAC VPS/macOS VPS
+
+                                                    </a>
+                                                                                <a menuItemName="Mac Mini Dedicated" href="/billing/store/mac-mini-dedicated" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Mac_Mini_Dedicated">
+                            
+                            Mac Mini Dedicated
+
+                                                    </a>
+                                                                                <a menuItemName="Semi Dedicated Proxies" href="/billing/store/semi-dedicated-proxies" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Semi_Dedicated_Proxies">
+                            
+                            Semi Dedicated Proxies
+
+                                                    </a>
+                                                                                <a menuItemName="Dedicated Proxies" href="/billing/store/dedicated-proxies" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Dedicated_Proxies">
+                            
+                            Dedicated Proxies
+
+                                                    </a>
+                                                                                <a menuItemName="Additional services" href="/billing/store/additional-services" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Additional_services">
+                            
+                            Additional services
+
+                                                    </a>
+                                                </div>
+        
+            </div>
+
+        <div menuItemName="Actions" class="panel card card-sidebar mb-3 panel-sidebar">
+        <div class="panel-heading card-header">
+            <h3 class="panel-title">
+                                    <i class="fas fa-plus"></i>&nbsp;
+                
+                Actions
+
+                
+                <i class="fas fa-chevron-up card-minimise panel-minimise pull-right float-right"></i>
+            </h3>
+        </div>
+
+        
+                    <div class="list-group collapsable-card-body">
+                                                            <a menuItemName="View Cart" href="/billing/cart.php?a=view" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Actions-View_Cart">
+                                                            <i class="fas fa-shopping-cart fa-fw"></i>&nbsp;
+                            
+                            View Cart
+
+                                                    </a>
+                                                </div>
+        
+            </div>
+
+            </div>
+        <div class="cart-body">
+
+            <div class="header-lined">
+                <h1 class="font-size-36">
+                                            CN Premium Optimized
+                                    </h1>
+                                    <p>No refunds/money back on those plans.</p>
+                            </div>
+            
+            <div class="sidebar-collapsed">
+
+            <div class="panel card panel-default">
+                <div class="m-0 panel-heading card-header">
+        <h3 class="panel-title">
+                            <i class="fas fa-shopping-cart"></i>&nbsp;
+            
+            Categories
+
+                    </h3>
+    </div>
+
+    <div class="panel-body card-body">
+        <form role="form">
+            <select class="form-control custom-select" onchange="selectChangeNavigate(this)">
+                                                    <option menuItemName="Budget KVM Sale" value="/billing/store/budget-kvm-sale" class="list-group-item" >
+                        Budget KVM Sale
+
+                                            </option>
+                                                        <option menuItemName="Storage KVM Sale" value="/billing/store/storage-kvm-sale" class="list-group-item" >
+                        Storage KVM Sale
+
+                                            </option>
+                                                        <option menuItemName="Premium KVM Sale" value="/billing/store/premium-kvm-sale" class="list-group-item" >
+                        Premium KVM Sale
+
+                                            </option>
+                                                        <option menuItemName="CN Premium Optimized" value="/billing/store/cn-premium-optimized" class="list-group-item" selected="selected">
+                        CN Premium Optimized
+
+                                            </option>
+                                                                                                    <option menuItemName="EPYC Cloud Resources" value="/billing/store/epyc-cloud-resources" class="list-group-item" >
+                        EPYC Cloud Resources
+
+                                            </option>
+                                                        <option menuItemName="EPYC NVMe KVM VDS" value="/billing/store/epyc-nvme-kvm-vds" class="list-group-item" >
+                        EPYC NVMe KVM VDS
+
+                                            </option>
+                                                        <option menuItemName="Windows VPS Sale" value="/billing/store/windows-vps-sale" class="list-group-item" >
+                        Windows VPS Sale
+
+                                            </option>
+                                                        <option menuItemName="Ryzen KVM VPS" value="/billing/store/ryzen-kvm-vps" class="list-group-item" >
+                        Ryzen KVM VPS
+
+                                            </option>
+                                                        <option menuItemName="Budget KVM VPS" value="/billing/store/ssd-kvm-vps" class="list-group-item" >
+                        Budget KVM VPS
+
+                                            </option>
+                                                        <option menuItemName="Budget Windows VPS" value="/billing/store/budget-windows-vps" class="list-group-item" >
+                        Budget Windows VPS
+
+                                            </option>
+                                                        <option menuItemName="Managed Windows VPS" value="/billing/store/managed-windows-vps" class="list-group-item" >
+                        Managed Windows VPS
+
+                                            </option>
+                                                        <option menuItemName="SEO Optimized VPS " value="/billing/store/seo-optimized-vps" class="list-group-item" >
+                        SEO Optimized VPS 
+
+                                            </option>
+                                                        <option menuItemName="10Gbps Windows VPS" value="/billing/store/10gbps-windows-vps" class="list-group-item" >
+                        10Gbps Windows VPS
+
+                                            </option>
+                                                        <option menuItemName="Forex VPS" value="/billing/store/forex-vps" class="list-group-item" >
+                        Forex VPS
+
+                                            </option>
+                                                        <option menuItemName="MAC VPS/macOS VPS" value="/billing/store/mac-vpsmacos-vps" class="list-group-item" >
+                        MAC VPS/macOS VPS
+
+                                            </option>
+                                                        <option menuItemName="Mac Mini Dedicated" value="/billing/store/mac-mini-dedicated" class="list-group-item" >
+                        Mac Mini Dedicated
+
+                                            </option>
+                                                        <option menuItemName="Semi Dedicated Proxies" value="/billing/store/semi-dedicated-proxies" class="list-group-item" >
+                        Semi Dedicated Proxies
+
+                                            </option>
+                                                        <option menuItemName="Dedicated Proxies" value="/billing/store/dedicated-proxies" class="list-group-item" >
+                        Dedicated Proxies
+
+                                            </option>
+                                                        <option menuItemName="Additional services" value="/billing/store/additional-services" class="list-group-item" >
+                        Additional services
+
+                                            </option>
+                                                                </select>
+        </form>
+    </div>
+
+            </div>
+            <div class="panel card panel-default">
+                <div class="m-0 panel-heading card-header">
+        <h3 class="panel-title">
+                            <i class="fas fa-plus"></i>&nbsp;
+            
+            Actions
+
+                    </h3>
+    </div>
+
+    <div class="panel-body card-body">
+        <form role="form">
+            <select class="form-control custom-select" onchange="selectChangeNavigate(this)">
+                                                    <option menuItemName="View Cart" value="/billing/cart.php?a=view" class="list-group-item" >
+                        View Cart
+
+                                            </option>
+                                                                        <option value="" class="list-group-item" selected=""selected>- Choose Another Category -</option>
+                            </select>
+        </form>
+    </div>
+
+            </div>
+    
+    
+</div>
+
+            <div class="products" id="products">
+                <div class="row row-eq-height">
+                                                                <div class="col-md-6">
+                        <div class="product clearfix" id="product2213">
+                            <header>
+                                <span id="product2213-name">CN Premium Optimized Plan Mini (Tokyo)</span>
+                                                                    <span class="qty">
+                                            0 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                                                                <ul>
+                                                                            <li id="product2213-feature1">
+                                            <span class="feature-value">2GB</span>
+                                            RAM
+                                        </li>
+                                                                            <li id="product2213-feature2">
+                                            <span class="feature-value">20GB NVMe RAID-10</span>
+                                            Hard drive
+                                        </li>
+                                                                            <li id="product2213-feature3">
+                                            <span class="feature-value">1 core @ EPYC Milan</span>
+                                            CPU
+                                        </li>
+                                                                            <li id="product2213-feature4">
+                                            <span class="feature-value">1</span>
+                                            IPv4
+                                        </li>
+                                                                            <li id="product2213-feature5">
+                                            <span class="feature-value">/64</span>
+                                            IPv6
+                                        </li>
+                                                                            <li id="product2213-feature6">
+                                            <span class="feature-value">500GB</span>
+                                            Bandwidth
+                                        </li>
+                                                                            <li id="product2213-feature7">
+                                            <span class="feature-value">500Mbps</span>
+                                            Port
+                                        </li>
+                                                                            <li id="product2213-feature8">
+                                            <span class="feature-value">Linux</span>
+                                            OS
+                                        </li>
+                                                                            <li id="product2213-feature9">
+                                            <span class="feature-value">Tokyo, JP Premium Line (CN2GIA/CU PREMIUM/CMIN2)</span>
+                                            Location
+                                        </li>
+                                                                            <li id="product2213-feature10">
+                                            <span class="feature-value">Virtfusion</span>
+                                            Control Panel
+                                        </li>
+                                                                            <li id="product2213-feature11">
+                                            <span class="feature-value">Daily Backups</span>
+                                            Backup/Snapshot
+                                        </li>
+                                                                            <li id="product2213-feature12">
+                                            <span class="feature-value">No refund/Money back on this plan.</span>
+                                            Note
+                                        </li>
+                                                                    </ul>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product2213-price">
+                                                                                                                    <span class="price">$25.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/billing/store/cn-premium-optimized/cn-premium-optimized-plan-mini" class="btn btn-success btn-sm btn-order-now" id="product2213-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product2077">
+                            <header>
+                                <span id="product2077-name">CN Premium Optimized Plan 1 (Tokyo)</span>
+                                                                    <span class="qty">
+                                            3 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                                                                <ul>
+                                                                            <li id="product2077-feature1">
+                                            <span class="feature-value">4GB</span>
+                                            RAM
+                                        </li>
+                                                                            <li id="product2077-feature2">
+                                            <span class="feature-value">40GB NVMe RAID-10</span>
+                                            Hard drive
+                                        </li>
+                                                                            <li id="product2077-feature3">
+                                            <span class="feature-value">2 cores @ EPYC Milan</span>
+                                            CPU
+                                        </li>
+                                                                            <li id="product2077-feature4">
+                                            <span class="feature-value">1</span>
+                                            IPv4
+                                        </li>
+                                                                            <li id="product2077-feature5">
+                                            <span class="feature-value">/64</span>
+                                            IPv6
+                                        </li>
+                                                                            <li id="product2077-feature6">
+                                            <span class="feature-value">1TB</span>
+                                            Bandwidth
+                                        </li>
+                                                                            <li id="product2077-feature7">
+                                            <span class="feature-value">1Gbps</span>
+                                            Port
+                                        </li>
+                                                                            <li id="product2077-feature8">
+                                            <span class="feature-value">Linux</span>
+                                            OS
+                                        </li>
+                                                                            <li id="product2077-feature9">
+                                            <span class="feature-value">Tokyo, JP Premium Line (CN2GIA/CU PREMIUM/CMIN2)</span>
+                                            Location
+                                        </li>
+                                                                            <li id="product2077-feature10">
+                                            <span class="feature-value">Virtfusion</span>
+                                            Control Panel
+                                        </li>
+                                                                            <li id="product2077-feature11">
+                                            <span class="feature-value">Daily Backups</span>
+                                            Backup/Snapshot
+                                        </li>
+                                                                            <li id="product2077-feature12">
+                                            <span class="feature-value">No refund/Money back on this plan.</span>
+                                            Note
+                                        </li>
+                                                                    </ul>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product2077-price">
+                                                                                                                    <span class="price">$45.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/billing/store/cn-premium-optimized/cn-premium-optimized-plan-1" class="btn btn-success btn-sm btn-order-now" id="product2077-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                    </div>
+                <div class="row row-eq-height">
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product2079">
+                            <header>
+                                <span id="product2079-name">CN Premium Optimized Plan 2 (Tokyo)</span>
+                                                                    <span class="qty">
+                                            10 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                                                                <ul>
+                                                                            <li id="product2079-feature1">
+                                            <span class="feature-value">8GB</span>
+                                            RAM
+                                        </li>
+                                                                            <li id="product2079-feature2">
+                                            <span class="feature-value">80GB NVMe RAID-10</span>
+                                            Hard drive
+                                        </li>
+                                                                            <li id="product2079-feature3">
+                                            <span class="feature-value">4 cores @ EPYC Milan</span>
+                                            CPU
+                                        </li>
+                                                                            <li id="product2079-feature4">
+                                            <span class="feature-value">1</span>
+                                            IPv4
+                                        </li>
+                                                                            <li id="product2079-feature5">
+                                            <span class="feature-value">/64</span>
+                                            IPv6
+                                        </li>
+                                                                            <li id="product2079-feature6">
+                                            <span class="feature-value">2TB</span>
+                                            Bandwidth
+                                        </li>
+                                                                            <li id="product2079-feature7">
+                                            <span class="feature-value">1.5Gbps</span>
+                                            Port
+                                        </li>
+                                                                            <li id="product2079-feature8">
+                                            <span class="feature-value">Linux</span>
+                                            OS
+                                        </li>
+                                                                            <li id="product2079-feature9">
+                                            <span class="feature-value">Tokyo, JP Premium Line (CN2GIA/CU PREMIUM/CMIN2)</span>
+                                            Location
+                                        </li>
+                                                                            <li id="product2079-feature10">
+                                            <span class="feature-value">Virtfusion</span>
+                                            Control Panel
+                                        </li>
+                                                                            <li id="product2079-feature11">
+                                            <span class="feature-value">Daily Backups</span>
+                                            Backup/Snapshot
+                                        </li>
+                                                                            <li id="product2079-feature12">
+                                            <span class="feature-value">No refund/Money back on this plan.</span>
+                                            Note
+                                        </li>
+                                                                    </ul>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product2079-price">
+                                                                                                                    <span class="price">$85.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/billing/store/cn-premium-optimized/cn-premium-optimized-plan-2" class="btn btn-success btn-sm btn-order-now" id="product2079-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product2081">
+                            <header>
+                                <span id="product2081-name">CN Premium Optimized Plan 3 (Tokyo)</span>
+                                                                    <span class="qty">
+                                            5 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                                                                <ul>
+                                                                            <li id="product2081-feature1">
+                                            <span class="feature-value">16GB</span>
+                                            RAM
+                                        </li>
+                                                                            <li id="product2081-feature2">
+                                            <span class="feature-value">160GB NVMe RAID-10</span>
+                                            Hard drive
+                                        </li>
+                                                                            <li id="product2081-feature3">
+                                            <span class="feature-value">8 cores @ EPYC Milan</span>
+                                            CPU
+                                        </li>
+                                                                            <li id="product2081-feature4">
+                                            <span class="feature-value">1</span>
+                                            IPv4
+                                        </li>
+                                                                            <li id="product2081-feature5">
+                                            <span class="feature-value">/64</span>
+                                            IPv6
+                                        </li>
+                                                                            <li id="product2081-feature6">
+                                            <span class="feature-value">4TB</span>
+                                            Bandwidth
+                                        </li>
+                                                                            <li id="product2081-feature7">
+                                            <span class="feature-value">2Gbps</span>
+                                            Port
+                                        </li>
+                                                                            <li id="product2081-feature8">
+                                            <span class="feature-value">Linux</span>
+                                            OS
+                                        </li>
+                                                                            <li id="product2081-feature9">
+                                            <span class="feature-value">Tokyo, JP Premium Line (CN2GIA/CU PREMIUM/CMIN2)</span>
+                                            Location
+                                        </li>
+                                                                            <li id="product2081-feature10">
+                                            <span class="feature-value">Virtfusion</span>
+                                            Control Panel
+                                        </li>
+                                                                            <li id="product2081-feature11">
+                                            <span class="feature-value">Daily Backups</span>
+                                            Backup/Snapshot
+                                        </li>
+                                                                            <li id="product2081-feature12">
+                                            <span class="feature-value">No refund/Money back on this plan.</span>
+                                            Note
+                                        </li>
+                                                                    </ul>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product2081-price">
+                                                                                                                    <span class="price">$165.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/billing/store/cn-premium-optimized/cn-premium-optimized-plan-3" class="btn btn-success btn-sm btn-order-now" id="product2081-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                    </div>
+                <div class="row row-eq-height">
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product2083">
+                            <header>
+                                <span id="product2083-name">CN Premium Optimized Plan 4 (Tokyo)</span>
+                                                                    <span class="qty">
+                                            4 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                                                                <ul>
+                                                                            <li id="product2083-feature1">
+                                            <span class="feature-value">32GB</span>
+                                            RAM
+                                        </li>
+                                                                            <li id="product2083-feature2">
+                                            <span class="feature-value">320GB NVMe RAID-10</span>
+                                            Hard drive
+                                        </li>
+                                                                            <li id="product2083-feature3">
+                                            <span class="feature-value">8 cores @ EPYC Milan</span>
+                                            CPU
+                                        </li>
+                                                                            <li id="product2083-feature4">
+                                            <span class="feature-value">1</span>
+                                            IPv4
+                                        </li>
+                                                                            <li id="product2083-feature5">
+                                            <span class="feature-value">/64</span>
+                                            IPv6
+                                        </li>
+                                                                            <li id="product2083-feature6">
+                                            <span class="feature-value">8TB</span>
+                                            Bandwidth
+                                        </li>
+                                                                            <li id="product2083-feature7">
+                                            <span class="feature-value">3Gbps</span>
+                                            Port
+                                        </li>
+                                                                            <li id="product2083-feature8">
+                                            <span class="feature-value">Linux</span>
+                                            OS
+                                        </li>
+                                                                            <li id="product2083-feature9">
+                                            <span class="feature-value">Tokyo, JP Premium Line (CN2GIA/CU PREMIUM/CMIN2)</span>
+                                            Location
+                                        </li>
+                                                                            <li id="product2083-feature10">
+                                            <span class="feature-value">Virtfusion</span>
+                                            Control Panel
+                                        </li>
+                                                                            <li id="product2083-feature11">
+                                            <span class="feature-value">Daily Backups</span>
+                                            Backup/Snapshot
+                                        </li>
+                                                                            <li id="product2083-feature12">
+                                            <span class="feature-value">No refund/Money back on this plan.</span>
+                                            Note
+                                        </li>
+                                                                    </ul>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product2083-price">
+                                                                                                                    <span class="price">$320.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/billing/store/cn-premium-optimized/cn-premium-optimized-plan-4" class="btn btn-success btn-sm btn-order-now" id="product2083-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product2305">
+                            <header>
+                                <span id="product2305-name">CN Premium Optimized Plan Mini (Singapore)</span>
+                                                                    <span class="qty">
+                                            4 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                                                                <ul>
+                                                                            <li id="product2305-feature1">
+                                            <span class="feature-value">2GB</span>
+                                            RAM
+                                        </li>
+                                                                            <li id="product2305-feature2">
+                                            <span class="feature-value">20GB NVMe RAID-10</span>
+                                            Hard drive
+                                        </li>
+                                                                            <li id="product2305-feature3">
+                                            <span class="feature-value">1 core @ EPYC Milan</span>
+                                            CPU
+                                        </li>
+                                                                            <li id="product2305-feature4">
+                                            <span class="feature-value">1</span>
+                                            IPv4
+                                        </li>
+                                                                            <li id="product2305-feature5">
+                                            <span class="feature-value">/64</span>
+                                            IPv6
+                                        </li>
+                                                                            <li id="product2305-feature6">
+                                            <span class="feature-value">500GB</span>
+                                            Bandwidth
+                                        </li>
+                                                                            <li id="product2305-feature7">
+                                            <span class="feature-value">500Mbps</span>
+                                            Port
+                                        </li>
+                                                                            <li id="product2305-feature8">
+                                            <span class="feature-value">Linux</span>
+                                            OS
+                                        </li>
+                                                                            <li id="product2305-feature9">
+                                            <span class="feature-value">Singapore Premium Line (CN2GIA/CU PREMIUM/CMI)</span>
+                                            Location
+                                        </li>
+                                                                            <li id="product2305-feature10">
+                                            <span class="feature-value">Virtfusion</span>
+                                            Control Panel
+                                        </li>
+                                                                            <li id="product2305-feature11">
+                                            <span class="feature-value">Daily Backups</span>
+                                            Backup/Snapshot
+                                        </li>
+                                                                            <li id="product2305-feature12">
+                                            <span class="feature-value">No refund/Money back on this plan.</span>
+                                            Note
+                                        </li>
+                                                                    </ul>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product2305-price">
+                                                                                                                    <span class="price">$25.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/billing/store/cn-premium-optimized/cn-premium-optimized-plan-mini-singapore" class="btn btn-success btn-sm btn-order-now" id="product2305-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                    </div>
+                <div class="row row-eq-height">
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product2307">
+                            <header>
+                                <span id="product2307-name">CN Premium Optimized Plan 1 (Singapore)</span>
+                                                                    <span class="qty">
+                                            1 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                                                                <ul>
+                                                                            <li id="product2307-feature1">
+                                            <span class="feature-value">4GB</span>
+                                            RAM
+                                        </li>
+                                                                            <li id="product2307-feature2">
+                                            <span class="feature-value">40GB NVMe RAID-10</span>
+                                            Hard drive
+                                        </li>
+                                                                            <li id="product2307-feature3">
+                                            <span class="feature-value">2 cores @ EPYC Milan</span>
+                                            CPU
+                                        </li>
+                                                                            <li id="product2307-feature4">
+                                            <span class="feature-value">1</span>
+                                            IPv4
+                                        </li>
+                                                                            <li id="product2307-feature5">
+                                            <span class="feature-value">/64</span>
+                                            IPv6
+                                        </li>
+                                                                            <li id="product2307-feature6">
+                                            <span class="feature-value">1TB</span>
+                                            Bandwidth
+                                        </li>
+                                                                            <li id="product2307-feature7">
+                                            <span class="feature-value">1Gbps</span>
+                                            Port
+                                        </li>
+                                                                            <li id="product2307-feature8">
+                                            <span class="feature-value">Linux</span>
+                                            OS
+                                        </li>
+                                                                            <li id="product2307-feature9">
+                                            <span class="feature-value">Singapore Premium Line (CN2GIA/CU PREMIUM/CMI)</span>
+                                            Location
+                                        </li>
+                                                                            <li id="product2307-feature10">
+                                            <span class="feature-value">Virtfusion</span>
+                                            Control Panel
+                                        </li>
+                                                                            <li id="product2307-feature11">
+                                            <span class="feature-value">Daily Backups</span>
+                                            Backup/Snapshot
+                                        </li>
+                                                                            <li id="product2307-feature12">
+                                            <span class="feature-value">No refund/Money back on this plan.</span>
+                                            Note
+                                        </li>
+                                                                    </ul>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product2307-price">
+                                                                                                                    <span class="price">$45.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/billing/store/cn-premium-optimized/cn-premium-optimized-plan-1-singapore" class="btn btn-success btn-sm btn-order-now" id="product2307-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product2309">
+                            <header>
+                                <span id="product2309-name">CN Premium Optimized Plan 2 (Singapore)</span>
+                                                                    <span class="qty">
+                                            10 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                                                                <ul>
+                                                                            <li id="product2309-feature1">
+                                            <span class="feature-value">8GB</span>
+                                            RAM
+                                        </li>
+                                                                            <li id="product2309-feature2">
+                                            <span class="feature-value">80GB NVMe RAID-10</span>
+                                            Hard drive
+                                        </li>
+                                                                            <li id="product2309-feature3">
+                                            <span class="feature-value">4 cores @ EPYC Milan</span>
+                                            CPU
+                                        </li>
+                                                                            <li id="product2309-feature4">
+                                            <span class="feature-value">1</span>
+                                            IPv4
+                                        </li>
+                                                                            <li id="product2309-feature5">
+                                            <span class="feature-value">/64</span>
+                                            IPv6
+                                        </li>
+                                                                            <li id="product2309-feature6">
+                                            <span class="feature-value">2TB</span>
+                                            Bandwidth
+                                        </li>
+                                                                            <li id="product2309-feature7">
+                                            <span class="feature-value">1.5Gbps</span>
+                                            Port
+                                        </li>
+                                                                            <li id="product2309-feature8">
+                                            <span class="feature-value">Linux</span>
+                                            OS
+                                        </li>
+                                                                            <li id="product2309-feature9">
+                                            <span class="feature-value">Singapore Premium Line (CN2GIA/CU PREMIUM/CMI)</span>
+                                            Location
+                                        </li>
+                                                                            <li id="product2309-feature10">
+                                            <span class="feature-value">Virtfusion</span>
+                                            Control Panel
+                                        </li>
+                                                                            <li id="product2309-feature11">
+                                            <span class="feature-value">Daily Backups</span>
+                                            Backup/Snapshot
+                                        </li>
+                                                                            <li id="product2309-feature12">
+                                            <span class="feature-value">No refund/Money back on this plan.</span>
+                                            Note
+                                        </li>
+                                                                    </ul>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product2309-price">
+                                                                                                                    <span class="price">$85.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/billing/store/cn-premium-optimized/cn-premium-optimized-plan-2-singapore" class="btn btn-success btn-sm btn-order-now" id="product2309-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                    </div>
+                <div class="row row-eq-height">
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product2311">
+                            <header>
+                                <span id="product2311-name">CN Premium Optimized Plan 3 (Singapore)</span>
+                                                                    <span class="qty">
+                                            5 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                                                                <ul>
+                                                                            <li id="product2311-feature1">
+                                            <span class="feature-value">16GB</span>
+                                            RAM
+                                        </li>
+                                                                            <li id="product2311-feature2">
+                                            <span class="feature-value">160GB NVMe RAID-10</span>
+                                            Hard drive
+                                        </li>
+                                                                            <li id="product2311-feature3">
+                                            <span class="feature-value">8 cores @ EPYC Milan</span>
+                                            CPU
+                                        </li>
+                                                                            <li id="product2311-feature4">
+                                            <span class="feature-value">1</span>
+                                            IPv4
+                                        </li>
+                                                                            <li id="product2311-feature5">
+                                            <span class="feature-value">/64</span>
+                                            IPv6
+                                        </li>
+                                                                            <li id="product2311-feature6">
+                                            <span class="feature-value">4TB</span>
+                                            Bandwidth
+                                        </li>
+                                                                            <li id="product2311-feature7">
+                                            <span class="feature-value">2Gbps</span>
+                                            Port
+                                        </li>
+                                                                            <li id="product2311-feature8">
+                                            <span class="feature-value">Linux</span>
+                                            OS
+                                        </li>
+                                                                            <li id="product2311-feature9">
+                                            <span class="feature-value">Singapore Premium Line (CN2GIA/CU PREMIUM/CMI)</span>
+                                            Location
+                                        </li>
+                                                                            <li id="product2311-feature10">
+                                            <span class="feature-value">Virtfusion</span>
+                                            Control Panel
+                                        </li>
+                                                                            <li id="product2311-feature11">
+                                            <span class="feature-value">Daily Backups</span>
+                                            Backup/Snapshot
+                                        </li>
+                                                                            <li id="product2311-feature12">
+                                            <span class="feature-value">No refund/Money back on this plan.</span>
+                                            Note
+                                        </li>
+                                                                    </ul>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product2311-price">
+                                                                                                                    <span class="price">$165.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/billing/store/cn-premium-optimized/cn-premium-optimized-plan-3-singapore" class="btn btn-success btn-sm btn-order-now" id="product2311-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product2313">
+                            <header>
+                                <span id="product2313-name">CN Premium Optimized Plan 4 (Singapore)</span>
+                                                                    <span class="qty">
+                                            9 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                                                                <ul>
+                                                                            <li id="product2313-feature1">
+                                            <span class="feature-value">32GB</span>
+                                            RAM
+                                        </li>
+                                                                            <li id="product2313-feature2">
+                                            <span class="feature-value">320GB NVMe RAID-10</span>
+                                            Hard drive
+                                        </li>
+                                                                            <li id="product2313-feature3">
+                                            <span class="feature-value">8 cores @ EPYC Milan</span>
+                                            CPU
+                                        </li>
+                                                                            <li id="product2313-feature4">
+                                            <span class="feature-value">1</span>
+                                            IPv4
+                                        </li>
+                                                                            <li id="product2313-feature5">
+                                            <span class="feature-value">/64</span>
+                                            IPv6
+                                        </li>
+                                                                            <li id="product2313-feature6">
+                                            <span class="feature-value">8TB</span>
+                                            Bandwidth
+                                        </li>
+                                                                            <li id="product2313-feature7">
+                                            <span class="feature-value">3Gbps</span>
+                                            Port
+                                        </li>
+                                                                            <li id="product2313-feature8">
+                                            <span class="feature-value">Linux</span>
+                                            OS
+                                        </li>
+                                                                            <li id="product2313-feature9">
+                                            <span class="feature-value">Singapore Premium Line (CN2GIA/CU PREMIUM/CMI)</span>
+                                            Location
+                                        </li>
+                                                                            <li id="product2313-feature10">
+                                            <span class="feature-value">Virtfusion</span>
+                                            Control Panel
+                                        </li>
+                                                                            <li id="product2313-feature11">
+                                            <span class="feature-value">Daily Backups</span>
+                                            Backup/Snapshot
+                                        </li>
+                                                                            <li id="product2313-feature12">
+                                            <span class="feature-value">No refund/Money back on this plan.</span>
+                                            Note
+                                        </li>
+                                                                    </ul>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product2313-price">
+                                                                                                                    <span class="price">$320.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/billing/store/cn-premium-optimized/cn-premium-optimized-plan-4-singapore" class="btn btn-success btn-sm btn-order-now" id="product2313-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                    </div>
+                <div class="row row-eq-height">
+                                                        </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="recommendationsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="float-left pull-left">
+                                            Added to Cart
+                                    </h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <div class="clearfix"></div>
+            </div>
+            <div class="modal-body">
+                <div class="product-recommendations-container">
+    <div class="product-recommendations">
+                    <p>Based on this product, we recommend:</p>
+                    </div>
+</div>
+            </div>
+            <div class="modal-footer">
+                <a class="btn btn-primary" href="#" id="btnContinueRecommendationsModal" data-dismiss="modal" role="button">
+                    <span class="w-hidden hidden"><i class="fas fa-spinner fa-spin"></i>&nbsp;</span>Continue
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="product-recommendation clonable w-hidden hidden">
+        <div class="header">
+            <div class="cta">
+                <div class="price">
+                    <span class="w-hidden hidden">FREE!</span>
+                    <span class="breakdown-price"></span>
+                    <span class="setup-fee"><small>&nbsp;Setup Fee</small></span>
+                </div>
+                <button type="button" class="btn btn-sm btn-add">
+                    <span class="text">Add to Cart</span>
+                    <span class="arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+            </div>
+            <div class="expander">
+                <i class="fas fa-chevron-right rotate" data-toggle="tooltip" data-placement="right" title="Click to learn more."></i>
+            </div>
+            <div class="content">
+                <div class="headline truncate"></div>
+                <div class="tagline truncate">
+                    A description (tagline) is not available for this product.
+                </div>
+            </div>
+        </div>
+        <div class="body clearfix"><p></p></div>
+    </div>
+</div>
+
+
+</div><!-- /.main-content -->
+<div class="clearfix"></div>
+</div>
+</div>
+</section>
+
+<section id="footer">
+    <div class="container-custom">
+        <div class="footer-top">
+            <!-- LEFT -->
+            <div class="footer-left">
+                <div class="footer-brand">
+                                            <a href="/billing/index.php" class="logo"><img src="/billing/assets/img/logo.png" alt="GreenCloud"></a>
+                                    </div>
+
+                <p class="footer-description">
+                    GreenCloud is a leading Infrastructure as a Service provider, offering top-tier VPS and dedicated
+                    servers to clients globally, supported by our exceptional 24/7 customer support.
+                </p>
+
+                <div class="contact-info">
+                    <h6 class="contact-heading">Contact Us</h6>
+                    <span><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="8cffede0e9ffccebfee9e9e2efe0e3f9e8fafcffa2efe3e1">[email&#160;protected]</a>
+                    </span>
+                </div>
+            </div>
+
+            <!-- RIGHT – 4 COLUMNS -->
+            <div class="footer-right pt-4">
+                <div class="footer-column">
+                    <h6 class="footer-heading">Windows VPS</h6>
+                    <ul class="footer-links">
+                        <li><a href="https://green.cloud/budget-windows-vps.php">Budget Windows VPS</a></li>
+                        <li><a href="https://green.cloud/seo-optimized-vps.php">SEO Optimized VPS</a></li>
+                        <li><a href="https://green.cloud/forex-vps.php">Forex VPS</a></li>
+                        <li><a href="https://green.cloud/10gbps-windows-vps.php">10Gbps Windows VPS</a></li>
+                        <li><a href="https://green.cloud/managed-windows-vps.php">Managed Windows VPS</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-column">
+                    <h6 class="footer-heading">KVM VPS</h6>
+                    <ul class="footer-links">
+                        <li><a href="https://green.cloud/epyc-nvme-kvm-vds.php">EPYC NVMe KVM VPS</a></li>
+                        <li><a href="https://green.cloud/epyc-cloud-resources.php">EPYC Cloud Resources</a></li>
+                        <li><a href="https://green.cloud/ryzen-kvm-vps.php">Ryzen KVM VPS</a></li>
+                        <li><a href="https://green.cloud/budget-kvm-vps.php">Budget KVM VPS</a></li>
+                        <li><a href="https://green.cloud/storage-kvm-vps.php">Storage KVM VPS</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-column">
+                    <h6 class="footer-heading">Company</h6>
+                    <ul class="footer-links">
+                        <li><a href="https://green.cloud/about-us.php">About Us</a></li>
+                        <li><a href="https://green.cloud/data-centers.php">Data Centers</a></li>
+                        <li><a href="https://status.green.cloud" target="_blank">Network Status</a></li>
+                        <li><a href="https://greencloudvps.com/billing/contact.php" target="_blank">Contact Us</a></li>
+                        <li><a href="https://blog.greencloudvps.com" target="_blank">Blog</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-column">
+                    <h6 class="footer-heading">Resources</h6>
+                    <ul class="footer-links">
+                        <li><a href="https://green.cloud/terms-of-service.php">Terms of Service</a></li>
+                        <li><a href="https://green.cloud/privacy-policy.php">Privacy Policy</a></li>
+                        <li><a href="https://green.cloud/docs" target="_blank">Docs</a></li>
+                        <li><a href="https://green.cloud/affiliates.php">Affiliate Program</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <a href="#" class="back-to-top"><i class="fas fa-chevron-up"></i></a>
+        </div>
+
+        <!-- DIVIDER -->
+        <div class="footer-divider"></div>
+
+        <!-- BOTTOM -->
+        <div class="footer-bottom">
+            <p class="footer-copy">Copyright &copy; 2026 GreenCloud. All Rights Reserved.</p>
+            <div class="social-icons">
+                <a class="social-icon" href="https://www.facebook.com/greencloudvps" target="_blank"
+                    rel="noopener noreferrer">
+                    <i class="fab fa-facebook"></i>
+                </a>
+                <a class="social-icon" href="https://twitter.com/GreenCloudVPS" target="_blank"
+                    rel="noopener noreferrer">
+                    <i class="fab fa-twitter"></i>
+                </a>
+                <a class="social-icon" href="https://www.youtube.com/@greencloud6789" target="_blank"
+                    rel="noopener noreferrer">
+                    <i class="fab fa-youtube"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div id="fullpage-overlay" class="hidden">
+    <div class="outer-wrapper">
+        <div class="inner-wrapper">
+            <img src="/billing/assets/img/overlay-spinner.svg">
+            <br>
+            <span class="msg"></span>
+        </div>
+    </div>
+</div>
+
+<div class="modal system-modal fade" id="modalAjax" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content panel-primary">
+            <div class="modal-header panel-heading">
+                <button type="button" class="close" data-dismiss="modal">
+                    <span aria-hidden="true">&times;</span>
+                    <span class="sr-only">Close</span>
+                </button>
+                <h4 class="modal-title"></h4>
+            </div>
+            <div class="modal-body panel-body">
+                Loading...
+            </div>
+            <div class="modal-footer panel-footer">
+                <div class="pull-left loader">
+                    <i class="fas fa-circle-notch fa-spin"></i>
+                    Loading...
+                </div>
+                <button type="button" class="btn btn-default" data-dismiss="modal">
+                    Close
+                </button>
+                <button type="button" class="btn btn-primary modal-submit">
+                    Submit
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form action="#" id="frmGeneratePassword" class="form-horizontal">
+    <div class="modal fade" id="modalGeneratePassword">
+        <div class="modal-dialog">
+            <div class="modal-content panel-primary">
+                <div class="modal-header panel-heading">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">
+                        Generate Password
+                    </h4>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger hidden" id="generatePwLengthError">
+                        Please enter a number between 8 and 64 for the password length
+                    </div>
+                    <div class="form-group">
+                        <label for="generatePwLength" class="col-sm-4 control-label">Password Length</label>
+                        <div class="col-sm-8">
+                            <input type="number" min="8" max="64" value="12" step="1" class="form-control input-inline input-inline-100" id="inputGeneratePasswordLength">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="generatePwOutput" class="col-sm-4 control-label">Generated Password</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control" id="inputGeneratePasswordOutput">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-8 col-sm-offset-4">
+                            <button type="submit" class="btn btn-default btn-sm">
+                                <i class="fas fa-plus fa-fw"></i>
+                                Generate new password
+                            </button>
+                            <button type="button" class="btn btn-default btn-sm copy-to-clipboard" data-clipboard-target="#inputGeneratePasswordOutput">
+                                <img src="/billing/assets/img/clippy.svg" alt="Copy to clipboard" width="15">
+                                Copy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">
+                        Close
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnGeneratePasswordInsert" data-clipboard-target="#inputGeneratePasswordOutput">
+                        Copy to clipboard and Insert
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script defer src="https://greencloudvps.com/billing/modules/addons/greenfy_widget_auth/assets/bridge.v2.js?v=1.3.2" data-greenfy-widget-bridge="v2" data-cfasync="false" data-site-id="green-cloud-support" data-widget-origin="https://chat.green.cloud" data-endpoint="https://greencloudvps.com/billing/index.php?m=greenfy_widget_auth&amp;action=assert" data-loader-url="https://chat.green.cloud/embed/widget/v2/releases/2.0.0/loader.js" data-loader-integrity="sha384-pFtvNK3n9upHyEb/zyGRRBgDpR5GjjdtW+9nySnFQ8uAa/VWyifCXUrSLwsbpXLz" data-auto-inject="true"></script>
+
+
+</body>
+
+</html>

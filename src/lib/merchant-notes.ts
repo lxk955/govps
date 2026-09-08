@@ -25,6 +25,8 @@ export const MERCHANT_NOTES: Record<string, string> = {
     "Evoxt：马来西亚知名高频云主机商，主打全球多机房弹性部署（美/英/加/德/波/荷/日/马/澳）与高频 CPU（最高 6.0 GHz），提供优质三网优化线路（CTG GIA/9929/CMI），支持周备份与微信/支付宝付款。",
   vmrack:
     "VMRack：主打洛杉矶自建机房（LAX-DC1/DC2），提供三网精品优化（CN2 GIA/9929/CMIN2）、三网优化（163/10099/CMI）与原生 BGP 线路，包含限量与不限流量 VPS 及独立裸金属服务器。",
+  greencloud:
+    "GreenCloud（绿云）：只收录官网 CN Premium 专线。东京为 CN2 GIA / 9929 / CMIN2，新加坡为 CN2 GIA / 9929 / CMI，廉价 KVM 不收录。",
 };
 
 export const MERCHANT_ORDER: Record<string, number> = {
@@ -38,6 +40,7 @@ export const MERCHANT_ORDER: Record<string, number> = {
   gomami: 8,
   evoxt: 9,
   vmrack: 10,
+  greencloud: 11,
 };
 
 /** 服务商按钮的悬停提示：优先用商家简介，缺失时回退通用文案（与旧站一致）。 */

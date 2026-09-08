@@ -11,7 +11,7 @@
 | sixsixyun/cart-gid6.html | 666clouds.com/cart.php?gid=6 | 2026-08-24 |
 | sixsixyun/home.html | 666clouds.com 首页 | 2026-08-24 |
 | zgocloud/special-offer.html | clients.zgovps.com 分组页 | 2026-08-24 |
-| vmiss/stockvps-page.html | stockvps.org 首页内嵌监控数据（裁剪至 3 条计划，其中 1 条库存值改写为 0，见文件头注释） | 2026-08-24 |
+| greencloud/cn-premium.html | https://greencloudvps.com/billing/store/cn-premium-optimized | 2026-09-08 |
 
 约定：
 - 常规测试**只允许**通过 httpx.MockTransport / 直接传入 HTML 字符串消费这些文件，禁止任何真实网络请求；

@@ -21,6 +21,7 @@ from app.crawler.bandwagon import BandwagonCrawler
 from app.crawler.dedione import DediOneCrawler
 from app.crawler.dmit import DmitCrawler
 from app.crawler.evoxt import EvoxtCrawler
+from app.crawler.greencloud import GreenCloudCrawler
 from app.crawler.gomami import GomamiCrawler
 from app.crawler.sixsixyun import SixSixYunCrawler
 from app.crawler.vmrack import VMRackCrawler
@@ -316,6 +317,27 @@ class TestGomami:
         raws = GomamiCrawler().fetch(_mock_client([("gomami.io", 500, "oops")]))
         assert len(raws) >= 25
         assert all(p.from_preset for p in raws)
+
+
+class TestGreenCloud:
+    def test_normal_recorded_fixture(self):
+        html = _fixture("greencloud", "cn-premium.html")
+        raws = GreenCloudCrawler().fetch(_mock_client([("cn-premium-optimized", 200, html)]))
+        assert len(raws) == 10
+        by_id = {p.external_id: p for p in raws}
+        assert by_id["2213"].in_stock is False
+        assert by_id["2213"].price == Decimal("25.00")
+        assert by_id["2213"].location == "东京"
+        assert by_id["2213"].line_tags == ["CN2 GIA", "9929", "CMIN2"]
+        assert by_id["2305"].location == "新加坡"
+        assert "CMI" in by_id["2305"].line_tags
+        assert "CMIN2" not in by_id["2305"].line_tags
+        assert by_id["2079"].port_mbps == 1500
+
+    def test_error_offline_falls_back_to_presets(self):
+        raws = GreenCloudCrawler().fetch(_mock_client([("greencloudvps.com", 500, "oops")]))
+        assert len(raws) == 10
+        assert all(p.from_preset and not p.stock_verified for p in raws)
 
 
 # ── evoxt（官网 Pricing 表格，录制 fixture；支持优雅回退）──────
