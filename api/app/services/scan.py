@@ -78,7 +78,9 @@ def ensure_merchants(db: Session) -> None:
 
 def _has_recent_event(db: Session, product_id: int, event_type: str) -> bool:
     """去重：同产品同事件在窗口期内只产生一次。"""
-    window = datetime.now(timezone.utc) - timedelta(minutes=settings.EVENT_DEDUP_MINUTES)
+    from .site_settings import get_int
+
+    window = datetime.now(timezone.utc) - timedelta(minutes=get_int(db, "event_dedup_minutes", settings.EVENT_DEDUP_MINUTES))
     return db.scalar(
         select(NotifyEvent.id).where(
             NotifyEvent.product_id == product_id,

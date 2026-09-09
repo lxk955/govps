@@ -70,6 +70,7 @@ def detect_current_revision(inspector) -> str | None:
             if i.has_table("users")
             else False,
         ),
+        ("0011_site_settings", lambda i: i.has_table("site_settings")),
     ]
     reached: str | None = None
     for revision_id, present in stages:

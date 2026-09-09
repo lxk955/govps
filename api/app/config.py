@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     R2_SECRET_ACCESS_KEY: str = ""
     R2_BUCKET: str = "govps-backups"
     R2_ENDPOINT: str = ""
+    # 管理后台：逗号分隔的管理员邮箱，大小写不敏感。空则没有人能进后台。
+    ADMIN_EMAILS: str = ""
 
     @property
     def r2_endpoint(self) -> str:

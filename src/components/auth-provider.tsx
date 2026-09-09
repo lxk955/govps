@@ -16,6 +16,7 @@ export interface AuthUser {
   email: string;
   view_mode?: string;
   currency_mode?: string;
+  is_admin?: boolean;
 }
 
 interface AuthContextValue {
@@ -49,8 +50,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchMe = useCallback(async (token: string) => {
     setApiToken(token);
     try {
-      const me = await apiFetch<{ email: string; view_mode?: string; currency_mode?: string }>("/api/auth/me");
-      setUser({ email: me.email, view_mode: me.view_mode, currency_mode: me.currency_mode });
+      const me = await apiFetch<{
+        email: string;
+        view_mode?: string;
+        currency_mode?: string;
+        is_admin?: boolean;
+      }>("/api/auth/me");
+      setUser({
+        email: me.email,
+        view_mode: me.view_mode,
+        currency_mode: me.currency_mode,
+        is_admin: me.is_admin,
+      });
     } catch {
       // token 失效：onAuthExpired 已清存储，这里兜底复位
       setUser(null);

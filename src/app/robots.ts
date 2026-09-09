@@ -9,7 +9,7 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "*",
         allow: "/",
         // API、外链跳转与登录/个人关注等私有状态页不进索引，节省搜索引擎抓取预算
-        disallow: ["/api/", "/go/", "/watchlist", "/login"],
+        disallow: ["/api/", "/go/", "/watchlist", "/login", "/admin"],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,

@@ -15,7 +15,16 @@ def submit_to_indexnow(urls: list[str]) -> dict:
     - key 对应站点根目录下 key 验证文本文件；
     - 单次最多提交 10,000 条 URL。
     """
-    if not settings.INDEXNOW_ENABLED:
+    from ..database import SessionLocal
+    from .site_settings import get_bool
+
+    enabled = settings.INDEXNOW_ENABLED
+    try:
+        with SessionLocal() as db:
+            enabled = get_bool(db, "indexnow_enabled", settings.INDEXNOW_ENABLED)
+    except Exception:
+        pass
+    if not enabled:
         return {"ok": True, "skipped": True, "reason": "INDEXNOW_ENABLED is False"}
 
     if not urls:

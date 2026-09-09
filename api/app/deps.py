@@ -2,6 +2,7 @@ from fastapi import Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .config import settings
 from .database import get_db
 from .models import User
 
@@ -32,9 +33,21 @@ def get_optional_user(
     return db.scalar(select(User).where(User.api_token == token))
 
 
+def is_admin_email(email: str | None) -> bool:
+    if not email:
+        return False
+    allowed = {e.strip().lower() for e in settings.ADMIN_EMAILS.split(",") if e.strip()}
+    return email.strip().lower() in allowed
+
+
+def require_admin(user: User = Depends(get_current_user)) -> User:
+    if not is_admin_email(user.email):
+        raise HTTPException(status_code=403, detail="admin only")
+    return user
+
+
 def verify_task_token(x_task_token: str | None = Header(default=None)) -> str:
     import secrets
-    from .config import settings
 
     if not x_task_token or not secrets.compare_digest(x_task_token, settings.TASK_TOKEN):
         raise HTTPException(status_code=403, detail="invalid task token")

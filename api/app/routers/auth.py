@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..database import get_db
-from ..deps import get_current_user
+from ..deps import get_current_user, is_admin_email
 from ..models import EmailCode, User
 from ..schemas import TokenOut
 from ..services.notify import send_email
@@ -139,6 +139,7 @@ def me(user: User = Depends(get_current_user)):
         "email": user.email,
         "view_mode": user.view_mode or "card",
         "currency_mode": getattr(user, "currency_mode", None) or "original",
+        "is_admin": is_admin_email(user.email),
     }
 
 
@@ -159,4 +160,5 @@ def update_preferences(
         "email": user.email,
         "view_mode": user.view_mode or "card",
         "currency_mode": getattr(user, "currency_mode", None) or "original",
+        "is_admin": is_admin_email(user.email),
     }

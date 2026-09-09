@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CircleUserRound, LogOut, Star } from "lucide-react";
+import { CircleUserRound, LayoutDashboard, LogOut, Star } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -39,10 +39,10 @@ export function HeaderAuth() {
     );
   }
 
-  return <AccountMenu email={user.email} />;
+  return <AccountMenu email={user.email} isAdmin={Boolean(user.is_admin)} />;
 }
 
-function AccountMenu({ email }: { email: string }) {
+function AccountMenu({ email, isAdmin }: { email: string; isAdmin: boolean }) {
   const { logout } = useAuth();
   const router = useRouter();
 
@@ -61,6 +61,12 @@ function AccountMenu({ email }: { email: string }) {
           <Star aria-hidden />
           我的关注
         </DropdownMenuItem>
+        {isAdmin && (
+          <DropdownMenuItem onSelect={() => router.push("/admin")}>
+            <LayoutDashboard aria-hidden />
+            管理后台
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-destructive focus:text-destructive"

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..models import EventType, NotifyEvent, NotifyLog, Product, User, Watchlist
+from .site_settings import get_int
 
 
 def send_email(to: str, subject: str, html: str) -> tuple[bool, str | None]:
@@ -128,7 +129,8 @@ def dispatch_event(db: Session, event: NotifyEvent, product: Product) -> None:
         if user is None:
             continue
 
-        if _mails_sent_today(db, user.id) >= settings.DAILY_MAIL_CAP:
+        cap = get_int(db, "daily_mail_cap", settings.DAILY_MAIL_CAP)
+        if _mails_sent_today(db, user.id) >= cap:
             db.add(NotifyLog(user_id=user.id, event_id=event.id, status="skipped",
                              error="daily cap reached"))
             continue

@@ -386,3 +386,76 @@ export function getDnsLeakResults(token: string): Promise<DnsLeakResults> {
     { cache: "no-store" },
   );
 }
+
+export interface AdminOverview {
+  generated_at: string;
+  visits: {
+    today_pv: number;
+    today_uv: number;
+    d7_pv: number;
+    d7_uv: number;
+    d30_pv: number;
+    d30_uv: number;
+  };
+  users: {
+    total: number;
+    today_new: number;
+    d7_new: number;
+    d30_new: number;
+    dau: number;
+    wau: number;
+    mau: number;
+  };
+  activity: { dau: number; wau: number; mau: number };
+  aff: {
+    today: number;
+    d7: number;
+    d30: number;
+    by_merchant: { slug: string; name: string; clicks: number }[];
+    by_src: { src: string; clicks: number }[];
+  };
+  pages: { route: string; pv: number; uv: number }[];
+  daily: { date: string; pv: number; uv: number; aff: number }[];
+}
+
+export interface AdminMerchant {
+  slug: string;
+  name: string;
+  website: string;
+  enabled: boolean;
+  crawl_interval_minutes: number | null;
+  last_success_at: string | null;
+  last_error: string | null;
+  products: number;
+  in_stock: number;
+}
+
+export interface AdminSettings {
+  event_dedup_minutes: number;
+  daily_mail_cap: number;
+  indexnow_enabled: boolean;
+}
+
+export function getAdminOverview(): Promise<AdminOverview> {
+  return apiFetch<AdminOverview>("/api/admin/overview", { cache: "no-store" });
+}
+
+export function getAdminMerchants(): Promise<{ merchants: AdminMerchant[] }> {
+  return apiFetch("/api/admin/merchants", { cache: "no-store" });
+}
+
+export function patchAdminMerchant(
+  slug: string,
+  body: { enabled?: boolean; crawl_interval_minutes?: number },
+): Promise<{ ok: boolean; slug: string; enabled: boolean; crawl_interval_minutes: number | null }> {
+  return apiFetch(`/api/admin/merchants/${slug}`, { method: "PATCH", body });
+}
+
+export function getAdminSettings(): Promise<AdminSettings> {
+  return apiFetch("/api/admin/settings", { cache: "no-store" });
+}
+
+export function putAdminSettings(body: Partial<AdminSettings>): Promise<AdminSettings> {
+  return apiFetch("/api/admin/settings", { method: "PUT", body });
+}
+

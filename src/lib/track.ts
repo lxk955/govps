@@ -38,9 +38,16 @@ export function trackPageView(path: string): void {
       session_id: sessionId || null,
     });
     // keepalive：页面正在卸载（用户关闭/跳转外链）时请求仍有机会完成
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    try {
+      const token = localStorage.getItem("govps_token");
+      if (token) headers.Authorization = `Bearer ${token}`;
+    } catch {
+      /* 无凭证照常上报匿名 PV */
+    }
     void fetch(ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body,
       keepalive: true,
     }).catch(() => {
