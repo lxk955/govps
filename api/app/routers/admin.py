@@ -1,4 +1,4 @@
-"""管理后台：运营数据 + 可改配置。仅 ADMIN_EMAILS 中的账号可访问。"""
+"""管理后台：运营数据 + 可改配置。仅站长邮箱（及 ADMIN_EMAILS 附加名单）可访问。"""
 
 from datetime import datetime, timedelta, timezone
 

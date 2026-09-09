@@ -178,7 +178,7 @@ export function AdminDashboard() {
     return (
       <div className="border-border rounded-2xl border p-12 text-center">
         <p className="text-sm font-medium text-slate-700 dark:text-slate-200">当前账号没有管理权限。</p>
-        <p className="text-muted-foreground mt-1 text-xs">如需开通，把邮箱加入服务器 ADMIN_EMAILS。</p>
+        <p className="text-muted-foreground mt-1 text-xs">这个账号没有管理权限。</p>
       </div>
     );
   }

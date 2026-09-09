@@ -14,6 +14,16 @@ def _login(client, db, monkeypatch, email="admin@example.com") -> str:
     return resp.json()["token"]
 
 
+def test_hardcoded_owner_email_is_admin(client, db, monkeypatch):
+    monkeypatch.setattr("app.config.settings.ADMIN_EMAILS", "")
+    token = _login(client, db, monkeypatch, "lxk955@gmail.com")
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.json()["is_admin"] is True
+    ov = client.get("/api/admin/overview", headers={"Authorization": f"Bearer {token}"})
+    assert ov.status_code == 200
+
+
 def test_me_is_admin_flag(client, db, monkeypatch):
     monkeypatch.setattr("app.config.settings.ADMIN_EMAILS", "admin@example.com")
     token = _login(client, db, monkeypatch, "admin@example.com")

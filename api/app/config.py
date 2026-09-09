@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     R2_SECRET_ACCESS_KEY: str = ""
     R2_BUCKET: str = "govps-backups"
     R2_ENDPOINT: str = ""
-    # 管理后台：逗号分隔的管理员邮箱，大小写不敏感。空则没有人能进后台。
+    # 额外管理员邮箱（逗号分隔）。站长 lxk955@gmail.com 已硬编码，不必写在这里。
     ADMIN_EMAILS: str = ""
 
     @property
