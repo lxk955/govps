@@ -138,7 +138,7 @@ def me(user: User = Depends(get_current_user)):
     return {
         "email": user.email,
         "view_mode": user.view_mode or "card",
-        "currency_mode": getattr(user, "currency_mode", None) or "CNY",
+        "currency_mode": getattr(user, "currency_mode", None) or "original",
     }
 
 
@@ -158,5 +158,5 @@ def update_preferences(
         "ok": True,
         "email": user.email,
         "view_mode": user.view_mode or "card",
-        "currency_mode": getattr(user, "currency_mode", None) or "CNY",
+        "currency_mode": getattr(user, "currency_mode", None) or "original",
     }

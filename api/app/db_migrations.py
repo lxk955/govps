@@ -61,6 +61,15 @@ def detect_current_revision(inspector) -> str | None:
             "0009_user_currency_mode",
             lambda i: "currency_mode" in _column_names(i, "users"),
         ),
+        (
+            "0010_currency_mode_default_original",
+            lambda i: any(
+                c["name"] == "currency_mode" and "original" in str(c.get("default") or "")
+                for c in i.get_columns("users")
+            )
+            if i.has_table("users")
+            else False,
+        ),
     ]
     reached: str | None = None
     for revision_id, present in stages:

@@ -111,6 +111,33 @@ def test_me_requires_auth(client):
     assert client.get("/api/auth/me").status_code == 401
 
 
+def test_new_user_currency_mode_defaults_to_original(client, db, monkeypatch):
+    token = _login(client, db, monkeypatch)
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.json()["currency_mode"] == "original"
+
+
+def test_put_preferences_saves_currency_mode(client, db, monkeypatch):
+    token = _login(client, db, monkeypatch)
+    h = {"Authorization": f"Bearer {token}"}
+    saved = client.put("/api/auth/preferences", json={"currency_mode": "CNY"}, headers=h)
+    assert saved.status_code == 200
+    assert saved.json()["currency_mode"] == "CNY"
+    me = client.get("/api/auth/me", headers=h)
+    assert me.json()["currency_mode"] == "CNY"
+    back = client.put("/api/auth/preferences", json={"currency_mode": "original"}, headers=h)
+    assert back.json()["currency_mode"] == "original"
+
+
+def test_put_preferences_rejects_unknown_currency_mode(client, db, monkeypatch):
+    token = _login(client, db, monkeypatch)
+    h = {"Authorization": f"Bearer {token}"}
+    resp = client.put("/api/auth/preferences", json={"currency_mode": "EUR"}, headers=h)
+    assert resp.status_code == 200
+    assert resp.json()["currency_mode"] == "original"
+
+
 # ── 关注域 ──────────────────────────────────────────────────────
 
 

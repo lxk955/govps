@@ -4,13 +4,14 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { formatPrice } from "@/lib/format";
 import {
   CURRENCY_COOKIE,
-  CURRENCY_STORAGE_KEY,
+  DEFAULT_CURRENCY_MODE,
   parseCurrencyMode,
-  writeCurrencyCookie,
+  persistCurrencyPreference,
+  pushCurrencyPreferenceRemote,
+  readStoredCurrencyMode,
   type CurrencyMode,
 } from "@/lib/currency-mode";
 import { useAuth } from "./auth-provider";
-import { apiFetch } from "@/lib/api/client";
 
 export type { CurrencyMode };
 
@@ -39,30 +40,83 @@ const DEFAULT_RATES: Record<string, number> = {
   CAD: 1.38,
 };
 
+function convertPrice(
+  price: number,
+  currency: string,
+  mode: CurrencyMode,
+  rates: Record<string, number>,
+): ConvertedPriceResult {
+  const rawCurrency = (currency || "USD").toUpperCase();
+  const originalFormatted = formatPrice(price, rawCurrency);
+
+  if (mode === "original" || !price || price <= 0) {
+    return {
+      displayPrice: originalFormatted,
+      isConverted: false,
+      originalPrice: originalFormatted,
+    };
+  }
+
+  if (mode === "CNY") {
+    if (rawCurrency === "CNY") {
+      return {
+        displayPrice: originalFormatted,
+        isConverted: false,
+        originalPrice: originalFormatted,
+      };
+    }
+    const fromUnits = rates[rawCurrency] || (rawCurrency === "EUR" ? 0.86 : 1);
+    const cnyUnits = rates["CNY"] || 7.2;
+    const inUsd = price / fromUnits;
+    const inCny = inUsd * cnyUnits;
+    const formattedCny = inCny >= 100 ? Math.round(inCny).toString() : inCny.toFixed(1);
+
+    return {
+      displayPrice: `¥${formattedCny}`,
+      isConverted: true,
+      originalPrice: originalFormatted,
+      rateNotice: `按 1 USD ≈ ${cnyUnits.toFixed(2)} CNY 汇率换算，实际扣款以原币为准`,
+    };
+  }
+
+  if (mode === "USD") {
+    if (rawCurrency === "USD") {
+      return {
+        displayPrice: originalFormatted,
+        isConverted: false,
+        originalPrice: originalFormatted,
+      };
+    }
+    const fromUnits = rates[rawCurrency] || 1;
+    const inUsd = price / fromUnits;
+    const formattedUsd = inUsd >= 100 ? Math.round(inUsd).toString() : inUsd.toFixed(2);
+
+    return {
+      displayPrice: `$${formattedUsd}`,
+      isConverted: true,
+      originalPrice: originalFormatted,
+      rateNotice: `按实时汇率折算为美元，实际扣款以原币为准`,
+    };
+  }
+
+  return {
+    displayPrice: originalFormatted,
+    isConverted: false,
+    originalPrice: originalFormatted,
+  };
+}
+
 const CurrencyContext = createContext<CurrencyContextType>({
-  mode: "CNY",
+  mode: DEFAULT_CURRENCY_MODE,
   setMode: () => {},
   rates: DEFAULT_RATES,
-  convert: (price, currency) => ({
-    displayPrice: formatPrice(price, currency),
-    isConverted: false,
-    originalPrice: formatPrice(price, currency),
-  }),
+  convert: (price, currency) => convertPrice(price, currency, DEFAULT_CURRENCY_MODE, DEFAULT_RATES),
 });
-
-function persistMode(mode: CurrencyMode) {
-  writeCurrencyCookie(mode);
-  try {
-    localStorage.setItem(CURRENCY_STORAGE_KEY, mode);
-  } catch {
-    // 忽略隐私模式下的存储异常
-  }
-}
 
 export function CurrencyProvider({
   children,
   initialRates,
-  initialMode = "CNY",
+  initialMode = DEFAULT_CURRENCY_MODE,
 }: {
   children: React.ReactNode;
   initialRates?: Record<string, number>;
@@ -72,18 +126,17 @@ export function CurrencyProvider({
   const [mode, setModeState] = useState<CurrencyMode>(initialMode);
   const [rates, setRates] = useState<Record<string, number>>(initialRates || DEFAULT_RATES);
 
-  // 无 cookie 的老访客：从 localStorage 迁一次并写 cookie，之后 SSR 与展示一致
+  // 无 cookie 的访客：用 localStorage 补一次并写 cookie，之后 SSR 与展示一致
   useEffect(() => {
     try {
       const hasCookie = document.cookie.split("; ").some((c) => c.startsWith(`${CURRENCY_COOKIE}=`));
-      const stored = localStorage.getItem(CURRENCY_STORAGE_KEY);
-      const parsed = parseCurrencyMode(stored);
-      if (!hasCookie && stored && parsed !== initialMode) {
-        setModeState(parsed);
-        persistMode(parsed);
+      const stored = readStoredCurrencyMode();
+      if (!hasCookie && stored && stored !== initialMode) {
+        setModeState(stored);
+        persistCurrencyPreference(stored);
         return;
       }
-      persistMode(mode);
+      persistCurrencyPreference(mode);
     } catch {
       // 忽略
     }
@@ -91,17 +144,22 @@ export function CurrencyProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 当登录用户的货币偏好加载后，以云端个人设置同步
+  // 登录后：本机已有选择就保留并异步推到服务器；本机没有才用云端
   useEffect(() => {
-    if (
-      user?.currency_mode &&
-      (user.currency_mode === "CNY" || user.currency_mode === "USD" || user.currency_mode === "original")
-    ) {
-      const next = user.currency_mode as CurrencyMode;
-      setModeState(next);
-      persistMode(next);
+    if (!user) return;
+    const local = readStoredCurrencyMode();
+    if (local) {
+      if (local !== mode) setModeState(local);
+      persistCurrencyPreference(local);
+      if (user.currency_mode !== local) pushCurrencyPreferenceRemote(local);
+      return;
     }
-  }, [user?.currency_mode]);
+    const remote = parseCurrencyMode(user.currency_mode);
+    setModeState(remote);
+    persistCurrencyPreference(remote);
+    // user 对象在登录/拉 /me 时才会换，不要把 mode 放进依赖以免覆盖刚点的选择
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // 客户端如果缺失 rates，拉取最新汇率
   useEffect(() => {
@@ -123,75 +181,12 @@ export function CurrencyProvider({
 
   const setMode = (newMode: CurrencyMode) => {
     setModeState(newMode);
-    persistMode(newMode);
-    if (user) {
-      apiFetch("/api/auth/preferences", {
-        method: "PUT",
-        body: JSON.stringify({ currency_mode: newMode }),
-      }).catch(() => {});
-    }
+    persistCurrencyPreference(newMode);
+    if (user) pushCurrencyPreferenceRemote(newMode);
   };
 
-  const convert = (price: number, currency: string): ConvertedPriceResult => {
-    const rawCurrency = (currency || "USD").toUpperCase();
-    const originalFormatted = formatPrice(price, rawCurrency);
-
-    if (mode === "original" || !price || price <= 0) {
-      return {
-        displayPrice: originalFormatted,
-        isConverted: false,
-        originalPrice: originalFormatted,
-      };
-    }
-
-    if (mode === "CNY") {
-      if (rawCurrency === "CNY") {
-        return {
-          displayPrice: originalFormatted,
-          isConverted: false,
-          originalPrice: originalFormatted,
-        };
-      }
-      const fromUnits = rates[rawCurrency] || (rawCurrency === "EUR" ? 0.86 : 1);
-      const cnyUnits = rates["CNY"] || 7.2;
-      const inUsd = price / fromUnits;
-      const inCny = inUsd * cnyUnits;
-      const formattedCny = inCny >= 100 ? Math.round(inCny).toString() : inCny.toFixed(1);
-
-      return {
-        displayPrice: `¥${formattedCny}`,
-        isConverted: true,
-        originalPrice: originalFormatted,
-        rateNotice: `按 1 USD ≈ ${cnyUnits.toFixed(2)} CNY 汇率换算，实际扣款以原币为准`,
-      };
-    }
-
-    if (mode === "USD") {
-      if (rawCurrency === "USD") {
-        return {
-          displayPrice: originalFormatted,
-          isConverted: false,
-          originalPrice: originalFormatted,
-        };
-      }
-      const fromUnits = rates[rawCurrency] || 1;
-      const inUsd = price / fromUnits;
-      const formattedUsd = inUsd >= 100 ? Math.round(inUsd).toString() : inUsd.toFixed(2);
-
-      return {
-        displayPrice: `$${formattedUsd}`,
-        isConverted: true,
-        originalPrice: originalFormatted,
-        rateNotice: `按实时汇率折算为美元，实际扣款以原币为准`,
-      };
-    }
-
-    return {
-      displayPrice: originalFormatted,
-      isConverted: false,
-      originalPrice: originalFormatted,
-    };
-  };
+  const convert = (price: number, currency: string): ConvertedPriceResult =>
+    convertPrice(price, currency, mode, rates);
 
   return (
     <CurrencyContext.Provider value={{ mode, setMode, rates, convert }}>
