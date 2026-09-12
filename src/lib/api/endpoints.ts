@@ -429,6 +429,10 @@ export interface AdminMerchant {
   last_error: string | null;
   products: number;
   in_stock: number;
+  aff_url_template?: string | null;
+  aff_code_default?: string | null;
+  aff_status?: "active" | "direct" | "unsupported" | string;
+  aff_clicks_d30?: number;
 }
 
 export interface AdminCrawlLog {
@@ -469,8 +473,21 @@ export function getAdminMerchants(): Promise<{ merchants: AdminMerchant[] }> {
 
 export function patchAdminMerchant(
   slug: string,
-  body: { enabled?: boolean; crawl_interval_minutes?: number },
-): Promise<{ ok: boolean; slug: string; enabled: boolean; crawl_interval_minutes: number | null }> {
+  body: {
+    enabled?: boolean;
+    crawl_interval_minutes?: number;
+    aff_url_template?: string | null;
+    restore_aff_default?: boolean;
+  },
+): Promise<{
+  ok: boolean;
+  slug: string;
+  enabled: boolean;
+  crawl_interval_minutes: number | null;
+  aff_url_template?: string | null;
+  aff_code_default?: string | null;
+  aff_status?: string;
+}> {
   return apiFetch(`/api/admin/merchants/${slug}`, { method: "PATCH", body });
 }
 

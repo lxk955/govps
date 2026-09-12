@@ -72,8 +72,8 @@ def ensure_merchants(db: Session) -> None:
         else:
             m.name = crawler.name
             m.website = crawler.website
-        # 代码中配置了返利模板才覆盖，允许在数据库里手动维护
-        if crawler.aff_url_template:
+        # 返利模板：只在从未写过时填代码默认。后台改过（含清空成直链）不被扫描覆盖。
+        if m.aff_url_template is None and crawler.aff_url_template:
             m.aff_url_template = crawler.aff_url_template
         # P7 分级调度：仅填充空值——运营改库设置的间隔不被代码默认值覆盖
         if m.crawl_interval_minutes is None and getattr(crawler, "default_interval_minutes", None):

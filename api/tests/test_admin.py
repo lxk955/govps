@@ -85,6 +85,8 @@ def test_admin_overview_and_settings(client, db, monkeypatch):
     row = next(x for x in merchants.json()["merchants"] if x["slug"] == "shop")
     assert row["enabled"] is True
     assert row["in_stock"] == 1
+    assert row["aff_status"] == "direct"
+    assert row["aff_clicks_d30"] >= 1
 
     patched = client.patch(
         "/api/admin/merchants/shop",
@@ -199,4 +201,46 @@ def test_admin_users_list_and_detail(client, db, monkeypatch):
 
     missing = client.get("/api/admin/users/999999", headers=h)
     assert missing.status_code == 404
+
+
+def test_admin_aff_template_and_scan_does_not_overwrite(client, db, monkeypatch):
+    monkeypatch.setattr("app.config.settings.ADMIN_EMAILS", "admin@example.com")
+    token = _login(client, db, monkeypatch)
+    h = {"Authorization": f"Bearer {token}"}
+
+    m = Merchant(slug="dmit", name="DMIT", website="https://www.dmit.io", enabled=True)
+    db.add(m)
+    db.commit()
+
+    bad = client.patch(
+        "/api/admin/merchants/dmit",
+        json={"aff_url_template": "javascript:alert(1)"},
+        headers=h,
+    )
+    assert bad.status_code == 400
+
+    saved = client.patch(
+        "/api/admin/merchants/dmit",
+        json={"aff_url_template": "https://www.dmit.io/aff.php?aff=1&pid={pid}"},
+        headers=h,
+    )
+    assert saved.status_code == 200
+    assert saved.json()["aff_status"] == "active"
+    assert "aff=1" in saved.json()["aff_url_template"]
+
+    from app.services.scan import ensure_merchants
+
+    ensure_merchants(db)
+    db.commit()
+    db.refresh(m)
+    assert m.aff_url_template == "https://www.dmit.io/aff.php?aff=1&pid={pid}"
+
+    restored = client.patch(
+        "/api/admin/merchants/dmit",
+        json={"restore_aff_default": True},
+        headers=h,
+    )
+    assert restored.status_code == 200
+    assert restored.json()["aff_code_default"]
+    assert restored.json()["aff_url_template"] == restored.json()["aff_code_default"]
 

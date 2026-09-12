@@ -65,16 +65,21 @@ def _oos_interstitial(product: Product, target_url: str) -> HTMLResponse:
     return HTMLResponse(html)
 
 
+def _aff_id_from_template(template: str | None) -> str | None:
+    if not template:
+        return None
+    m = re.search(r"[?&]aff=(\d+)", template)
+    return m.group(1) if m else None
+
+
 def build_purchase_url(product: Product, purchase_url: str | None = None) -> str:
     """有返利模板则套用（支持 {url} / {pid} 占位符），否则商家直链。
 
-    针对搬瓦工 (BandwagonHost)：
-    严格遵循官方推荐规范，将 cart.php? 替换为 aff.php?aff=83019&，
-    完整保留 a=add&pid=...&billingcycle=... 等所选周期与配置参数。
+    搬瓦工：把 cart.php? 换成 aff.php?aff=ID&，保留加购参数。ID 优先取模板里的 aff=。
     """
     purl = purchase_url or product.purchase_url
     if product.merchant.slug == "bandwagon":
-        aff_id = "83019"
+        aff_id = _aff_id_from_template(product.merchant.aff_url_template) or "83019"
         if "cart.php?" in purl:
             return purl.replace("cart.php?", f"aff.php?aff={aff_id}&")
         pid = _extract_pid(purl) or _clean_pid(product.external_id)

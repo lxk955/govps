@@ -171,6 +171,28 @@ function SparkBars({
   );
 }
 
+function AffStatusBadge({ status }: { status: string }) {
+  if (status === "active") {
+    return (
+      <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+        已配置
+      </span>
+    );
+  }
+  if (status === "unsupported") {
+    return (
+      <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300">
+        暂不支持
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+      直链无佣金
+    </span>
+  );
+}
+
 export function AdminDashboard() {
   const { user } = useAuth();
   const [overview, setOverview] = useState<AdminOverview | null>(null);
@@ -188,6 +210,9 @@ export function AdminDashboard() {
   const [logViewMode, setLogViewMode] = useState<"latest" | "stream">("latest");
   const [streamMerchantFilter, setStreamMerchantFilter] = useState<string>("all");
   const [streamStatusFilter, setStreamStatusFilter] = useState<string>("all");
+  const [affDrafts, setAffDrafts] = useState<Record<string, string>>({});
+  const [affSaving, setAffSaving] = useState<string | null>(null);
+  const [affMsg, setAffMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -201,6 +226,9 @@ export function AdminDashboard() {
       ]);
       setOverview(ov);
       setMerchants(merch.merchants);
+      setAffDrafts(
+        Object.fromEntries(merch.merchants.map((m) => [m.slug, m.aff_url_template || ""])),
+      );
       setSettings(conf);
       setCrawlLogs(crawlData.logs);
       setLatestLogs(crawlData.latest_by_merchant);
@@ -225,6 +253,9 @@ export function AdminDashboard() {
         getAdminCrawlLogs(100),
       ]);
       setMerchants(merch.merchants);
+      setAffDrafts(
+        Object.fromEntries(merch.merchants.map((m) => [m.slug, m.aff_url_template || ""])),
+      );
       setCrawlLogs(crawlData.logs);
       setLatestLogs(crawlData.latest_by_merchant);
     } catch {
@@ -286,6 +317,30 @@ export function AdminDashboard() {
       );
     } catch {
       /* ignore */
+    }
+  };
+
+  const saveAff = async (slug: string, restore = false) => {
+    setAffSaving(slug);
+    setAffMsg(null);
+    try {
+      const res = await patchAdminMerchant(
+        slug,
+        restore ? { restore_aff_default: true } : { aff_url_template: affDrafts[slug] ?? "" },
+      );
+      setMerchants((prev) =>
+        prev.map((m) =>
+          m.slug === slug
+            ? { ...m, aff_url_template: res.aff_url_template, aff_status: res.aff_status }
+            : m,
+        ),
+      );
+      setAffDrafts((prev) => ({ ...prev, [slug]: res.aff_url_template || "" }));
+      setAffMsg(restore ? "已恢复代码默认" : "已保存");
+    } catch {
+      setAffMsg("保存失败，请检查链接是否为 http(s) 或含 {pid}/{url}");
+    } finally {
+      setAffSaving(null);
     }
   };
 
@@ -871,6 +926,99 @@ export function AdminDashboard() {
                   <td className="px-4 py-2.5 text-xs text-slate-500">{relTime(m.last_success_at)}</td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* ── 推广链接 ── */}
+      <section className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+        <div className="border-border border-b px-4 py-3 sm:px-5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold">推广链接</h2>
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                购买跳转走 <span className="font-mono">/go</span>，套用下面模板。可用{" "}
+                <span className="font-mono">{"{pid}"}</span> 和 <span className="font-mono">{"{url}"}</span>
+                。留空则直链、不带佣金。改完立刻生效，扫描不会覆盖。
+              </p>
+            </div>
+            {affMsg ? <span className="text-xs text-slate-500">{affMsg}</span> : null}
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[860px] text-sm">
+            <thead className="bg-slate-50/50 text-[11px] tracking-wide text-slate-400 uppercase dark:bg-slate-900/20">
+              <tr className="border-border border-b">
+                <th className="px-4 py-2.5 text-left font-medium">商家</th>
+                <th className="px-4 py-2.5 text-left font-medium">状态</th>
+                <th className="px-4 py-2.5 text-right font-medium">近 30 日点击</th>
+                <th className="px-4 py-2.5 text-left font-medium">模板</th>
+                <th className="px-4 py-2.5 text-left font-medium">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {merchants.map((m) => {
+                const draft = affDrafts[m.slug] ?? "";
+                const dirty = draft !== (m.aff_url_template || "");
+                const status = m.aff_status || "direct";
+                const locked = status === "unsupported";
+                return (
+                  <tr key={m.slug} className="border-border border-b last:border-0 align-top">
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{m.name}</div>
+                      <div className="font-mono text-[11px] text-slate-400">{m.slug}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <AffStatusBadge status={status} />
+                      {locked ? (
+                        <p className="mt-1 max-w-[160px] text-[11px] leading-snug text-slate-400">
+                          加购走 POST 表单，目前无法套推广链接
+                        </p>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">{n(m.aff_clicks_d30)}</td>
+                    <td className="px-4 py-3">
+                      <Input
+                        value={draft}
+                        disabled={locked}
+                        placeholder={m.aff_code_default || "商家直链，不带推广"}
+                        className="h-8 min-w-[280px] font-mono text-xs"
+                        onChange={(e) => setAffDrafts((prev) => ({ ...prev, [m.slug]: e.target.value }))}
+                      />
+                      {m.aff_code_default && m.aff_code_default !== draft ? (
+                        <p className="mt-1 max-w-[420px] truncate text-[10px] text-slate-400" title={m.aff_code_default}>
+                          代码默认：{m.aff_code_default}
+                        </p>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs"
+                          disabled={locked || affSaving === m.slug || !dirty}
+                          onClick={() => void saveAff(m.slug)}
+                        >
+                          {affSaving === m.slug ? "保存中" : "保存"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 text-xs"
+                          disabled={locked || affSaving === m.slug || !m.aff_code_default}
+                          onClick={() => void saveAff(m.slug, true)}
+                        >
+                          恢复默认
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

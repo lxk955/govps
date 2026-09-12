@@ -16,6 +16,37 @@ from ..services.site_settings import public_settings, upsert_settings
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
+_AFF_PLACEHOLDER = "{url}"
+
+
+def _aff_code_default(slug: str) -> str | None:
+    for c in CRAWLERS:
+        if c.slug == slug:
+            return getattr(c, "aff_url_template", None)
+    return None
+
+
+def _aff_status(slug: str, template: str | None) -> str:
+    if slug == "zgocloud":
+        return "unsupported"
+    t = (template or "").strip()
+    if not t or t == _AFF_PLACEHOLDER:
+        return "direct"
+    return "active"
+
+
+def _valid_aff_template(value: str) -> bool:
+    t = value.strip()
+    if not t or t == _AFF_PLACEHOLDER:
+        return True
+    if "://" in t.split("{", 1)[0] or t.startswith("{url}") or t.startswith("{pid}"):
+        if t.startswith("javascript:") or t.startswith("data:"):
+            return False
+        if "://" in t and not (t.startswith("https://") or t.startswith("http://")):
+            return False
+        return True
+    return t.startswith("https://") or t.startswith("http://")
+
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -183,6 +214,7 @@ def list_merchants(db: Session = Depends(get_db), _admin: User = Depends(require
             Merchant.crawl_interval_minutes,
             Merchant.last_success_at,
             Merchant.last_error,
+            Merchant.aff_url_template,
             func.count(Product.id).label("products"),
             func.sum(case((Product.in_stock.is_(True), 1), else_=0)).label("in_stock"),
         )
@@ -191,9 +223,21 @@ def list_merchants(db: Session = Depends(get_db), _admin: User = Depends(require
         .order_by(Merchant.name)
     ).all()
     crawler_map = {c.slug: getattr(c, "crawl_method", "官方直连") for c in CRAWLERS}
+    d30 = _utcnow() - timedelta(days=30)
+    click_rows = db.execute(
+        select(Merchant.slug, func.count().label("n"))
+        .select_from(AffClick)
+        .join(Product, Product.id == AffClick.product_id)
+        .join(Merchant, Merchant.id == Product.merchant_id)
+        .where(AffClick.created_at >= d30)
+        .group_by(Merchant.slug)
+    ).all()
+    clicks_map = {r.slug: int(r.n) for r in click_rows}
     out = []
     for r in rows:
         last = r.last_success_at
+        code_default = _aff_code_default(r.slug)
+        template = r.aff_url_template
         out.append(
             {
                 "slug": r.slug,
@@ -206,6 +250,10 @@ def list_merchants(db: Session = Depends(get_db), _admin: User = Depends(require
                 "last_error": r.last_error,
                 "products": int(r.products or 0),
                 "in_stock": int(r.in_stock or 0),
+                "aff_url_template": template,
+                "aff_code_default": code_default,
+                "aff_status": _aff_status(r.slug, template),
+                "aff_clicks_d30": clicks_map.get(r.slug, 0),
             }
         )
     return {"merchants": out}
@@ -214,6 +262,8 @@ def list_merchants(db: Session = Depends(get_db), _admin: User = Depends(require
 class MerchantPatch(BaseModel):
     enabled: bool | None = None
     crawl_interval_minutes: int | None = None
+    aff_url_template: str | None = None
+    restore_aff_default: bool | None = None
 
 
 @router.patch("/merchants/{slug}")
@@ -235,12 +285,22 @@ def patch_merchant(
         if minutes > 1440:
             minutes = 1440
         m.crawl_interval_minutes = minutes
+    if payload.restore_aff_default:
+        m.aff_url_template = _aff_code_default(slug)
+    elif payload.aff_url_template is not None:
+        raw = payload.aff_url_template.strip()
+        if raw and not _valid_aff_template(raw):
+            raise HTTPException(status_code=400, detail="invalid aff url template")
+        m.aff_url_template = raw or None
     db.commit()
     return {
         "ok": True,
         "slug": m.slug,
         "enabled": m.enabled,
         "crawl_interval_minutes": m.crawl_interval_minutes,
+        "aff_url_template": m.aff_url_template,
+        "aff_code_default": _aff_code_default(slug),
+        "aff_status": _aff_status(slug, m.aff_url_template),
     }
 
 
