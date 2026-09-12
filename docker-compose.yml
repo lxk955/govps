@@ -24,6 +24,9 @@ services:
       - R2_BUCKET=${R2_BUCKET:-govps-backups}
       - R2_ENDPOINT=${R2_ENDPOINT:-}
       - ADMIN_EMAILS=${ADMIN_EMAILS:-}
+      - CRAWLER_PROXY=${CRAWLER_PROXY:-}
+      - WARP_PROXY=${WARP_PROXY:-socks5://warp:1080}
+      - WARP_ENABLED_MERCHANTS=${WARP_ENABLED_MERCHANTS:-vmiss}
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:
@@ -100,6 +103,18 @@ services:
     ports:
       - "53:53/udp"
       - "53:53/tcp"
+    networks:
+      - govps-net
+
+  # 5. Cloudflare WARP 免费出口代理（为受盾保护的商家爬虫提供 AS13335 原生清洁出口）
+  warp:
+    image: caomingjun/warp
+    container_name: govps-warp
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - WARP_SLEEP=2
     networks:
       - govps-net
 
