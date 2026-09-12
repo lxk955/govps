@@ -83,8 +83,7 @@ def _fetch_live(client: httpx.Client) -> list[RawProduct]:
         try:
             from .solver import flaresolverr_session
             session_name = f"vmiss_{int(time.time())}"
-            proxy = settings.effective_warp_proxy if settings.effective_warp_proxy else None
-            with flaresolverr_session(session_name, proxy=proxy) as (solver, sid):
+            with flaresolverr_session(session_name) as (solver, sid):
                 if solver and sid:
                     print(f"[vmiss] solving Turnstile challenge via FlareSolverr session {sid}...")
                     for slug, location, line_tags in CATEGORIES:

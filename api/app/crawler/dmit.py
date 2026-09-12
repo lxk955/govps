@@ -471,9 +471,8 @@ def _fetch_official_dmit(target_pids: list[str]) -> list[RawProduct]:
         from .solver import flaresolverr_session
 
         session_name = f"dmit_{int(time.time())}"
-        proxy = settings.effective_warp_proxy if settings.effective_warp_proxy else None
         products: list[RawProduct] = []
-        with flaresolverr_session(session_name, proxy=proxy) as (solver, sid):
+        with flaresolverr_session(session_name) as (solver, sid):
             if not solver or not sid:
                 return []
             for pid in target_pids:
