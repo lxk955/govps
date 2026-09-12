@@ -32,9 +32,10 @@ export function HeaderAuth() {
   }
 
   if (user === null) {
+    const nextPath = pathname && !pathname.startsWith("/login") ? pathname : "/";
     return (
       <Button asChild variant="outline" size="sm" className="h-8 gap-1.5 px-2.5 text-xs">
-        <Link href={`/login?next=${encodeURIComponent(pathname || "/")}`}>登录</Link>
+        <Link href={`/login?next=${encodeURIComponent(nextPath)}`}>登录</Link>
       </Button>
     );
   }
@@ -72,7 +73,7 @@ function AccountMenu({ email, isAdmin }: { email: string; isAdmin: boolean }) {
           className="text-destructive focus:text-destructive"
           onSelect={() => {
             logout();
-            router.push("/");
+            window.location.href = "/";
           }}
         >
           <LogOut aria-hidden />

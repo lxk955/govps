@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { CheckCircle2 } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -13,14 +13,20 @@ import { ApiError, apiFetch } from "@/lib/api/client";
  * 发送冷却 60s（后端强制）；dev_code 仅在服务端未配置发信时返回（本地开发）。 */
 
 function safeNext(next: string | null): string {
-  // 仅允许站内路径，防开放重定向
-  if (next && next.startsWith("/") && !next.startsWith("//")) return next;
+  // 仅允许站内路径，防开放重定向与登录页死循环
+  if (
+    next &&
+    next.startsWith("/") &&
+    !next.startsWith("//") &&
+    !next.startsWith("/login")
+  ) {
+    return next;
+  }
   return "/";
 }
 
 export function LoginForm({ next }: { next: string | null }) {
-  const router = useRouter();
-  const { user, login } = useAuth();
+  const { user, login, logout } = useAuth();
 
   const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
@@ -29,11 +35,6 @@ export function LoginForm({ next }: { next: string | null }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [devCode, setDevCode] = useState<string | null>(null);
-
-  // 已登录用户无需再看登录页
-  useEffect(() => {
-    if (user) router.replace(safeNext(next));
-  }, [user, router, next]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -69,13 +70,61 @@ export function LoginForm({ next }: { next: string | null }) {
         body: { email: email.trim(), code: code.trim() },
       });
       await login(res.token);
-      router.replace(safeNext(next));
+      // 硬刷新跳转，彻底复位所有客户端状态与错误边界
+      window.location.href = safeNext(next);
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "登录失败，请稍后重试");
     } finally {
       setLoading(false);
     }
   };
+
+  // 已登录用户提供明确的操作出口：继续前往原目标或切换账号
+  if (user) {
+    const target = safeNext(next);
+    const targetLabel =
+      target === "/admin"
+        ? "管理后台"
+        : target === "/watchlist"
+          ? "我的关注"
+          : "网站首页";
+
+    return (
+      <div className="mx-auto w-full max-w-sm">
+        <div className="border-border bg-card rounded-2xl border p-6 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
+            <CheckCircle2 className="h-6 w-6" />
+          </div>
+          <h2 className="mt-3 text-base font-semibold text-slate-900 dark:text-slate-100">
+            当前已登录
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm">{user.email}</p>
+          <div className="mt-5 flex flex-col gap-2.5">
+            <Button
+              onClick={() => {
+                window.location.href = target;
+              }}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              继续前往 {targetLabel}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                logout();
+                setStep("email");
+                setEmail("");
+                setCode("");
+              }}
+              className="w-full"
+            >
+              退出并切换账号
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-sm">
