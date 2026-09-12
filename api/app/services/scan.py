@@ -261,74 +261,74 @@ def run_scan(db: Session, force: bool = False) -> dict:
         due_crawlers.append((crawler, merchant))
 
     if due_crawlers:
-        with make_client(settings.SCAN_TIMEOUT) as client:
-            def _fetch_one(c):
-                try:
+        def _fetch_one(c):
+            try:
+                with make_client(settings.SCAN_TIMEOUT) as client:
                     return c.fetch(client), None
-                except Exception as exc:
-                    return None, exc
+            except Exception as exc:
+                return None, exc
 
-            max_workers = min(len(due_crawlers), 8)
-            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                future_map = [
-                    (crawler, merchant, executor.submit(_fetch_one, crawler))
-                    for crawler, merchant in due_crawlers
-                ]
-                for crawler, merchant, fut in future_map:
-                    raws, fetch_err = fut.result()
-                    if fetch_err is not None:
-                        merchant.last_error = str(fetch_err)[:500]
-                        db.commit()
-                        summary[crawler.slug] = f"error: {fetch_err}"
-                        continue
-
-                    if not raws:
-                        merchant.last_error = "0 products parsed"
-                        db.commit()
-                        summary[crawler.slug] = "0 products (skipped)"
-                        continue
-
-                    merchant.last_success_at = datetime.now(timezone.utc)
-                    merchant.last_error = None
-
-                    official_ids = {raw.external_id for raw in raws if not raw.from_preset}
-                    event_count = 0
-                    for raw in raws:
-                        product, events = upsert_product(db, merchant, raw)
-                        if events:
-                            changed_product_ids.add(product.id)
-                        for ev in events:
-                            db.flush()  # 拿到 ev.id
-                            dispatch_event(db, ev, product)
-                            event_count += 1
-
-                    # 关键：如果在本次有效抓取中消失的存量商品（商家已下架/停售/缺货/过期ID），自动标记为缺货
-                    # 完整性门槛只看官方实时源：预置目录条数再多也不能当作「抓全了」去把线上 SKU 标缺货
-                    existing_count = db.scalar(
-                        select(func.count(Product.id)).where(Product.merchant_id == merchant.id)
-                    ) or 0
-                    missing_products: list[Product] = []
-                    if official_ids and len(official_ids) >= max(3, existing_count * 0.5):
-                        missing_products = list(
-                            db.scalars(
-                                select(Product).where(
-                                    Product.merchant_id == merchant.id,
-                                    Product.external_id.not_in(official_ids),
-                                    Product.in_stock.is_(True),
-                                )
-                            ).all()
-                        )
-                        for mp in missing_products:
-                            mp.in_stock = False
-                            db.add(StockSnapshot(product_id=mp.id, in_stock=False))
-                    else:
-                        summary[crawler.slug] = (
-                            f"incomplete crawl ({len(official_ids)}/{existing_count} official), missing-mark skipped"
-                        )
-
+        max_workers = min(len(due_crawlers), 8)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_map = [
+                (crawler, merchant, executor.submit(_fetch_one, crawler))
+                for crawler, merchant in due_crawlers
+            ]
+            for crawler, merchant, fut in future_map:
+                raws, fetch_err = fut.result()
+                if fetch_err is not None:
+                    merchant.last_error = str(fetch_err)[:500]
                     db.commit()
-                    if crawler.slug not in summary:
-                        summary[crawler.slug] = f"{len(raws)} products ({len(missing_products)} marked OOS), {event_count} events"
+                    summary[crawler.slug] = f"error: {fetch_err}"
+                    continue
+
+                if not raws:
+                    merchant.last_error = "0 products parsed"
+                    db.commit()
+                    summary[crawler.slug] = "0 products (skipped)"
+                    continue
+
+                merchant.last_success_at = datetime.now(timezone.utc)
+                merchant.last_error = None
+
+                official_ids = {raw.external_id for raw in raws if not raw.from_preset}
+                event_count = 0
+                for raw in raws:
+                    product, events = upsert_product(db, merchant, raw)
+                    if events:
+                        changed_product_ids.add(product.id)
+                    for ev in events:
+                        db.flush()  # 拿到 ev.id
+                        dispatch_event(db, ev, product)
+                        event_count += 1
+
+                # 关键：如果在本次有效抓取中消失的存量商品（商家已下架/停售/缺货/过期ID），自动标记为缺货
+                # 完整性门槛只看官方实时源：预置目录条数再多也不能当作「抓全了」去把线上 SKU 标缺货
+                existing_count = db.scalar(
+                    select(func.count(Product.id)).where(Product.merchant_id == merchant.id)
+                ) or 0
+                missing_products: list[Product] = []
+                if official_ids and len(official_ids) >= max(3, existing_count * 0.5):
+                    missing_products = list(
+                        db.scalars(
+                            select(Product).where(
+                                Product.merchant_id == merchant.id,
+                                Product.external_id.not_in(official_ids),
+                                Product.in_stock.is_(True),
+                            )
+                        ).all()
+                    )
+                    for mp in missing_products:
+                        mp.in_stock = False
+                        db.add(StockSnapshot(product_id=mp.id, in_stock=False))
+                else:
+                    summary[crawler.slug] = (
+                        f"incomplete crawl ({len(official_ids)}/{existing_count} official), missing-mark skipped"
+                    )
+
+                db.commit()
+                if crawler.slug not in summary:
+                    summary[crawler.slug] = f"{len(raws)} products ({len(missing_products)} marked OOS), {event_count} events"
 
     # 扫描收尾：按既有公式全量刷新评分/理由等物化列（refactor-plan §2 #1）。
     # 关注数/点击数等时变信号每扫描周期刷新一次，列表请求不再逐条实时计算。

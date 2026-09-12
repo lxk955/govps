@@ -45,11 +45,34 @@ class MerchantCrawler:
 
 UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+    "(KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
 )
 
+try:
+    from curl_cffi.requests import Session as CurlSession
 
-def make_client(timeout: float) -> httpx.Client:
+    _HAS_CURL_CFFI = True
+except ImportError:
+    _HAS_CURL_CFFI = False
+
+
+def make_client(timeout: float):
+    """创建具备真实浏览器 TLS 指纹（JA3/JA4/HTTP2）伪装的 HTTP 客户端。
+
+    优先使用 curl_cffi 模拟现代 Chrome (chrome146) 的 ClientHello 与 HTTP/2 帧，
+    在网络层避免暴露 Python 脚本特征，提升对反爬 WAF 的穿透率；
+    若未安装环境或不可用时自动平滑回退至标准 httpx.Client。
+    """
+    if _HAS_CURL_CFFI:
+        return CurlSession(
+            timeout=timeout,
+            headers={
+                "User-Agent": UA,
+                "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Cookie": "WHMCSLanguage=chinese; language=chinese; lang=zh_CN; language_chosen=chinese",
+            },
+            impersonate="chrome146",
+        )
     return httpx.Client(
         timeout=timeout,
         follow_redirects=True,

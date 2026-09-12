@@ -193,6 +193,7 @@ export default async function HomePage({ searchParams }: PageProps) {
                 { loc: "洛杉矶", flag: "🇺🇸", label: "洛杉矶热门套餐" },
                 { loc: "东京", flag: "🇯🇵", label: "日本东京精品套餐" },
                 { loc: "香港", flag: "🇭🇰", label: "香港低延迟套餐" },
+                { loc: "新加坡", flag: "🇸🇬", label: "新加坡亚太节点" },
               ].map((q) => (
                 <Link
                   key={q.loc}

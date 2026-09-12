@@ -57,14 +57,20 @@ def _is_blocked(resp: httpx.Response) -> bool:
 def _fetch_live(client: httpx.Client) -> list[RawProduct]:
     results: list[RawProduct] = []
     blocked = 0
+    consecutive_blocked = 0
     for slug, location, line_tags in CATEGORIES:
         url = f"{BASE}/store/{slug}"
         try:
             resp = client.get(url)
             if _is_blocked(resp):
                 blocked += 1
+                consecutive_blocked += 1
+                if consecutive_blocked >= 2 and not results:
+                    print(f"[vmiss] Cloudflare challenge detected ({consecutive_blocked} consecutive), fast-failing store pages")
+                    break
                 continue
             resp.raise_for_status()
+            consecutive_blocked = 0
         except Exception as e:
             print(f"[vmiss] group {slug} fetch failed: {e}")
             continue

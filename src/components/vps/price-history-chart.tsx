@@ -6,6 +6,7 @@ import {
   convertHistorical,
   type SnapshotPoint,
 } from "@/lib/api/endpoints";
+import { useCurrency } from "@/components/currency-provider";
 import { currencySymbol, formatPrice } from "@/lib/format";
 
 /**
@@ -32,6 +33,67 @@ function niceTicks(min: number, max: number, count = 4): number[] {
   return Array.from({ length: count }, (_, i) => min + step * i);
 }
 
+function formatHoverConverted(
+  hoverPt: { price: number; at: Date } | null,
+  currency: string,
+  mode: string,
+  snapshots: Record<string, Record<string, number>>,
+  rates: Record<string, number>,
+): string | null {
+  if (!hoverPt) return null;
+  const rawCurrency = (currency || "USD").toUpperCase();
+
+  if (mode === "CNY") {
+    if (rawCurrency === "CNY") return null;
+    const histUsd = convertHistorical(hoverPt.price, rawCurrency, hoverPt.at.toISOString(), snapshots);
+    let cnyUnits: number | null = null;
+    if (histUsd != null) {
+      const d = new Date(hoverPt.at);
+      for (let i = 0; i < 31; i++) {
+        const key = d.toISOString().slice(0, 10);
+        const r = snapshots[key]?.["CNY"];
+        if (r && r > 0) {
+          cnyUnits = r;
+          break;
+        }
+        d.setUTCDate(d.getUTCDate() - 1);
+      }
+    }
+    if (histUsd != null && cnyUnits != null) {
+      const cny = histUsd * cnyUnits;
+      const s = cny >= 100 ? Math.round(cny).toString() : cny.toFixed(1);
+      return `≈ ¥${s}（历史汇率）`;
+    }
+    const fromUnits = rates[rawCurrency] || (rawCurrency === "EUR" ? 0.86 : 1);
+    const currCny = rates["CNY"] || 7.2;
+    const cny = (hoverPt.price / fromUnits) * currCny;
+    const s = cny >= 100 ? Math.round(cny).toString() : cny.toFixed(1);
+    return `≈ ¥${s}（当前汇率）`;
+  }
+
+  if (mode === "USD") {
+    if (rawCurrency === "USD") return null;
+    const histUsd = convertHistorical(hoverPt.price, rawCurrency, hoverPt.at.toISOString(), snapshots);
+    if (histUsd != null) {
+      const s = histUsd >= 100 ? Math.round(histUsd).toString() : histUsd.toFixed(2);
+      return `≈ $${s}（历史汇率）`;
+    }
+    const fromUnits = rates[rawCurrency] || 1;
+    const usd = hoverPt.price / fromUnits;
+    const s = usd >= 100 ? Math.round(usd).toString() : usd.toFixed(2);
+    return `≈ $${s}（当前汇率）`;
+  }
+
+  if (rawCurrency !== "USD") {
+    const histUsd = convertHistorical(hoverPt.price, rawCurrency, hoverPt.at.toISOString(), snapshots);
+    if (histUsd != null) {
+      const s = histUsd >= 100 ? Math.round(histUsd).toString() : histUsd.toFixed(2);
+      return `≈ $${s}（历史汇率）`;
+    }
+  }
+  return null;
+}
+
 export function PriceHistoryChart({
   points,
   currency,
@@ -42,6 +104,7 @@ export function PriceHistoryChart({
   /** P5：{iso_date: {code: units_per_usd}}，悬浮提示按「当日或之前最近」快照换算 USD（÷） */
   snapshots?: Record<string, Record<string, number>>;
 }) {
+  const { mode, rates } = useCurrency();
   const [hover, setHover] = useState<number | null>(null);
 
   const rawData = useMemo(
@@ -134,10 +197,8 @@ export function PriceHistoryChart({
 
   const ticks = niceTicks(geom.lo, geom.hi);
   const hoverPt = hover != null ? geom.xy[hover] : null;
-  const hoverUsd =
-    hoverPt != null && currency !== "USD"
-      ? convertHistorical(hoverPt.price, currency, hoverPt.at.toISOString(), snapshots)
-      : null;
+
+  const hoverConverted = formatHoverConverted(hoverPt, currency, mode, snapshots, rates);
 
   const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -378,11 +439,11 @@ export function PriceHistoryChart({
               strokeWidth="2.5"
             />
             <g
-              transform={`translate(${Math.min(hoverPt.cx + 10, W - 160)}, ${Math.max(hoverPt.cy - 44, 8)})`}
+              transform={`translate(${Math.min(hoverPt.cx + 10, W - 165)}, ${Math.max(hoverPt.cy - 44, 8)})`}
             >
               <rect
-                width={hoverUsd != null ? "148" : "116"}
-                height={hoverUsd != null ? "44" : "32"}
+                width={hoverConverted != null ? "152" : "116"}
+                height={hoverConverted != null ? "44" : "32"}
                 rx="8"
                 className="fill-slate-900/95 stroke-slate-700/80 shadow-lg"
                 strokeWidth="1"
@@ -398,9 +459,9 @@ export function PriceHistoryChart({
               <text x="10" y="27" className="fill-white text-[12px] font-bold tabular-nums">
                 {fmt(hoverPt.price)}
               </text>
-              {hoverUsd != null && (
+              {hoverConverted != null && (
                 <text x="10" y="38" className="fill-blue-400 text-[10px] tabular-nums">
-                  ≈ ${hoverUsd.toFixed(2)}（历史汇率）
+                  {hoverConverted}
                 </text>
               )}
             </g>

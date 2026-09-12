@@ -160,12 +160,24 @@ def _parse_card(card, location: str, line_tags: list[str], port_mbps: int) -> Ra
 
 def _fetch_live(client: httpx.Client) -> list[RawProduct]:
     results: list[RawProduct] = []
+    consecutive_blocked = 0
     for slug, location, line_tags, port in CATEGORIES:
         try:
             resp = client.get(f"{BASE}/cart/{slug}/")
+            if resp.status_code == 403:
+                consecutive_blocked += 1
+                if consecutive_blocked >= 2 and not results:
+                    print(f"[vps] Cloudflare 403 blocked ({consecutive_blocked} consecutive) on {slug}, breaking early")
+                    break
+                continue
             resp.raise_for_status()
+            consecutive_blocked = 0
         except Exception as e:
+            consecutive_blocked += 1
             print(f"[vps] category {slug} fetch failed: {e}")
+            if consecutive_blocked >= 2 and not results:
+                print(f"[vps] consecutive failures on categories, fast-failing live crawl")
+                break
             continue
         tree = HTMLParser(resp.text)
         for card in tree.css(".cart-product[data-value]"):
@@ -255,22 +267,22 @@ _RE_ERRORS = re.compile(r"var\s+errors\s*=\s*\[(.*?)\]", re.S | re.I)
 _OOS_KEYWORDS = ("unavailable", "out of stock", "sold out")
 
 
-def _inspect_product_by_pid(client: httpx.Client, pid: str) -> tuple[bool, list[dict]]:
-    """加购页实时校验：精确检查对应 pid 卡片的真实库存与多周期价格。"""
+def _inspect_product_by_pid(client: httpx.Client, pid: str) -> tuple[bool, list[dict], bool]:
+    """加购页实时校验：精确检查对应 pid 卡片的真实库存与多周期价格。返回 (in_stock, price_options, is_error)"""
     try:
-        r = client.get(f"{BASE}/?cmd=cart&action=add&id={pid}", timeout=15)
+        r = client.get(f"{BASE}/?cmd=cart&action=add&id={pid}", timeout=10)
     except Exception:
-        return False, []
+        return False, [], True
     if r.status_code != 200:
-        return False, []
+        return False, [], True
 
     tree = HTMLParser(r.text)
     card = tree.css_first(f'[data-value="{pid}"]')
     if not card:
         m = _RE_ERRORS.search(r.text)
         if m and any(kw in m.group(1).lower() for kw in _OOS_KEYWORDS):
-            return False, []
-        return False, []
+            return False, [], False
+        return False, [], False
 
     # 1. 严格库存判定：卡片 class 包含 outofstock 或包含缺货徽章则判定缺货
     cls = card.attributes.get("class", "") or ""
@@ -295,7 +307,7 @@ def _inspect_product_by_pid(client: httpx.Client, pid: str) -> tuple[bool, list[
             "purchase_url": f"{BASE}/?cmd=cart&action=add&id={pid}",
         })
 
-    return in_stock, price_options
+    return in_stock, price_options, False
 
 
 _VPS_LOC_META = {
@@ -388,8 +400,17 @@ class VPSCrawler(MerchantCrawler):
         # 回退：预置数据 + 加购页逐卡片库存与价格校验
         print(f"[vps] category pages and dvps unavailable ({len(live)} parsed), fallback to presets")
         results: list[RawProduct] = []
+        consecutive_inspect_err = 0
         for p in PRESET_VPS_PRODUCTS:
-            stock, opts = _inspect_product_by_pid(client, p.external_id)
+            if consecutive_inspect_err >= 2:
+                # 连续加购页请求报错或被盾拦截，中断后续 30+ 次网络请求，直接使用预置状态，防止扫描超时
+                stock, opts = p.in_stock, list(p.price_options or [])
+            else:
+                stock, opts, is_err = _inspect_product_by_pid(client, p.external_id)
+                if is_err:
+                    consecutive_inspect_err += 1
+                else:
+                    consecutive_inspect_err = 0
             options = opts if opts else list(p.price_options or [])
             base_opt = next((o for o in options if o["billing_cycle"] == p.billing_cycle), None)
             if not base_opt and options:
