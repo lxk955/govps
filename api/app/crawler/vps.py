@@ -39,6 +39,47 @@ CATEGORIES: list[tuple[str, str, list[str], int]] = [
     ("seattle-cloud-kvm-vps", "美国西雅图", ["普通BGP"], 1000),
 ]
 
+# 每个机房/系列的代表性 PID：HostBill 加购页天然输出该分类下的所有套餐卡片及实时库存/多周期价格
+# 相比伪静态 /cart/<slug>/（易被 Cloudflare WAF 挑战），加购页端点能够直接稳定穿透
+# (pid, 机房规范中文名, 线路标签, 默认端口速率 Mbps)
+REPRESENTATIVE_PIDS: list[tuple[str, str, list[str], int]] = [
+    # 日本东京
+    ("148", "日本东京", ["CN2 GIA", "9929"], 1000),  # Tokyo Cloud KVM
+    ("164", "日本东京", ["CN2 GIA", "9929"], 500),   # Tokyo Mini Pro
+    ("259", "日本东京", ["普通BGP"], 1000),           # Tokyo EPYC Gen 2
+    # 日本大阪
+    ("140", "日本大阪", ["9929"], 1000),             # Osaka Cloud KVM
+    ("268", "日本大阪", ["普通BGP"], 1000),           # Osaka Edge
+    # 美国圣何塞
+    ("144", "美国圣何塞", ["CN2 GIA", "9929", "CMIN2"], 1000),  # SJC Cloud KVM
+    ("163", "美国圣何塞", ["CN2 GIA", "9929", "CMIN2"], 500),   # SJC Mini Pro
+    # 香港
+    ("286", "香港", ["CMIN2"], 1000),                # HKG Cloud KVM
+    # 德国法兰克福
+    ("118", "德国法兰克福", ["9929"], 1000),         # FRA Cloud KVM
+    ("169", "德国法兰克福", ["9929"], 500),          # FRA Mini Pro
+    ("194", "德国法兰克福", ["9929"], 1000),         # FRA Nano
+    # 德国杜塞尔多夫
+    ("104", "德国杜塞尔多夫", ["9929"], 1000),       # DUS Cloud KVM
+    # 荷兰阿姆斯特丹
+    ("91", "荷兰阿姆斯特丹", ["9929"], 1000),        # AMS Cloud KVM
+    ("184", "荷兰阿姆斯特丹", ["9929"], 1000),       # AMS Nano
+    # 英国伦敦
+    ("135", "英国伦敦", ["9929"], 1000),             # LON Cloud KVM
+    # 爱沙尼亚塔林
+    ("122", "爱沙尼亚塔林", ["9929"], 1000),         # TLL Cloud KVM
+    # 澳大利亚悉尼
+    ("152", "澳大利亚悉尼", ["9929"], 1000),         # SYD Cloud KVM
+    ("167", "澳大利亚悉尼", ["9929"], 500),          # SYD Mini Pro
+    # 新加坡
+    ("250", "新加坡", ["普通BGP"], 1000),           # SIN Edge
+    ("235", "新加坡", ["普通BGP"], 1000),           # SIN EPYC
+    # 美国纽约
+    ("127", "美国纽约", ["普通BGP"], 1000),           # NYC Cloud KVM
+    # 美国西雅图
+    ("131", "美国西雅图", ["普通BGP"], 1000),         # SEA Cloud KVM
+]
+
 # 档位中文映射：页面只有英文档位，补中文提高可读性（未识别档位原样保留）
 _TIER_CN = {
     "starter": "入门", "essential": "基础", "pro": "进阶", "premium": "高配",
@@ -72,9 +113,15 @@ def _gb(text: str) -> int | None:
 
 def _tier_name(plan: str) -> str:
     """'Pro' → '进阶 Pro'，'Ultra 16C' → '顶配 Ultra 16C'"""
-    first = plan.split()[0].lower() if plan else ""
+    cleaned = re.sub(
+        r"^(?:tokyo|osaka|san jose|hong kong|frankfurt|dusseldorf|duesseldorf|amsterdam|london|sydney|new york|seattle|singapore)\s+",
+        "",
+        plan,
+        flags=re.I,
+    ).strip()
+    first = cleaned.split()[0].lower() if cleaned else ""
     cn = _TIER_CN.get(first)
-    return f"{cn} {plan}" if cn else plan
+    return f"{cn} {cleaned}" if cn else cleaned
 
 
 def _parse_card(card, location: str, line_tags: list[str], port_mbps: int) -> RawProduct | None:
@@ -133,7 +180,7 @@ def _parse_card(card, location: str, line_tags: list[str], port_mbps: int) -> Ra
         "日本东京": "NRT", "日本大阪": "KIX", "美国圣何塞": "SJC", "香港": "HKG",
         "德国法兰克福": "FRA", "德国杜塞尔多夫": "DUS", "荷兰阿姆斯特丹": "AMS",
         "英国伦敦": "LON", "爱沙尼亚塔林": "TLL", "澳大利亚悉尼": "SYD",
-        "美国纽约": "NYC", "美国西雅图": "SEA",
+        "美国纽约": "NYC", "美国西雅图": "SEA", "新加坡": "SIN",
     }.get(location, location)
 
     # 首选月付价作为基准价（V.PS 主打月付性能机）
@@ -155,34 +202,54 @@ def _parse_card(card, location: str, line_tags: list[str], port_mbps: int) -> Ra
         disk_gb=disk,
         bandwidth_gb=bw,
         port_mbps=port_mbps,
+        from_preset=False,
+        stock_verified=True,
     )
 
 
 def _fetch_live(client: httpx.Client) -> list[RawProduct]:
     results: list[RawProduct] = []
+    seen_keys: set[tuple[str, str]] = set()
     consecutive_blocked = 0
-    for slug, location, line_tags, port in CATEGORIES:
+
+    # 1. 访问商城根目录进行会话预热（建立真实的 HostBill SESSID / cookies）
+    try:
+        client.get(f"{BASE}/")
+    except Exception:
+        pass
+
+    # 2. 逐分类请求代表性 PID 的加购端点
+    # HostBill 加购页天然会同时完整输出该分类下的所有套餐卡片及实时库存/价格，
+    # 相比伪静态路由 /cart/{slug}/，原生加购端点不易触发 Cloudflare 403 挑战。
+    for pid, location, line_tags, port in REPRESENTATIVE_PIDS:
         try:
-            resp = client.get(f"{BASE}/cart/{slug}/")
+            resp = client.get(f"{BASE}/?cmd=cart&action=add&id={pid}")
             if resp.status_code == 403:
                 consecutive_blocked += 1
                 if consecutive_blocked >= 2 and not results:
-                    print(f"[vps] Cloudflare 403 blocked ({consecutive_blocked} consecutive) on {slug}, breaking early")
+                    print(f"[vps] Cloudflare 403 blocked ({consecutive_blocked} consecutive) on pid {pid}, breaking early")
                     break
                 continue
             resp.raise_for_status()
             consecutive_blocked = 0
         except Exception as e:
             consecutive_blocked += 1
-            print(f"[vps] category {slug} fetch failed: {e}")
+            print(f"[vps] category pid {pid} fetch failed: {e}")
             if consecutive_blocked >= 2 and not results:
                 print(f"[vps] consecutive failures on categories, fast-failing live crawl")
                 break
             continue
+
         tree = HTMLParser(resp.text)
         for card in tree.css(".cart-product[data-value]"):
+            card_pid = card.attributes.get("data-value", "").strip()
+            key = (location, card_pid)
+            if card_pid and key in seen_keys:
+                continue
             p = _parse_card(card, location, line_tags, port)
             if p:
+                if card_pid:
+                    seen_keys.add(key)
                 results.append(p)
     return results
 

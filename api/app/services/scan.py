@@ -263,7 +263,9 @@ def run_scan(db: Session, force: bool = False) -> dict:
     if due_crawlers:
         def _fetch_one(c):
             try:
-                with make_client(settings.SCAN_TIMEOUT) as client:
+                crawler_proxy = getattr(c, "proxy", None)
+                cm = make_client(settings.SCAN_TIMEOUT, proxy=crawler_proxy) if crawler_proxy else make_client(settings.SCAN_TIMEOUT)
+                with cm as client:
                     return c.fetch(client), None
             except Exception as exc:
                 return None, exc

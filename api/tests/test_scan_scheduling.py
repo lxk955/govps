@@ -61,7 +61,7 @@ def _fake_crawler(slug: str, fetch, interval: int | None = None):
 
 @pytest.fixture(autouse=True)
 def _no_http(monkeypatch):
-    monkeypatch.setattr("app.services.scan.make_client", lambda timeout: _NullClient())
+    monkeypatch.setattr("app.services.scan.make_client", lambda timeout, *args, **kwargs: _NullClient())
 
 
 @pytest.fixture

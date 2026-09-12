@@ -65,7 +65,7 @@ _VPS_CARD_OK = """
   <div><span class="text-muted">Transfer</span><span class="font-weight-bold">2 TB</span></div>
 </div>
 """
-_VPS_CARD_OOS = _VPS_CARD_OK.replace('class="cart-product"', 'class="cart-product outofstock"', 1)
+_VPS_CARD_OOS = _VPS_CARD_OK.replace('class="cart-product"', 'class="cart-product outofstock"', 1).replace('data-value="91"', 'data-value="92"', 1)
 VPS_PAGE = f"<html><body>{_VPS_CARD_OK}{_VPS_CARD_OOS}</body></html>"
 VPS_PAGE_CHANGED = VPS_PAGE.replace("cart-product", "offer-box").replace("product-price", "price-tag")
 
@@ -270,10 +270,10 @@ class TestVmiss:
 
 class TestVps:
     def test_normal_synthetic_category_page(self):
-        """合成 fixture：vps.hosting 直连被拦（录制 403），按 HostBill 模板构造。"""
-        routes = [("vps.hosting/cart/", 200, VPS_PAGE)]
+        """合成 fixture：vps.hosting 加购分类页，按 HostBill 模板构造。"""
+        routes = [("vps.hosting/?cmd=cart", 200, VPS_PAGE), ("vps.hosting/cart/", 200, VPS_PAGE)]
         raws = VPSCrawler().fetch(_mock_client(routes))
-        assert len(raws) >= 10                      # 同页喂 12 个分类，过实时阈值
+        assert len(raws) >= 10                      # 喂代表性分类，过实时阈值
         tokyo = [p for p in raws if p.name.startswith("NRT")]
         assert tokyo, "东京分类应产出 NRT 前缀套餐"
         one = tokyo[0]
@@ -284,8 +284,8 @@ class TestVps:
 
     def test_changed_markup_falls_back_to_pid_stock_check(self):
         routes = [
+            ("vps.hosting/?cmd=cart", 200, VPS_PAGE_CHANGED),
             ("vps.hosting/cart/tokyo", 200, VPS_PAGE_CHANGED),
-            ("vps.hosting/?cmd=cart", 200, "<html><body>无库存标记</body></html>"),
         ]
         raws = VPSCrawler().fetch(_mock_client(routes))
         assert len(raws) >= 10                      # 预置目录兜底

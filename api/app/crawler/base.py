@@ -56,32 +56,49 @@ except ImportError:
     _HAS_CURL_CFFI = False
 
 
-def make_client(timeout: float):
+def make_client(timeout: float, proxy: str | None = None):
     """创建具备真实浏览器 TLS 指纹（JA3/JA4/HTTP2）伪装的 HTTP 客户端。
 
     优先使用 curl_cffi 模拟现代 Chrome (chrome146) 的 ClientHello 与 HTTP/2 帧，
     在网络层避免暴露 Python 脚本特征，提升对反爬 WAF 的穿透率；
     若未安装环境或不可用时自动平滑回退至标准 httpx.Client。
+    支持显式 proxy 参数或由 settings.CRAWLER_PROXY / 环境变量自动路由。
     """
+    effective_proxy = proxy
+    if not effective_proxy:
+        try:
+            from ..config import settings
+
+            effective_proxy = settings.CRAWLER_PROXY.strip() or None
+        except Exception:
+            effective_proxy = None
+
     if _HAS_CURL_CFFI:
-        return CurlSession(
-            timeout=timeout,
-            headers={
+        kwargs = {
+            "timeout": timeout,
+            "headers": {
                 "User-Agent": UA,
                 "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
                 "Cookie": "WHMCSLanguage=chinese; language=chinese; lang=zh_CN; language_chosen=chinese",
             },
-            impersonate="chrome146",
-        )
-    return httpx.Client(
-        timeout=timeout,
-        follow_redirects=True,
-        headers={
+            "impersonate": "chrome146",
+        }
+        if effective_proxy:
+            kwargs["proxy"] = effective_proxy
+        return CurlSession(**kwargs)
+
+    kwargs = {
+        "timeout": timeout,
+        "follow_redirects": True,
+        "headers": {
             "User-Agent": UA,
             "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
             "Cookie": "WHMCSLanguage=chinese; language=chinese; lang=zh_CN; language_chosen=chinese",
         },
-    )
+    }
+    if effective_proxy:
+        kwargs["proxy"] = effective_proxy
+    return httpx.Client(**kwargs)
 
 
 # ---------- 配置信息正则提取 ----------

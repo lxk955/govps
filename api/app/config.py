@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     EVENT_DEDUP_MINUTES: int = 30
     DAILY_MAIL_CAP: int = 10
     SCAN_TIMEOUT: float = 20.0
+    # 爬虫代理路由（可选，支持 http:// 或 socks5://，留空则尊重系统 HTTP_PROXY/HTTPS_PROXY 或直连）
+    CRAWLER_PROXY: str = ""
     # P7 分级调度：全局兜底抓取间隔（分钟）；商家列 crawl_interval_minutes 优先，
     # 其次 adapter 的 default_interval_minutes，最后此全局值。env 可覆盖。
     # 2026-08-31 运营决策：全商家统一 5 分钟（与 cron 触发周期一致，即每轮全量）。
