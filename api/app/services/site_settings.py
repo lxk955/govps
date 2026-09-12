@@ -15,7 +15,11 @@ SPEC: dict[str, tuple] = {
 
 
 def _row(db: Session, key: str) -> SiteSetting | None:
-    return db.scalar(select(SiteSetting).where(SiteSetting.key == key))
+    try:
+        return db.scalar(select(SiteSetting).where(SiteSetting.key == key))
+    except Exception:
+        db.rollback()
+        return None
 
 
 def get_str(db: Session, key: str, default: str) -> str:
@@ -51,26 +55,29 @@ def public_settings(db: Session) -> dict:
 
 
 def upsert_settings(db: Session, payload: dict) -> dict:
-    for key, spec in SPEC.items():
-        if key not in payload or payload[key] is None:
-            continue
-        kind, default, lo, hi = spec
-        if kind == "int":
-            try:
-                n = int(payload[key])
-            except (TypeError, ValueError):
+    try:
+        for key, spec in SPEC.items():
+            if key not in payload or payload[key] is None:
                 continue
-            if lo is not None and n < lo:
-                n = lo
-            if hi is not None and n > hi:
-                n = hi
-            value = str(n)
-        else:
-            value = "1" if bool(payload[key]) else "0"
-        row = _row(db, key)
-        if row is None:
-            db.add(SiteSetting(key=key, value=value))
-        else:
-            row.value = value
-    db.commit()
+            kind, default, lo, hi = spec
+            if kind == "int":
+                try:
+                    n = int(payload[key])
+                except (TypeError, ValueError):
+                    continue
+                if lo is not None and n < lo:
+                    n = lo
+                if hi is not None and n > hi:
+                    n = hi
+                value = str(n)
+            else:
+                value = "1" if bool(payload[key]) else "0"
+            row = _row(db, key)
+            if row is None:
+                db.add(SiteSetting(key=key, value=value))
+            else:
+                row.value = value
+        db.commit()
+    except Exception:
+        db.rollback()
     return public_settings(db)

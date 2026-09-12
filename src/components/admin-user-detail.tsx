@@ -48,20 +48,29 @@ export function AdminUserDetailPage() {
   const id = Number(params?.id);
   const [data, setData] = useState<AdminUserDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user || !Number.isFinite(id) || id <= 0) return;
+    if (!user?.is_admin || !Number.isFinite(id) || id <= 0) return;
     let cancelled = false;
     (async () => {
+      setError(null);
+      setErrorMessage(null);
       try {
         const d = await getAdminUser(id);
         if (!cancelled) setData(d);
       } catch (e) {
         if (cancelled) return;
-        if (e instanceof ApiError && e.status === 404) setError("missing");
-        else if (e instanceof ApiError && e.status === 403) setError("forbidden");
-        else if (e instanceof ApiError && e.status === 401) setError("auth");
-        else setError("load");
+        if (e instanceof ApiError && e.status === 404) {
+          setError("missing");
+        } else if (e instanceof ApiError && e.status === 403) {
+          setError("forbidden");
+        } else if (e instanceof ApiError && e.status === 401) {
+          setError("auth");
+        } else {
+          setError("load");
+          setErrorMessage(e instanceof ApiError ? e.detail : e instanceof Error ? e.message : "加载失败");
+        }
       }
     })();
     return () => {
@@ -69,7 +78,7 @@ export function AdminUserDetailPage() {
     };
   }, [user, id]);
 
-  if (user === undefined || (user && !data && !error)) {
+  if (user === undefined || (user?.is_admin && !data && !error)) {
     return <div className="bg-muted h-64 animate-pulse rounded-2xl" aria-hidden />;
   }
 
@@ -84,10 +93,31 @@ export function AdminUserDetailPage() {
     );
   }
 
-  if (error === "forbidden" || (user && !user.is_admin && error !== "load" && error !== "missing")) {
+  if (error === "auth") {
+    return (
+      <div className="border-border rounded-2xl border border-dashed p-12 text-center">
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">登录状态已失效</p>
+        <p className="text-muted-foreground mt-1 text-xs">登录凭证已过期或未授权，请重新登录。</p>
+        <Button asChild size="sm" className="mt-4">
+          <Link href={`/login?next=${encodeURIComponent(`/admin/users/${id}`)}`}>重新登录</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (error === "forbidden" || !user.is_admin) {
     return (
       <div className="border-border rounded-2xl border p-12 text-center">
-        <p className="text-sm font-medium">当前账号没有管理权限。</p>
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">当前账号没有管理权限</p>
+        <p className="text-muted-foreground mt-1 text-xs">当前登录账号为 {user.email}，无权访问用户详情。</p>
+        <div className="mt-4 flex items-center justify-center gap-3">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/">返回首页</Link>
+          </Button>
+          <Button asChild size="sm">
+            <Link href={`/login?next=${encodeURIComponent(`/admin/users/${id}`)}`}>切换账号</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -106,7 +136,10 @@ export function AdminUserDetailPage() {
   if (error === "load" || !data) {
     return (
       <div className="rounded-2xl border border-red-100 bg-red-50 p-12 text-center dark:border-red-900 dark:bg-red-950/30">
-        <p className="text-sm font-medium text-red-600">加载失败</p>
+        <p className="text-sm font-medium text-red-600 dark:text-red-400">加载失败</p>
+        {errorMessage && (
+          <p className="text-muted-foreground mt-1 text-xs font-mono">{errorMessage}</p>
+        )}
       </div>
     );
   }

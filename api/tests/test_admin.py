@@ -244,3 +244,20 @@ def test_admin_aff_template_and_scan_does_not_overwrite(client, db, monkeypatch)
     assert restored.json()["aff_code_default"]
     assert restored.json()["aff_url_template"] == restored.json()["aff_code_default"]
 
+
+def test_admin_crawler_logs_and_settings_resilient(client, db, monkeypatch):
+    monkeypatch.setattr("app.config.settings.ADMIN_EMAILS", "admin@example.com")
+    token = _login(client, db, monkeypatch)
+    h = {"Authorization": f"Bearer {token}"}
+
+    # Settings returns defaults even if table query fails
+    res = client.get("/api/admin/settings", headers=h)
+    assert res.status_code == 200
+    assert "event_dedup_minutes" in res.json()
+
+    # Crawler logs returns empty list if query fails or table is empty
+    logs = client.get("/api/admin/crawler/logs", headers=h)
+    assert logs.status_code == 200
+    assert "logs" in logs.json()
+    assert "latest_by_merchant" in logs.json()
+

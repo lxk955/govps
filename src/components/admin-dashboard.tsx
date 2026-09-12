@@ -201,6 +201,7 @@ export function AdminDashboard() {
   const [crawlLogs, setCrawlLogs] = useState<AdminCrawlLog[]>([]);
   const [latestLogs, setLatestLogs] = useState<AdminCrawlLog[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshingLogs, setRefreshingLogs] = useState(false);
   const [triggeringScan, setTriggeringScan] = useState(false);
@@ -216,33 +217,44 @@ export function AdminDashboard() {
 
   const load = useCallback(async () => {
     setError(null);
+    setErrorMessage(null);
     setLoading(true);
     try {
       const [ov, merch, conf, crawlData] = await Promise.all([
         getAdminOverview(),
         getAdminMerchants(),
-        getAdminSettings(),
+        getAdminSettings().catch(() => ({
+          event_dedup_minutes: 60,
+          daily_mail_cap: 200,
+          indexnow_enabled: false,
+        })),
         getAdminCrawlLogs(100).catch(() => ({ logs: [], latest_by_merchant: [], total: 0 })),
       ]);
       setOverview(ov);
-      setMerchants(merch.merchants);
+      const merchantsList = Array.isArray(merch?.merchants) ? merch.merchants : [];
+      setMerchants(merchantsList);
       setAffDrafts(
-        Object.fromEntries(merch.merchants.map((m) => [m.slug, m.aff_url_template || ""])),
+        Object.fromEntries(merchantsList.map((m) => [m.slug, m.aff_url_template || ""])),
       );
       setSettings(conf);
-      setCrawlLogs(crawlData.logs);
-      setLatestLogs(crawlData.latest_by_merchant);
+      setCrawlLogs(crawlData?.logs ?? []);
+      setLatestLogs(crawlData?.latest_by_merchant ?? []);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 403) setError("forbidden");
-      else if (e instanceof ApiError && e.status === 401) setError("auth");
-      else setError("load");
+      if (e instanceof ApiError && e.status === 403) {
+        setError("forbidden");
+      } else if (e instanceof ApiError && e.status === 401) {
+        setError("auth");
+      } else {
+        setError("load");
+        setErrorMessage(e instanceof ApiError ? e.detail : e instanceof Error ? e.message : "数据加载失败");
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (user) void load();
+    if (user?.is_admin) void load();
   }, [user, load]);
 
   const reloadLogs = async () => {
@@ -250,14 +262,11 @@ export function AdminDashboard() {
     try {
       const [merch, crawlData] = await Promise.all([
         getAdminMerchants(),
-        getAdminCrawlLogs(100),
+        getAdminCrawlLogs(100).catch(() => ({ logs: [], latest_by_merchant: [], total: 0 })),
       ]);
-      setMerchants(merch.merchants);
-      setAffDrafts(
-        Object.fromEntries(merch.merchants.map((m) => [m.slug, m.aff_url_template || ""])),
-      );
-      setCrawlLogs(crawlData.logs);
-      setLatestLogs(crawlData.latest_by_merchant);
+      if (Array.isArray(merch?.merchants)) setMerchants(merch.merchants);
+      if (Array.isArray(crawlData?.logs)) setCrawlLogs(crawlData.logs);
+      if (Array.isArray(crawlData?.latest_by_merchant)) setLatestLogs(crawlData.latest_by_merchant);
     } catch {
       /* ignore */
     } finally {
@@ -344,7 +353,7 @@ export function AdminDashboard() {
     }
   };
 
-  if (user === undefined || (user && loading && !overview && !error)) {
+  if (user === undefined || (user?.is_admin && loading && !overview && !error)) {
     return <div className="bg-muted h-64 animate-pulse rounded-2xl" aria-hidden />;
   }
 
@@ -360,11 +369,32 @@ export function AdminDashboard() {
     );
   }
 
-  if (error === "forbidden" || (user && !user.is_admin && error !== "load")) {
+  if (error === "auth") {
+    return (
+      <div className="border-border rounded-2xl border border-dashed p-12 text-center">
+        <LayoutDashboard className="text-muted-foreground mx-auto h-8 w-8" aria-hidden />
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">登录状态已失效</p>
+        <p className="text-muted-foreground mt-1 text-xs">登录凭证已过期或未授权，请重新登录。</p>
+        <Button asChild size="sm" className="mt-4">
+          <Link href="/login?next=%2Fadmin">重新登录</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (error === "forbidden" || !user.is_admin) {
     return (
       <div className="border-border rounded-2xl border p-12 text-center">
-        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">当前账号没有管理权限。</p>
-        <p className="text-muted-foreground mt-1 text-xs">这个账号没有管理权限。</p>
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">当前账号没有管理权限</p>
+        <p className="text-muted-foreground mt-1 text-xs">当前登录账号为 {user.email}，无权访问管理后台。</p>
+        <div className="mt-4 flex items-center justify-center gap-3">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/">返回首页</Link>
+          </Button>
+          <Button asChild size="sm">
+            <Link href="/login?next=%2Fadmin">切换账号</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -373,6 +403,9 @@ export function AdminDashboard() {
     return (
       <div className="rounded-2xl border border-red-100 bg-red-50 p-12 text-center dark:border-red-900 dark:bg-red-950/30">
         <p className="text-sm font-medium text-red-600 dark:text-red-400">数据加载失败</p>
+        {errorMessage && (
+          <p className="text-muted-foreground mt-1 text-xs font-mono">{errorMessage}</p>
+        )}
         <Button size="sm" className="mt-3" onClick={() => void load()}>
           重试
         </Button>

@@ -332,52 +332,59 @@ def get_crawler_logs(
     _admin: User = Depends(require_admin),
 ):
     """获取近期爬虫执行历史流水，以及各活跃商家的最新执行快照。"""
-    query = select(CrawlLog)
-    if slug:
-        query = query.where(CrawlLog.merchant_slug == slug)
-    query = query.order_by(CrawlLog.created_at.desc()).limit(min(limit, 200))
-    logs = db.scalars(query).all()
+    try:
+        query = select(CrawlLog)
+        if slug:
+            query = query.where(CrawlLog.merchant_slug == slug)
+        query = query.order_by(CrawlLog.created_at.desc()).limit(min(limit, 200))
+        logs = db.scalars(query).all()
 
-    # 查询各商家的最新一条记录
-    latest_sub = (
-        select(
-            CrawlLog.merchant_slug,
-            func.max(CrawlLog.created_at).label("max_created"),
+        # 查询各商家的最新一条记录
+        latest_sub = (
+            select(
+                CrawlLog.merchant_slug,
+                func.max(CrawlLog.created_at).label("max_created"),
+            )
+            .group_by(CrawlLog.merchant_slug)
+            .subquery()
         )
-        .group_by(CrawlLog.merchant_slug)
-        .subquery()
-    )
-    latest_rows = db.scalars(
-        select(CrawlLog)
-        .join(
-            latest_sub,
-            (CrawlLog.merchant_slug == latest_sub.c.merchant_slug)
-            & (CrawlLog.created_at == latest_sub.c.max_created),
-        )
-        .order_by(CrawlLog.merchant_name)
-    ).all()
+        latest_rows = db.scalars(
+            select(CrawlLog)
+            .join(
+                latest_sub,
+                (CrawlLog.merchant_slug == latest_sub.c.merchant_slug)
+                & (CrawlLog.created_at == latest_sub.c.max_created),
+            )
+            .order_by(CrawlLog.merchant_name)
+        ).all()
 
-    def _fmt(l: CrawlLog):
+        def _fmt(l: CrawlLog):
+            return {
+                "id": l.id,
+                "merchant_id": l.merchant_id,
+                "merchant_name": l.merchant_name,
+                "merchant_slug": l.merchant_slug,
+                "status": l.status,
+                "method": l.method,
+                "products_count": l.products_count,
+                "official_count": l.official_count,
+                "in_stock_count": l.in_stock_count,
+                "duration_ms": l.duration_ms,
+                "message": l.message,
+                "error": l.error,
+                "created_at": l.created_at.isoformat() if l.created_at else None,
+            }
+
         return {
-            "id": l.id,
-            "merchant_id": l.merchant_id,
-            "merchant_name": l.merchant_name,
-            "merchant_slug": l.merchant_slug,
-            "status": l.status,
-            "method": l.method,
-            "products_count": l.products_count,
-            "official_count": l.official_count,
-            "in_stock_count": l.in_stock_count,
-            "duration_ms": l.duration_ms,
-            "message": l.message,
-            "error": l.error,
-            "created_at": l.created_at.isoformat() if l.created_at else None,
+            "logs": [_fmt(l) for l in logs],
+            "latest_by_merchant": [_fmt(l) for l in latest_rows],
         }
-
-    return {
-        "logs": [_fmt(l) for l in logs],
-        "latest_by_merchant": [_fmt(l) for l in latest_rows],
-    }
+    except Exception:
+        db.rollback()
+        return {
+            "logs": [],
+            "latest_by_merchant": [],
+        }
 
 
 @router.post("/crawler/scan")

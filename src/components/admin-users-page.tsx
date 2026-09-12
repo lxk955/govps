@@ -54,28 +54,35 @@ export function AdminUsersPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const load = useCallback(async (query: string) => {
     setLoading(true);
     setError(null);
+    setErrorMessage(null);
     try {
       const data = await getAdminUsers({ q: query || undefined, limit: 100 });
-      setRows(data.users);
-      setTotal(data.total);
+      setRows(Array.isArray(data?.users) ? data.users : []);
+      setTotal(Number(data?.total) || 0);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 403) setError("forbidden");
-      else if (e instanceof ApiError && e.status === 401) setError("auth");
-      else setError("load");
+      if (e instanceof ApiError && e.status === 403) {
+        setError("forbidden");
+      } else if (e instanceof ApiError && e.status === 401) {
+        setError("auth");
+      } else {
+        setError("load");
+        setErrorMessage(e instanceof ApiError ? e.detail : e instanceof Error ? e.message : "加载失败");
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (user) void load(applied);
+    if (user?.is_admin) void load(applied);
   }, [user, applied, load]);
 
-  if (user === undefined || (user && loading && rows.length === 0 && !error)) {
+  if (user === undefined || (user?.is_admin && loading && rows.length === 0 && !error)) {
     return <div className="bg-muted h-64 animate-pulse rounded-2xl" aria-hidden />;
   }
 
@@ -91,10 +98,32 @@ export function AdminUsersPage() {
     );
   }
 
-  if (error === "forbidden" || (user && !user.is_admin && error !== "load")) {
+  if (error === "auth") {
+    return (
+      <div className="border-border rounded-2xl border border-dashed p-12 text-center">
+        <Users className="text-muted-foreground mx-auto h-8 w-8" aria-hidden />
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">登录状态已失效</p>
+        <p className="text-muted-foreground mt-1 text-xs">登录凭证已过期或未授权，请重新登录。</p>
+        <Button asChild size="sm" className="mt-4">
+          <Link href="/login?next=%2Fadmin%2Fusers">重新登录</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (error === "forbidden" || !user.is_admin) {
     return (
       <div className="border-border rounded-2xl border p-12 text-center">
-        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">当前账号没有管理权限。</p>
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">当前账号没有管理权限</p>
+        <p className="text-muted-foreground mt-1 text-xs">当前登录账号为 {user.email}，无权访问用户管理。</p>
+        <div className="mt-4 flex items-center justify-center gap-3">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/">返回首页</Link>
+          </Button>
+          <Button asChild size="sm">
+            <Link href="/login?next=%2Fadmin%2Fusers">切换账号</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -103,6 +132,9 @@ export function AdminUsersPage() {
     return (
       <div className="rounded-2xl border border-red-100 bg-red-50 p-12 text-center dark:border-red-900 dark:bg-red-950/30">
         <p className="text-sm font-medium text-red-600 dark:text-red-400">加载失败</p>
+        {errorMessage && (
+          <p className="text-muted-foreground mt-1 text-xs font-mono">{errorMessage}</p>
+        )}
         <Button size="sm" className="mt-3" onClick={() => void load(applied)}>
           重试
         </Button>
