@@ -108,26 +108,31 @@ class FlareSolverrClient:
             logger.warning("[flaresolverr] destroy_session %s failed: %s", session_id, e)
             return False
 
+import threading
+
+_FLARESOLVERR_LOCK = threading.Lock()
+
 
 @contextmanager
 def flaresolverr_session(
     session_name: str, proxy: str | None = None
 ) -> Generator[tuple[FlareSolverrClient, str] | tuple[None, None], None, None]:
-    """上下文管理器：自动创建并清理 FlareSolverr 会话。"""
+    """上下文管理器：自动创建并清理 FlareSolverr 会话。通过线程锁串行化，防止并发压垮单实例无头 Chromium。"""
     if not settings.FLARESOLVERR_URL.strip():
         yield None, None
         return
 
-    client = FlareSolverrClient(proxy=proxy)
-    created = client.create_session(session_name)
-    if not created:
-        yield None, None
-        return
+    with _FLARESOLVERR_LOCK:
+        client = FlareSolverrClient(proxy=proxy)
+        created = client.create_session(session_name)
+        if not created:
+            yield None, None
+            return
 
-    try:
-        yield client, session_name
-    finally:
-        client.destroy_session(session_name)
+        try:
+            yield client, session_name
+        finally:
+            client.destroy_session(session_name)
 
 
 def fetch_with_flaresolverr(url: str, proxy: str | None = None, timeout: float = 35.0) -> str | None:
