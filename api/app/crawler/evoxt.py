@@ -272,6 +272,7 @@ class EvoxtCrawler(MerchantCrawler):
     name = "Evoxt"
     default_interval_minutes = 5
     website = BASE
+    crawl_method = "官方公开价格表 (/pricing/) 3大网络体系"
     aff_url_template = AFF_DEPLOY_URL
 
     def fetch(self, client: httpx.Client) -> list[RawProduct]:

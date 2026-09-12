@@ -411,6 +411,7 @@ class SixSixYunCrawler(MerchantCrawler):
     # P7 分级调度默认值（分钟）：2026-08-31 起运营决策全商家统一 5 分钟
     default_interval_minutes = 5
     website = "https://666clouds.com"
+    crawl_method = "官方商城 (Next.js 规格与变体接口解析)"
     # 返利：WHMCS 标准 aff.php，带 pid 直达套餐（同 DMIT / VMiss 模式；上线前请实测确认跳转与归因）
     aff_url_template = "https://www.666clouds.com/aff.php?aff=4914&pid={pid}"
 

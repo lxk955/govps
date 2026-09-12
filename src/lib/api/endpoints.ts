@@ -424,10 +424,33 @@ export interface AdminMerchant {
   website: string;
   enabled: boolean;
   crawl_interval_minutes: number | null;
+  crawl_method?: string;
   last_success_at: string | null;
   last_error: string | null;
   products: number;
   in_stock: number;
+}
+
+export interface AdminCrawlLog {
+  id: number;
+  merchant_id: number | null;
+  merchant_name: string;
+  merchant_slug: string;
+  status: "success" | "partial" | "degraded" | "failed" | string;
+  method: string | null;
+  products_count: number;
+  official_count: number;
+  in_stock_count: number;
+  duration_ms: number;
+  message: string | null;
+  error: string | null;
+  created_at: string;
+}
+
+export interface AdminCrawlLogsResponse {
+  logs: AdminCrawlLog[];
+  latest_by_merchant: AdminCrawlLog[];
+  total: number;
 }
 
 export interface AdminSettings {
@@ -451,6 +474,21 @@ export function patchAdminMerchant(
   return apiFetch(`/api/admin/merchants/${slug}`, { method: "PATCH", body });
 }
 
+export function getAdminCrawlLogs(limit: number = 100, slug?: string): Promise<AdminCrawlLogsResponse> {
+  const qs = new URLSearchParams();
+  if (limit) qs.set("limit", String(limit));
+  if (slug) qs.set("slug", slug);
+  const q = qs.toString();
+  return apiFetch<AdminCrawlLogsResponse>(`/api/admin/crawler/logs${q ? `?${q}` : ""}`, { cache: "no-store" });
+}
+
+export function triggerAdminScan(force: boolean = false): Promise<{ ok: boolean; summary: Record<string, string> }> {
+  return apiFetch<{ ok: boolean; summary: Record<string, string> }>("/api/admin/crawler/scan", {
+    method: "POST",
+    body: { force },
+  });
+}
+
 export function getAdminSettings(): Promise<AdminSettings> {
   return apiFetch("/api/admin/settings", { cache: "no-store" });
 }
@@ -458,4 +496,5 @@ export function getAdminSettings(): Promise<AdminSettings> {
 export function putAdminSettings(body: Partial<AdminSettings>): Promise<AdminSettings> {
   return apiFetch("/api/admin/settings", { method: "PUT", body });
 }
+
 

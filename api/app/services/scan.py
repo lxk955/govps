@@ -7,6 +7,7 @@
 import concurrent.futures
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+import time
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
@@ -15,6 +16,7 @@ from ..config import settings
 from ..crawler.base import RawProduct, make_client, normalize_line_tags, normalize_location
 from ..crawler.registry import CRAWLERS
 from ..models import (
+    CrawlLog,
     EventType,
     ExchangeRateSnapshot,
     Merchant,
@@ -28,23 +30,26 @@ from .materialize import fill_static_fields, refresh_derived_fields
 from .notify import dispatch_event
 from .rates import update_rates
 
-# 库存曲线只要近 90 天；价格快照多留一年供「史低」判断；访问日志留存 90 天。
+# 库存曲线只要近 90 天；价格快照多留一年供「史低」判断；访问日志留存 90 天；爬虫日志留存 30 天。
 # 扫描只在值变化时写入，不 prune 的话表会无限涨。
 STOCK_SNAPSHOT_KEEP_DAYS = 90
 PRICE_SNAPSHOT_KEEP_DAYS = 365
 PAGEVIEW_KEEP_DAYS = 90
+CRAWL_LOG_KEEP_DAYS = 30
 
 
 def prune_snapshots(db: Session) -> dict[str, int]:
-    """删除窗口外的价格/库存快照与历史访问日志。返回删除行数。"""
+    """删除窗口外的价格/库存快照与历史访问/爬虫日志。返回删除行数。"""
     now = datetime.now(timezone.utc)
     stock_cut = now - timedelta(days=STOCK_SNAPSHOT_KEEP_DAYS)
     price_cut = now - timedelta(days=PRICE_SNAPSHOT_KEEP_DAYS)
     pv_cut = now - timedelta(days=PAGEVIEW_KEEP_DAYS)
+    log_cut = now - timedelta(days=CRAWL_LOG_KEEP_DAYS)
     stock_n = db.execute(delete(StockSnapshot).where(StockSnapshot.checked_at < stock_cut)).rowcount or 0
     price_n = db.execute(delete(PriceSnapshot).where(PriceSnapshot.checked_at < price_cut)).rowcount or 0
     pv_n = db.execute(delete(PageView).where(PageView.created_at < pv_cut)).rowcount or 0
-    return {"stock": int(stock_n), "price": int(price_n), "pageviews": int(pv_n)}
+    log_n = db.execute(delete(CrawlLog).where(CrawlLog.created_at < log_cut)).rowcount or 0
+    return {"stock": int(stock_n), "price": int(price_n), "pageviews": int(pv_n), "crawl_logs": int(log_n)}
 
 
 def effective_interval_minutes(merchant: Merchant | None, crawler) -> int:
@@ -262,6 +267,7 @@ def run_scan(db: Session, force: bool = False) -> dict:
 
     if due_crawlers:
         def _fetch_one(c):
+            t0 = time.perf_counter()
             try:
                 crawler_proxy = getattr(c, "proxy", None)
                 if not crawler_proxy:
@@ -277,9 +283,12 @@ def run_scan(db: Session, force: bool = False) -> dict:
 
                 cm = make_client(settings.SCAN_TIMEOUT, proxy=crawler_proxy) if crawler_proxy else make_client(settings.SCAN_TIMEOUT)
                 with cm as client:
-                    return c.fetch(client), None
+                    raws = c.fetch(client)
+                dur = int((time.perf_counter() - t0) * 1000)
+                return raws, None, dur
             except Exception as exc:
-                return None, exc
+                dur = int((time.perf_counter() - t0) * 1000)
+                return None, exc, dur
 
         max_workers = min(len(due_crawlers), 8)
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -288,21 +297,86 @@ def run_scan(db: Session, force: bool = False) -> dict:
                 for crawler, merchant in due_crawlers
             ]
             for crawler, merchant, fut in future_map:
-                raws, fetch_err = fut.result()
+                raws, fetch_err, duration_ms = fut.result()
+                method_desc = getattr(crawler, "crawl_method", "官方直连")
+
                 if fetch_err is not None:
                     merchant.last_error = str(fetch_err)[:500]
+                    db.add(
+                        CrawlLog(
+                            merchant_id=merchant.id,
+                            merchant_name=merchant.name,
+                            merchant_slug=merchant.slug,
+                            status="failed",
+                            method=method_desc,
+                            products_count=0,
+                            official_count=0,
+                            in_stock_count=0,
+                            duration_ms=duration_ms,
+                            message=f"抓取异常: {str(fetch_err)[:300]}",
+                            error=str(fetch_err)[:500],
+                        )
+                    )
                     db.commit()
                     summary[crawler.slug] = f"error: {fetch_err}"
                     continue
 
                 if not raws:
                     merchant.last_error = "0 products parsed"
+                    db.add(
+                        CrawlLog(
+                            merchant_id=merchant.id,
+                            merchant_name=merchant.name,
+                            merchant_slug=merchant.slug,
+                            status="failed",
+                            method=method_desc,
+                            products_count=0,
+                            official_count=0,
+                            in_stock_count=0,
+                            duration_ms=duration_ms,
+                            message="未能解析到任何有效商品 (0 products)",
+                            error="0 products parsed",
+                        )
+                    )
                     db.commit()
                     summary[crawler.slug] = "0 products (skipped)"
                     continue
 
                 merchant.last_success_at = datetime.now(timezone.utc)
                 merchant.last_error = None
+
+                total_count = len(raws)
+                official_count = sum(1 for raw in raws if not raw.from_preset)
+                in_stock_count = sum(1 for raw in raws if raw.in_stock)
+
+                if official_count == total_count:
+                    log_status = "success"
+                    log_method = method_desc
+                    log_msg = f"100% 官方一手，抓取 {total_count} 款，{in_stock_count} 款在售"
+                elif official_count > 0:
+                    log_status = "partial"
+                    log_method = f"{method_desc} (官方一手 + 实时兜底)"
+                    log_msg = f"官方一手直采 {official_count} 款，合并兜底共 {total_count} 款，{in_stock_count} 款在售"
+                else:
+                    log_status = "degraded"
+                    log_method = f"{method_desc} (降级兜底)"
+                    log_msg = f"官方源受阻，平滑回退至兜底源 {total_count} 款，{in_stock_count} 款在售"
+
+                db.add(
+                    CrawlLog(
+                        merchant_id=merchant.id,
+                        merchant_name=merchant.name,
+                        merchant_slug=merchant.slug,
+                        status=log_status,
+                        method=log_method,
+                        products_count=total_count,
+                        official_count=official_count,
+                        in_stock_count=in_stock_count,
+                        duration_ms=duration_ms,
+                        message=log_msg,
+                        error=None,
+                    )
+                )
 
                 official_ids = {raw.external_id for raw in raws if not raw.from_preset}
                 event_count = 0

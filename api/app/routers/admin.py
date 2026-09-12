@@ -7,9 +7,11 @@ from pydantic import BaseModel
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
+from ..crawler.registry import CRAWLERS
 from ..database import get_db
 from ..deps import require_admin
-from ..models import AffClick, Merchant, PageView, Product, User
+from ..models import AffClick, CrawlLog, Merchant, PageView, Product, User
+from ..services.scan import run_scan
 from ..services.site_settings import public_settings, upsert_settings
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -188,6 +190,7 @@ def list_merchants(db: Session = Depends(get_db), _admin: User = Depends(require
         .group_by(Merchant.id)
         .order_by(Merchant.name)
     ).all()
+    crawler_map = {c.slug: getattr(c, "crawl_method", "官方直连") for c in CRAWLERS}
     out = []
     for r in rows:
         last = r.last_success_at
@@ -198,6 +201,7 @@ def list_merchants(db: Session = Depends(get_db), _admin: User = Depends(require
                 "website": r.website,
                 "enabled": bool(r.enabled),
                 "crawl_interval_minutes": r.crawl_interval_minutes,
+                "crawl_method": crawler_map.get(r.slug, "官方直连"),
                 "last_success_at": last.isoformat() if last else None,
                 "last_error": r.last_error,
                 "products": int(r.products or 0),
@@ -258,3 +262,70 @@ def put_settings(
     _admin: User = Depends(require_admin),
 ):
     return upsert_settings(db, payload.model_dump(exclude_unset=True))
+
+
+@router.get("/crawler/logs")
+def get_crawler_logs(
+    limit: int = 50,
+    slug: str | None = None,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    """获取近期爬虫执行历史流水，以及各活跃商家的最新执行快照。"""
+    query = select(CrawlLog)
+    if slug:
+        query = query.where(CrawlLog.merchant_slug == slug)
+    query = query.order_by(CrawlLog.created_at.desc()).limit(min(limit, 200))
+    logs = db.scalars(query).all()
+
+    # 查询各商家的最新一条记录
+    latest_sub = (
+        select(
+            CrawlLog.merchant_slug,
+            func.max(CrawlLog.created_at).label("max_created"),
+        )
+        .group_by(CrawlLog.merchant_slug)
+        .subquery()
+    )
+    latest_rows = db.scalars(
+        select(CrawlLog)
+        .join(
+            latest_sub,
+            (CrawlLog.merchant_slug == latest_sub.c.merchant_slug)
+            & (CrawlLog.created_at == latest_sub.c.max_created),
+        )
+        .order_by(CrawlLog.merchant_name)
+    ).all()
+
+    def _fmt(l: CrawlLog):
+        return {
+            "id": l.id,
+            "merchant_id": l.merchant_id,
+            "merchant_name": l.merchant_name,
+            "merchant_slug": l.merchant_slug,
+            "status": l.status,
+            "method": l.method,
+            "products_count": l.products_count,
+            "official_count": l.official_count,
+            "in_stock_count": l.in_stock_count,
+            "duration_ms": l.duration_ms,
+            "message": l.message,
+            "error": l.error,
+            "created_at": l.created_at.isoformat() if l.created_at else None,
+        }
+
+    return {
+        "logs": [_fmt(l) for l in logs],
+        "latest_by_merchant": [_fmt(l) for l in latest_rows],
+    }
+
+
+@router.post("/crawler/scan")
+def trigger_crawler_scan(
+    force: bool = True,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    """管理员在后台手动触发全量爬虫执行与数据入库。"""
+    return run_scan(db, force=force)
+

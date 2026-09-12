@@ -48,6 +48,7 @@ class ZgoCloudCrawler(MerchantCrawler):
     # P7 分级调度默认值（分钟）：2026-08-31 起运营决策全商家统一 5 分钟
     default_interval_minutes = 5
     website = "https://clients.zgovps.com"
+    crawl_method = "官方 WHMCS 商城全分类 HTML 解析"
     aff_url_template = None
 
     PAGES = [

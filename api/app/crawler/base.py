@@ -38,6 +38,7 @@ class MerchantCrawler:
     name: str = ""
     website: str = ""
     aff_url_template: str | None = None  # 上线前填入自己的返利模板
+    crawl_method: str = "官方直连"  # 爬取方式说明
 
     def fetch(self, client: httpx.Client) -> list[RawProduct]:
         raise NotImplementedError

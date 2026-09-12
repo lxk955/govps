@@ -451,6 +451,7 @@ class VPSCrawler(MerchantCrawler):
     # P7 分级调度默认值（分钟）：2026-08-31 起运营决策全商家统一 5 分钟
     default_interval_minutes = 5
     website = "https://v.ps"
+    crawl_method = "官方 HostBill 订购商城各机房分类页"
     aff_url_template = "{url}"
 
     def fetch(self, client: httpx.Client) -> list[RawProduct]:

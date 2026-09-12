@@ -181,6 +181,7 @@ class GreenCloudCrawler(MerchantCrawler):
     name = "GreenCloud"
     default_interval_minutes = 5
     website = BASE
+    crawl_method = "官方 WHMCS 商城 (CN Premium 优化系列)"
     aff_url_template = None
 
     def fetch(self, client: httpx.Client) -> list[RawProduct]:

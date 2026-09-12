@@ -107,3 +107,36 @@ def test_admin_overview_and_settings(client, db, monkeypatch):
     assert saved.json()["daily_mail_cap"] == 3
     assert saved.json()["indexnow_enabled"] is False
     assert saved.json()["event_dedup_minutes"] == 60
+
+
+def test_admin_crawler_logs(client, db, monkeypatch):
+    from app.models import CrawlLog
+
+    monkeypatch.setattr("app.config.settings.ADMIN_EMAILS", "admin@example.com")
+    token = _login(client, db, monkeypatch)
+    h = {"Authorization": f"Bearer {token}"}
+
+    log = CrawlLog(
+        merchant_name="DMIT",
+        merchant_slug="dmit",
+        status="success",
+        method="官方 WHMCS 订购页 + FlareSolverr 求解",
+        products_count=105,
+        official_count=105,
+        in_stock_count=18,
+        duration_ms=2500,
+        message="100% 官方一手，抓取 105 款，18 款在售",
+    )
+    db.add(log)
+    db.commit()
+
+    resp = client.get("/api/admin/crawler/logs", headers=h)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["logs"]) >= 1
+    assert data["logs"][0]["merchant_slug"] == "dmit"
+    assert data["logs"][0]["status"] == "success"
+    assert data["logs"][0]["method"] == "官方 WHMCS 订购页 + FlareSolverr 求解"
+    assert data["logs"][0]["products_count"] == 105
+    assert len(data["latest_by_merchant"]) >= 1
+    assert data["latest_by_merchant"][0]["merchant_slug"] == "dmit"

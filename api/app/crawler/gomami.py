@@ -271,6 +271,7 @@ class GomamiCrawler(MerchantCrawler):
     name = "GoMami"
     default_interval_minutes = 5
     website = BASE
+    crawl_method = "官方定制 WHMCS 分类页 / 实时交叉校验"
     aff_url_template = None
 
     def fetch(self, client: httpx.Client) -> list[RawProduct]:

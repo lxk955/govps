@@ -266,6 +266,7 @@ class VMRackCrawler(MerchantCrawler):
     name = "VMRack"
     default_interval_minutes = 5
     website = BASE
+    crawl_method = "官方后台 OpenAPI (/v1/product/set/compute/...)"
     aff_url_template = AFF_URL
 
     def fetch(self, client: httpx.Client) -> list[RawProduct]:

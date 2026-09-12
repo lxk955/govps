@@ -71,6 +71,7 @@ def detect_current_revision(inspector) -> str | None:
             else False,
         ),
         ("0011_site_settings", lambda i: i.has_table("site_settings")),
+        ("0012_crawl_logs", lambda i: i.has_table("crawl_logs")),
     ]
     reached: str | None = None
     for revision_id, present in stages:

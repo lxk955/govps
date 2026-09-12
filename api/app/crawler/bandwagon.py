@@ -33,6 +33,7 @@ class BandwagonCrawler(MerchantCrawler):
     # P7 分级调度默认值（分钟）：2026-08-31 起运营决策全商家统一 5 分钟
     default_interval_minutes = 5
     website = "https://bwh81.net"
+    crawl_method = "官方实时 JSON API (/order/get-data)"
     # 搬瓦工官方推荐返利模板 (aff=83019)
     aff_url_template = "https://bwh81.net/aff.php?aff=83019&a=add&pid={pid}"
 

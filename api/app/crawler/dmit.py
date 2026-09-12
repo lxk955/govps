@@ -497,6 +497,7 @@ class DmitCrawler(MerchantCrawler):
     name = "DMIT"
     default_interval_minutes = 5
     website = "https://www.dmit.io"
+    crawl_method = "官方 WHMCS 订购页 (FlareSolverr 求解过盾 / 三方监控兜底)"
     aff_url_template = "https://www.dmit.io/aff.php?aff=23928&pid={pid}"
 
     def fetch(self, client: httpx.Client) -> list[RawProduct]:

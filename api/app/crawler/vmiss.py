@@ -241,6 +241,7 @@ class VmissCrawler(MerchantCrawler):
     # P7 分级调度默认值（分钟）：2026-08-31 起运营决策全商家统一 5 分钟
     default_interval_minutes = 5
     website = "https://www.vmiss.com"
+    crawl_method = "官方 WHMCS 分类商城 (FlareSolverr 求解过盾 / 三方监控兜底)"
     # 返利：WHMCS 标准 aff.php，带 pid 直达套餐（同 DMIT 模式；上线前请实测确认跳转）
     aff_url_template = "https://app.vmiss.com/aff.php?aff=6324&pid={pid}"
 

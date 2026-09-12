@@ -334,3 +334,31 @@ class DnsLeakHit(Base):
         DateTime(timezone=True), default=utcnow, index=True
     )
 
+
+class CrawlLog(Base):
+    """爬虫执行历史流水记录。
+
+    记录每次商家调度抓取的执行耗时、商品数、官方一手占比、实时在售数、抓取方式与结果状态。
+    """
+
+    __tablename__ = "crawl_logs"
+    __table_args__ = (
+        Index("ix_crawl_logs_slug_created", "merchant_slug", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    merchant_id: Mapped[int | None] = mapped_column(ForeignKey("merchants.id"), nullable=True, index=True)
+    merchant_name: Mapped[str] = mapped_column(String(100))
+    merchant_slug: Mapped[str] = mapped_column(String(50), index=True)
+    status: Mapped[str] = mapped_column(String(20), index=True)  # "success", "partial", "degraded", "failed"
+    method: Mapped[str] = mapped_column(String(150))
+    products_count: Mapped[int] = mapped_column(Integer, default=0)
+    official_count: Mapped[int] = mapped_column(Integer, default=0)
+    in_stock_count: Mapped[int] = mapped_column(Integer, default=0)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+
