@@ -475,7 +475,9 @@ def _fetch_official_dmit(target_pids: list[str]) -> list[RawProduct]:
         with flaresolverr_session(session_name) as (solver, sid):
             if not solver or not sid:
                 return []
-            for pid in target_pids:
+            for idx, pid in enumerate(target_pids):
+                if idx > 0:
+                    time.sleep(1.0)
                 url = f"https://www.dmit.io/cart.php?a=add&pid={pid}"
                 html = solver.fetch(url, session_id=sid, timeout=20.0)
                 if html:

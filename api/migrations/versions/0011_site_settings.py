@@ -15,12 +15,15 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "site_settings",
-        sa.Column("key", sa.String(length=64), primary_key=True),
-        sa.Column("value", sa.String(length=500), nullable=False, server_default=""),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-    )
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    if "site_settings" not in inspector.get_table_names():
+        op.create_table(
+            "site_settings",
+            sa.Column("key", sa.String(length=64), primary_key=True),
+            sa.Column("value", sa.String(length=500), nullable=False, server_default=""),
+            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+        )
 
 
 def downgrade() -> None:

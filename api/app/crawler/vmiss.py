@@ -83,21 +83,27 @@ def _fetch_live(client: httpx.Client) -> list[RawProduct]:
         try:
             from .solver import flaresolverr_session
             session_name = f"vmiss_{int(time.time())}"
+            solver_results: list[RawProduct] = []
+            seen_ids: set[str] = set()
             with flaresolverr_session(session_name) as (solver, sid):
                 if solver and sid:
                     print(f"[vmiss] solving Turnstile challenge via FlareSolverr session {sid}...")
-                    for slug, location, line_tags in CATEGORIES:
+                    for idx, (slug, location, line_tags) in enumerate(CATEGORIES):
+                        if idx > 0:
+                            time.sleep(1.0)
                         url = f"{BASE}/store/{slug}"
                         html = solver.fetch(url, session_id=sid, timeout=25.0)
                         if html and not bool(_RE_CF_CHALLENGE.search(html[:3000])):
                             prods = parse_store_page(html, GroupPage(url, location, line_tags), BASE)
                             for p in prods:
-                                p.stock_verified = True
-                                p.from_preset = False
-                            results.extend(prods)
-                    if results:
-                        print(f"[vmiss] successfully scraped {len(results)} official products via FlareSolverr")
-                        return results
+                                if p.external_id not in seen_ids:
+                                    seen_ids.add(p.external_id)
+                                    p.stock_verified = True
+                                    p.from_preset = False
+                                    solver_results.append(p)
+                    if solver_results:
+                        print(f"[vmiss] successfully scraped {len(solver_results)} official products via FlareSolverr")
+                        return solver_results
         except Exception as e:
             print(f"[vmiss] flaresolverr attempt failed: {e}")
 
