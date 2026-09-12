@@ -1,0 +1,10 @@
+services:
+  # Cloudflare 官方 WARP 独立 SOCKS5 代理容器（安全不污染主机网络）
+  warp:
+    image: caomingjun/warp
+    container_name: govps-warp
+    restart: always
+    ports:
+      - "127.0.0.1:40000:1080"
+    environment:
+      - WARP_SLEEP=2

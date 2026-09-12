@@ -68,3 +68,24 @@ def test_vps_parse_card_singapore():
     assert p.from_preset is False
     assert p.stock_verified is True
     assert p.location == "新加坡"
+
+
+def test_warp_proxy_config():
+    orig_crawler = settings.CRAWLER_PROXY
+    orig_warp = settings.WARP_PROXY
+    orig_merchants = settings.WARP_ENABLED_MERCHANTS
+    try:
+        settings.CRAWLER_PROXY = "http://127.0.0.1:7897"
+        settings.WARP_PROXY = ""
+        # falls back to CRAWLER_PROXY
+        assert settings.effective_warp_proxy == "http://127.0.0.1:7897"
+
+        settings.WARP_PROXY = "socks5://127.0.0.1:40000"
+        assert settings.effective_warp_proxy == "socks5://127.0.0.1:40000"
+
+        settings.WARP_ENABLED_MERCHANTS = "vmiss, dmit, vps"
+        assert settings.warp_merchants_set == {"vmiss", "dmit", "vps"}
+    finally:
+        settings.CRAWLER_PROXY = orig_crawler
+        settings.WARP_PROXY = orig_warp
+        settings.WARP_ENABLED_MERCHANTS = orig_merchants

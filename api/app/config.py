@@ -17,8 +17,12 @@ class Settings(BaseSettings):
     EVENT_DEDUP_MINUTES: int = 30
     DAILY_MAIL_CAP: int = 10
     SCAN_TIMEOUT: float = 20.0
-    # 爬虫代理路由（可选，支持 http:// 或 socks5://，留空则尊重系统 HTTP_PROXY/HTTPS_PROXY 或直连）
+    # 爬虫全局默认代理路由（可选，支持 http:// 或 socks5://，留空则尊重系统 HTTP_PROXY/HTTPS_PROXY 或直连）
     CRAWLER_PROXY: str = ""
+    # Cloudflare WARP 专用出口代理（可选，默认如 socks5://127.0.0.1:40000，留空则回退至 CRAWLER_PROXY）
+    WARP_PROXY: str = ""
+    # 优先指定使用 WARP 出口的商家 slug（逗号分隔，默认 'vmiss'；填 'all' 则所有商家均走 WARP）
+    WARP_ENABLED_MERCHANTS: str = "vmiss"
     # P7 分级调度：全局兜底抓取间隔（分钟）；商家列 crawl_interval_minutes 优先，
     # 其次 adapter 的 default_interval_minutes，最后此全局值。env 可覆盖。
     # 2026-08-31 运营决策：全商家统一 5 分钟（与 cron 触发周期一致，即每轮全量）。
@@ -63,6 +67,17 @@ class Settings(BaseSettings):
         if self.PUBLIC_API_URL and self.PUBLIC_API_URL not in origins:
             origins.append(self.PUBLIC_API_URL)
         return origins
+
+    @property
+    def effective_warp_proxy(self) -> str:
+        return self.WARP_PROXY.strip() or self.CRAWLER_PROXY.strip()
+
+    @property
+    def warp_merchants_set(self) -> set[str]:
+        raw = self.WARP_ENABLED_MERCHANTS.strip().lower()
+        if not raw:
+            return set()
+        return {s.strip() for s in raw.split(",") if s.strip()}
 
 
 settings = Settings()

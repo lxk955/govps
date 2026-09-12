@@ -205,6 +205,7 @@ def _fetch_dvps_stock(client: httpx.Client) -> dict[str, bool]:
 class VmissCrawler(MerchantCrawler):
     slug = "vmiss"
     name = "VMiss"
+    use_warp = True
     # P7 分级调度默认值（分钟）：2026-08-31 起运营决策全商家统一 5 分钟
     default_interval_minutes = 5
     website = "https://www.vmiss.com"

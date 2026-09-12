@@ -264,6 +264,17 @@ def run_scan(db: Session, force: bool = False) -> dict:
         def _fetch_one(c):
             try:
                 crawler_proxy = getattr(c, "proxy", None)
+                if not crawler_proxy:
+                    is_warp_merchant = (
+                        "all" in settings.warp_merchants_set
+                        or c.slug in settings.warp_merchants_set
+                        or getattr(c, "use_warp", False)
+                    )
+                    if is_warp_merchant and settings.effective_warp_proxy:
+                        crawler_proxy = settings.effective_warp_proxy
+                    elif settings.CRAWLER_PROXY.strip():
+                        crawler_proxy = settings.CRAWLER_PROXY.strip()
+
                 cm = make_client(settings.SCAN_TIMEOUT, proxy=crawler_proxy) if crawler_proxy else make_client(settings.SCAN_TIMEOUT)
                 with cm as client:
                     return c.fetch(client), None
