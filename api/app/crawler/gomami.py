@@ -14,11 +14,14 @@
 
 import logging
 import re
+import time
 from decimal import Decimal
 from typing import NamedTuple
 
 import httpx
 from selectolax.parser import HTMLParser
+
+from ..config import settings
 
 from .base import (
     MerchantCrawler,
@@ -271,7 +274,7 @@ class GomamiCrawler(MerchantCrawler):
     name = "GoMami"
     default_interval_minutes = 5
     website = BASE
-    crawl_method = "官方定制 WHMCS 分类页 / 实时交叉校验"
+    crawl_method = "官方定制 WHMCS 分类页 (FlareSolverr 求解 / 实时交叉校验)"
     aff_url_template = None
 
     def fetch(self, client: httpx.Client) -> list[RawProduct]:
@@ -288,6 +291,28 @@ class GomamiCrawler(MerchantCrawler):
                     errors.append(f"{cat.url}: HTTP {resp.status_code}")
             except Exception as e:
                 errors.append(f"{cat.url}: {e}")
+
+        # 若官网直连抓取受阻（如 Cloudflare 挑战），尝试通过 FlareSolverr 求解
+        if len(results) < 15 and settings.FLARESOLVERR_URL.strip():
+            try:
+                from .solver import flaresolverr_session
+
+                session_name = f"gomami_{int(time.time())}"
+                with flaresolverr_session(session_name) as (solver, sid):
+                    if solver and sid:
+                        solver_results: list[RawProduct] = []
+                        for idx, cat in enumerate(CATEGORIES):
+                            if idx > 0:
+                                time.sleep(0.5)
+                            html = solver.fetch(cat.url, session_id=sid, timeout=25.0)
+                            if html and "Just a moment..." not in html[:1500]:
+                                parsed = parse_gomami_page(html, cat.location, cat.line_tags)
+                                solver_results.extend(parsed)
+                        if len(solver_results) >= 15:
+                            results = solver_results
+                            print(f"[gomami] successfully scraped {len(results)} official products via FlareSolverr")
+            except Exception as e:
+                logger.warning(f"[gomami] flaresolverr attempt failed: {e}")
 
         # 若官网抓取成功且数量正常
         if len(results) >= 15:
