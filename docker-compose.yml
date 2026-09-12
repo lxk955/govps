@@ -27,6 +27,7 @@ services:
       - CRAWLER_PROXY=${CRAWLER_PROXY:-}
       - WARP_PROXY=${WARP_PROXY:-socks5://warp:1080}
       - WARP_ENABLED_MERCHANTS=${WARP_ENABLED_MERCHANTS:-vmiss}
+      - FLARESOLVERR_URL=${FLARESOLVERR_URL:-http://flaresolverr:8191/v1}
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:
@@ -115,6 +116,21 @@ services:
       - NET_ADMIN
     environment:
       - WARP_SLEEP=2
+    networks:
+      - govps-net
+
+  # 6. FlareSolverr 人机验证求解服务（通过无头 Chromium 突破 Cloudflare Turnstile / 盾拦截）
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: govps-flaresolverr
+    restart: unless-stopped
+    environment:
+      - LOG_LEVEL=info
+      - CAPTCHA_SOLVER=none
+    deploy:
+      resources:
+        limits:
+          memory: 600M
     networks:
       - govps-net
 

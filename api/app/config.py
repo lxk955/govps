@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     WARP_PROXY: str = ""
     # 优先指定使用 WARP 出口的商家 slug（逗号分隔，默认 'vmiss'；填 'all' 则所有商家均走 WARP）
     WARP_ENABLED_MERCHANTS: str = "vmiss"
+    # FlareSolverr 服务端点（可选，如 http://flaresolverr:8191/v1，留空则不启用 JS 挑战求解）
+    FLARESOLVERR_URL: str = ""
     # P7 分级调度：全局兜底抓取间隔（分钟）；商家列 crawl_interval_minutes 优先，
     # 其次 adapter 的 default_interval_minutes，最后此全局值。env 可覆盖。
     # 2026-08-31 运营决策：全商家统一 5 分钟（与 cron 触发周期一致，即每轮全量）。

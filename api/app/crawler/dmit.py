@@ -8,11 +8,13 @@
 """
 
 import re
+import time
 from decimal import Decimal
 
 import httpx
 from selectolax.parser import HTMLParser
 
+from ..config import settings
 from .base import MerchantCrawler, RawProduct, extract_line_tags, normalize_location
 
 _CYCLE_CN = {
@@ -330,6 +332,165 @@ def _merge(primary: list[RawProduct], *backups: list[RawProduct]) -> list[RawPro
     return list(merged.values())
 
 
+def _parse_dmit_html(pid: str, html: str) -> RawProduct | None:
+    """解析 DMIT 官方 WHMCS 订购页面 (cart.php?a=add&pid={pid})。"""
+    if not html:
+        return None
+    lower = html.lower()
+    if "out of stock on this item" in lower or "<h1>out of stock</h1>" in lower or "out of stock" in lower:
+        # 官方返回缺货
+        for pre in DMIT_PRESETS:
+            if pre.external_id == f"dmit-{pid}":
+                return RawProduct(
+                    external_id=f"dmit-{pid}",
+                    name=pre.name,
+                    price=pre.price,
+                    currency=pre.currency,
+                    billing_cycle=pre.billing_cycle,
+                    purchase_url=f"https://www.dmit.io/cart.php?a=add&pid={pid}",
+                    in_stock=False,
+                    location=pre.location,
+                    line_tags=list(pre.line_tags),
+                    cpu_cores=pre.cpu_cores,
+                    ram_gb=pre.ram_gb,
+                    disk_gb=pre.disk_gb,
+                    bandwidth_gb=pre.bandwidth_gb,
+                    port_mbps=pre.port_mbps,
+                    recommended=pre.recommended,
+                    stock_verified=True,
+                    from_preset=False,
+                )
+        return RawProduct(
+            external_id=f"dmit-{pid}",
+            name=f"DMIT {pid}",
+            price=Decimal("0"),
+            currency="USD",
+            billing_cycle="monthly",
+            purchase_url=f"https://www.dmit.io/cart.php?a=add&pid={pid}",
+            in_stock=False,
+            stock_verified=True,
+            from_preset=False,
+        )
+
+    # 官方返回配置页面（有货）
+    if "frmConfigureProduct" not in html and "cart-products-title" not in html:
+        return None
+
+    title_m = re.search(r"class=[\x27\x22]cart-products-title[\x27\x22][^>]*>(.*?)</div>", html, re.S)
+    raw_name = title_m.group(1).strip() if title_m else f"DMIT {pid}"
+    name = raw_name if raw_name.startswith("PVM.") else f"PVM.{raw_name}"
+
+    price_m = re.search(r"class=[\x27\x22]price-num[\x27\x22][^>]*>\s*([\d\.]+)\s*</div>", html)
+    price = Decimal(price_m.group(1).strip()) if price_m else Decimal("0")
+
+    cycle_m = re.search(r"class=[\x27\x22]billing-cycle-text[\x27\x22][^>]*>.*?([A-Za-z]+)\s*</div>", html, re.S)
+    raw_cycle = cycle_m.group(1).lower() if cycle_m else "monthly"
+    cycle = {
+        "monthly": "monthly",
+        "quarterly": "quarterly",
+        "semiannually": "semi-annually",
+        "annually": "annually",
+        "biennially": "biennially",
+    }.get(raw_cycle, "monthly")
+
+    # 规格提取
+    titles = re.findall(r"desc-item-title[\x27\x22][^>]*>(.*?)</div>", html, re.S)
+    values = re.findall(r"desc-item-value[\x27\x22][^>]*>(.*?)</div>", html, re.S)
+    specs = {t.strip(): v.strip() for t, v in zip(titles, values)}
+
+    cpu_cores = None
+    if "vCPU" in specs:
+        m = re.search(r"(\d+)", specs["vCPU"])
+        if m:
+            cpu_cores = int(m.group(1))
+
+    ram_gb = None
+    if "RAM" in specs:
+        m = re.search(r"([\d\.]+)", specs["RAM"])
+        if m:
+            ram_gb = Decimal(m.group(1))
+
+    disk_gb = None
+    if "Storage" in specs:
+        m = re.search(r"(\d+)", specs["Storage"])
+        if m:
+            disk_gb = int(m.group(1))
+
+    quota_m = re.search(r"class=[\x27\x22]highspeed-quota[\x27\x22][^>]*>\s*(\d+)\s*(GB|TB|G|T)", html, re.S)
+    bandwidth_gb = None
+    if quota_m:
+        val = int(quota_m.group(1))
+        unit = quota_m.group(2).upper()
+        bandwidth_gb = val * 1000 if "T" in unit else val
+
+    port_m = re.search(r"class=[\x27\x22]highspeed-text[\x27\x22][^>]*>.*?(\d+)\s*(Gbps|Mbps|G|M)", html, re.S)
+    port_mbps = None
+    if port_m:
+        val = int(port_m.group(1))
+        unit = port_m.group(2).upper()
+        port_mbps = val * 1000 if "G" in unit else val
+
+    city = None
+    if "HKG" in name:
+        city = "香港"
+    elif "LAX" in name:
+        city = "洛杉矶"
+    elif "TYO" in name:
+        city = "东京"
+    elif "SJC" in name:
+        city = "圣何塞"
+    loc = normalize_location(city or "")
+
+    line_tags = _detect_dmit_lines(name, specs.get("Routing Profile", ""))
+
+    return RawProduct(
+        external_id=f"dmit-{pid}",
+        name=name,
+        price=price,
+        currency="USD",
+        billing_cycle=cycle,
+        purchase_url=f"https://www.dmit.io/cart.php?a=add&pid={pid}",
+        in_stock=True,
+        location=loc,
+        line_tags=line_tags,
+        cpu_cores=cpu_cores,
+        ram_gb=ram_gb,
+        disk_gb=disk_gb,
+        bandwidth_gb=bandwidth_gb,
+        port_mbps=port_mbps,
+        stock_verified=True,
+        from_preset=False,
+    )
+
+
+def _fetch_official_dmit(target_pids: list[str]) -> list[RawProduct]:
+    """通过 FlareSolverr 直接抓取官方 WHMCS 订购页面一手数据。"""
+    if not settings.FLARESOLVERR_URL.strip():
+        return []
+    try:
+        from .solver import flaresolverr_session
+
+        session_name = f"dmit_{int(time.time())}"
+        proxy = settings.effective_warp_proxy if settings.effective_warp_proxy else None
+        products: list[RawProduct] = []
+        with flaresolverr_session(session_name, proxy=proxy) as (solver, sid):
+            if not solver or not sid:
+                return []
+            for pid in target_pids:
+                url = f"https://www.dmit.io/cart.php?a=add&pid={pid}"
+                html = solver.fetch(url, session_id=sid, timeout=20.0)
+                if html:
+                    p = _parse_dmit_html(pid, html)
+                    if p:
+                        products.append(p)
+        if products:
+            print(f"[dmit] official store scraping succeeded: {len(products)} products verified")
+        return products
+    except Exception as e:
+        print(f"[dmit] official store scraping notice: {e}")
+        return []
+
+
 class DmitCrawler(MerchantCrawler):
     slug = "dmit"
     name = "DMIT"
@@ -338,6 +499,7 @@ class DmitCrawler(MerchantCrawler):
     aff_url_template = "https://www.dmit.io/aff.php?aff=23928&pid={pid}"
 
     def fetch(self, client: httpx.Client) -> list[RawProduct]:
+        # 1. 尝试三方监控源获取全量候选套餐
         dvps = _fetch_dvps(client)
         vpszk = _fetch_vpszk(client)
         live = _merge(dvps, vpszk)
@@ -345,6 +507,18 @@ class DmitCrawler(MerchantCrawler):
         if len(live) < 8:
             vpsoso = _fetch_vpsoso(client)
             live = _merge(live, vpsoso)
+
+        # 2. 若配置了 FlareSolverr，从官方网站抓取一手数据覆盖/验证核心及有货套餐
+        if settings.FLARESOLVERR_URL.strip():
+            candidate_pids = [p.external_id.replace("dmit-", "") for p in DMIT_PRESETS]
+            for p in live:
+                clean_id = p.external_id.replace("dmit-", "")
+                if p.in_stock and clean_id not in candidate_pids:
+                    candidate_pids.append(clean_id)
+
+            official_products = _fetch_official_dmit(candidate_pids[:30])
+            if official_products:
+                live = _merge(official_products, live)
 
         if len(live) >= 8:
             live_ids = {p.external_id for p in live}

@@ -170,23 +170,201 @@ def _parse_card(card, location: str, default_tags: list[str]) -> RawProduct | No
     return p
 
 
+def _detect_location(sec_name: str, title: str, dc: str) -> str:
+    clean_title = re.sub(r"\d+\s*gb", "", title, flags=re.I)
+    combined = f"{sec_name} {clean_title} {dc}".lower()
+    if "菲律宾" in combined:
+        return "菲律宾"
+    if "香港" in combined or re.search(r"\bhk\b", combined):
+        return "香港"
+    if "日本" in combined or "东京" in combined or re.search(r"\bjp\b", combined):
+        return "日本"
+    if "韩国" in combined or "首尔" in combined or re.search(r"\bkr\b", combined):
+        return "首尔"
+    if "英国" in combined or "伦敦" in combined or re.search(r"\bgb\b|\buk\b", combined):
+        return "伦敦"
+    if "德国" in combined or "法兰克福" in combined or re.search(r"\bde\b", combined):
+        return "德国"
+    if "美西" in combined or "美国" in combined or "cera" in combined or re.search(r"\bus\b", combined):
+        return "美西"
+    return "美西"
+
+
+def _parse_shop_product(pid: str, html: str, default_sec: str = "") -> RawProduct | None:
+    """解析 66云官方新版 Next.js /shop/{pid} 页面。"""
+    try:
+        tree = HTMLParser(html)
+        title_node = tree.css_first("h1, h2")
+        base_title = title_node.text(strip=True) if title_node else f"66yun-{pid}"
+
+        # 匹配当前 pid 对应的主选配名称
+        variant_text = ""
+        for sa in tree.css("a[href*='/shop/']"):
+            if sa.attributes.get("href") == f"/shop/{pid}":
+                txt = sa.text(strip=True)
+                variant_text = re.split(r"¥|\d+元|缺货", txt)[0].strip()
+                break
+
+        full_name = f"{base_title} ({variant_text})" if variant_text and variant_text != base_title else base_title
+
+        # 从 <dl> 提取结构化硬件参数
+        specs: dict[str, str] = {}
+        dl = tree.css_first("dl")
+        if dl:
+            for row in dl.css("div"):
+                dt = row.css_first("dt")
+                dd = row.css_first("dd")
+                if dt and dd:
+                    specs[dt.text(strip=True)] = dd.text(strip=True)
+
+        cpu_cores = None
+        if "CPU" in specs:
+            m = re.search(r"(\d+)", specs["CPU"])
+            if m:
+                cpu_cores = int(m.group(1))
+
+        ram_gb = None
+        if "内存" in specs:
+            m = re.search(r"(\d+(?:\.\d+)?)", specs["内存"])
+            if m:
+                ram_gb = Decimal(m.group(1))
+
+        disk_gb = None
+        if "系统盘" in specs or "硬盘" in specs:
+            val_str = specs.get("系统盘") or specs.get("硬盘") or ""
+            m = re.search(r"(\d+(?:\.\d+)?)", val_str)
+            if m:
+                disk_gb = int(float(m.group(1)))
+
+        port_mbps = None
+        if "带宽" in specs:
+            m = re.search(r"(\d+)", specs["带宽"])
+            if m:
+                val = int(m.group(1))
+                if "g" in specs["带宽"].lower() and val < 100:
+                    port_mbps = val * 1000
+                else:
+                    port_mbps = val
+
+        bandwidth_gb = None
+        if "流量" in specs:
+            val_str = specs["流量"]
+            m = re.search(r"(\d+(?:\.\d+)?)\s*(TB|T|GB|G)?", val_str, re.I)
+            if m:
+                val = float(m.group(1))
+                unit = (m.group(2) or "G").upper()
+                bandwidth_gb = round(val * 1000) if unit.startswith("T") else round(val)
+
+        body_text = tree.text(separator=" ", strip=True)
+        qty_match = re.search(r"数量\s*(.*?)\s*优惠码", body_text)
+        qty_str = qty_match.group(1) if qty_match else ""
+        in_stock = not ("暂时缺货" in qty_str or "缺货" in qty_str)
+
+        # 计费周期与价格
+        cycle = "monthly"
+        price = Decimal("0")
+        price_match = re.search(r"应付\s*¥\s*(\d+(?:\.\d+)?)", body_text)
+        if price_match:
+            price = Decimal(price_match.group(1))
+        else:
+            pm = re.search(r"¥\s*(\d+(?:\.\d+)?)\s*/\s*(月|年|季)", body_text)
+            if pm:
+                price = Decimal(pm.group(1))
+                if pm.group(2) == "年":
+                    cycle = "annually"
+                elif pm.group(2) == "季":
+                    cycle = "quarterly"
+
+        if ("年付" in full_name or "特价" in full_name) and price > 200 and cycle == "monthly":
+            if re.search(r"年付\s*¥\s*" + str(int(price)), body_text):
+                cycle = "annually"
+
+        dc = specs.get("数据中心", "")
+        desc = tree.css_first("p.whitespace-pre-line")
+        desc_text = desc.text(strip=True) if desc else ""
+        loc = _detect_location(default_sec, full_name, dc)
+        tags = _detect_line_tags(full_name, desc_text, ["国际线路"])
+
+        return RawProduct(
+            external_id=pid,
+            name=full_name,
+            price=price,
+            currency="CNY",
+            billing_cycle=cycle,
+            purchase_url=f"{BASE}/cart.php?a=add&pid={pid}",
+            in_stock=in_stock,
+            location=loc,
+            line_tags=tags,
+            cpu_cores=cpu_cores,
+            ram_gb=ram_gb,
+            disk_gb=disk_gb,
+            bandwidth_gb=bandwidth_gb,
+            port_mbps=port_mbps,
+            stock_verified=True,
+        )
+    except Exception as e:
+        print(f"[66yun] parse /shop/{pid} failed: {e}")
+        return None
+
+
 def _fetch_live(client: httpx.Client) -> list[RawProduct]:
-    products: list[RawProduct] = []
-    for gid, location, default_tags in CATEGORIES:
-        url = f"{BASE}/cart.php?gid={gid}"
-        try:
-            resp = client.get(url, timeout=12.0)
-            if resp.status_code != 200:
-                continue
-            tree = HTMLParser(resp.text)
-            cards = tree.css("div.product")
-            for card in cards:
-                p = _parse_card(card, location, default_tags)
-                if p:
-                    products.append(p)
-        except Exception as e:
-            print(f"[66yun] gid {gid} fetch failed: {e}")
-    return products
+    """通过官网官方新版 /shop 聚合页与商品选配页抓取全量一手数据。"""
+    try:
+        resp = client.get(f"{BASE}/shop", timeout=15.0)
+        if resp.status_code != 200:
+            return []
+        tree = HTMLParser(resp.text)
+        sec_map: dict[str, str] = {}
+        for s in tree.css("section"):
+            h2 = s.css_first("h2")
+            sec_name = h2.text(strip=True) if h2 else ""
+            for a in s.css("a[href*='/shop/']"):
+                m = re.search(r"/shop/(\d+)", a.attributes.get("href", ""))
+                if m:
+                    sec_map[m.group(1)] = sec_name
+
+        if not sec_map:
+            return []
+
+        all_pids = dict(sec_map)
+        pages: dict[str, str] = {}
+
+        # 发现所有基础款及其子选配套餐 ID
+        for pid in list(sec_map.keys()):
+            try:
+                r = client.get(f"{BASE}/shop/{pid}", timeout=12.0)
+                if r.status_code == 200:
+                    pages[pid] = r.text
+                    ptree = HTMLParser(r.text)
+                    for sa in ptree.css("a[href*='/shop/']"):
+                        sm = re.search(r"/shop/(\d+)", sa.attributes.get("href", ""))
+                        if sm:
+                            spid = sm.group(1)
+                            if spid not in all_pids:
+                                all_pids[spid] = sec_map.get(pid, "")
+            except Exception as e:
+                print(f"[66yun] fetch base /shop/{pid} failed: {e}")
+
+        # 获取尚未抓取的子选配页面
+        missing = [pid for pid in all_pids if pid not in pages]
+        for pid in missing:
+            try:
+                r = client.get(f"{BASE}/shop/{pid}", timeout=12.0)
+                if r.status_code == 200:
+                    pages[pid] = r.text
+            except Exception as e:
+                print(f"[66yun] fetch variant /shop/{pid} failed: {e}")
+
+        products: list[RawProduct] = []
+        for pid, text in pages.items():
+            p = _parse_shop_product(pid, text, all_pids.get(pid, ""))
+            if p:
+                products.append(p)
+
+        return products
+    except Exception as e:
+        print(f"[66yun] official /shop scrape failed: {e}")
+        return []
 
 
 # 预置基准套餐目录（27 款主流套餐）

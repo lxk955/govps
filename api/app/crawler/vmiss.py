@@ -13,10 +13,12 @@ app.vmiss.com 全站 Cloudflare 交互式人机验证（2026-08 实测数据中�
 
 import json
 import re
+import time
 from decimal import Decimal
 
 import httpx
 
+from ..config import settings
 from .base import MerchantCrawler, RawProduct
 from .whmcs import GroupPage, parse_store_page
 
@@ -66,7 +68,7 @@ def _fetch_live(client: httpx.Client) -> list[RawProduct]:
                 blocked += 1
                 consecutive_blocked += 1
                 if consecutive_blocked >= 2 and not results:
-                    print(f"[vmiss] Cloudflare challenge detected ({consecutive_blocked} consecutive), fast-failing store pages")
+                    print(f"[vmiss] Cloudflare challenge detected ({consecutive_blocked} consecutive) on direct fetch")
                     break
                 continue
             resp.raise_for_status()
@@ -75,6 +77,31 @@ def _fetch_live(client: httpx.Client) -> list[RawProduct]:
             print(f"[vmiss] group {slug} fetch failed: {e}")
             continue
         results.extend(parse_store_page(resp.text, GroupPage(url, location, line_tags), BASE))
+
+    # 若直连遭遇 Cloudflare 挑战，尝试通过 FlareSolverr 求解
+    if (blocked >= 2 or not results) and settings.FLARESOLVERR_URL.strip():
+        try:
+            from .solver import flaresolverr_session
+            session_name = f"vmiss_{int(time.time())}"
+            proxy = settings.effective_warp_proxy if settings.effective_warp_proxy else None
+            with flaresolverr_session(session_name, proxy=proxy) as (solver, sid):
+                if solver and sid:
+                    print(f"[vmiss] solving Turnstile challenge via FlareSolverr session {sid}...")
+                    for slug, location, line_tags in CATEGORIES:
+                        url = f"{BASE}/store/{slug}"
+                        html = solver.fetch(url, session_id=sid, timeout=25.0)
+                        if html and not bool(_RE_CF_CHALLENGE.search(html[:3000])):
+                            prods = parse_store_page(html, GroupPage(url, location, line_tags), BASE)
+                            for p in prods:
+                                p.stock_verified = True
+                                p.from_preset = False
+                            results.extend(prods)
+                    if results:
+                        print(f"[vmiss] successfully scraped {len(results)} official products via FlareSolverr")
+                        return results
+        except Exception as e:
+            print(f"[vmiss] flaresolverr attempt failed: {e}")
+
     if blocked:
         print(f"[vmiss] {blocked}/{len(CATEGORIES)} groups blocked by Cloudflare challenge")
     return results
