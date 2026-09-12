@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 
-from app.models import AffClick, Merchant, PageView, Product, User
+from app.models import AffClick, CrawlLog, Merchant, PageView, Product, User, Watchlist
 
 
 def _login(client, db, monkeypatch, email="admin@example.com") -> str:
@@ -140,3 +140,63 @@ def test_admin_crawler_logs(client, db, monkeypatch):
     assert data["logs"][0]["products_count"] == 105
     assert len(data["latest_by_merchant"]) >= 1
     assert data["latest_by_merchant"][0]["merchant_slug"] == "dmit"
+
+
+def test_admin_users_list_and_detail(client, db, monkeypatch):
+    monkeypatch.setattr("app.config.settings.ADMIN_EMAILS", "admin@example.com")
+    token = _login(client, db, monkeypatch, "admin@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    other_token = _login(client, db, monkeypatch, "alice@example.com")
+
+    now = datetime.now(timezone.utc)
+    m = Merchant(slug="shop", name="Shop", website="https://s.example", enabled=True)
+    db.add(m)
+    db.flush()
+    p = Product(
+        merchant_id=m.id,
+        external_id="1",
+        name="Tokyo Mini",
+        price=9,
+        purchase_url="https://s.example/buy",
+        in_stock=True,
+    )
+    db.add(p)
+    db.flush()
+    alice = db.query(User).filter_by(email="alice@example.com").first()
+    db.add(Watchlist(user_id=alice.id, product_id=p.id, notify_restock=True, notify_price_drop=False))
+    db.add(PageView(route="/", path="/", session_id="s1", user_id=alice.id, created_at=now))
+    db.commit()
+
+    forbidden = client.get("/api/admin/users", headers={"Authorization": f"Bearer {other_token}"})
+    assert forbidden.status_code == 403
+
+    listing = client.get("/api/admin/users", headers=h)
+    assert listing.status_code == 200
+    body = listing.json()
+    assert body["total"] >= 2
+    emails = {u["email"] for u in body["users"]}
+    assert "alice@example.com" in emails
+    assert "api_token" not in body["users"][0]
+    alice_row = next(u for u in body["users"] if u["email"] == "alice@example.com")
+    assert alice_row["watch_count"] == 1
+    assert alice_row["last_seen_at"] is not None
+
+    found = client.get("/api/admin/users?q=alice", headers=h)
+    assert found.status_code == 200
+    assert found.json()["total"] == 1
+    assert found.json()["users"][0]["email"] == "alice@example.com"
+
+    detail = client.get(f"/api/admin/users/{alice.id}", headers=h)
+    assert detail.status_code == 200
+    d = detail.json()
+    assert d["user"]["email"] == "alice@example.com"
+    assert "api_token" not in d["user"]
+    assert d["user"]["watch_count"] == 1
+    assert d["user"]["pageviews"] == 1
+    assert d["watchlist"][0]["name"] == "Tokyo Mini"
+    assert d["watchlist"][0]["merchant"] == "Shop"
+    assert d["recent_views"][0]["path"] == "/"
+
+    missing = client.get("/api/admin/users/999999", headers=h)
+    assert missing.status_code == 404
+

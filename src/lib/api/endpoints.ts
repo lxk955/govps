@@ -497,4 +497,62 @@ export function putAdminSettings(body: Partial<AdminSettings>): Promise<AdminSet
   return apiFetch("/api/admin/settings", { method: "PUT", body });
 }
 
+export interface AdminUserListItem {
+  id: number;
+  email: string;
+  view_mode: string;
+  currency_mode: string;
+  is_admin: boolean;
+  created_at: string | null;
+  watch_count: number;
+  last_seen_at: string | null;
+}
+
+export interface AdminUsersResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  users: AdminUserListItem[];
+}
+
+export interface AdminUserDetail {
+  user: AdminUserListItem & { aff_clicks: number; pageviews: number };
+  watchlist: {
+    product_id: number;
+    name: string;
+    merchant: string;
+    merchant_slug: string;
+    in_stock: boolean;
+    price: number | null;
+    currency: string;
+    notify_restock: boolean;
+    notify_price_drop: boolean;
+    min_drop_percent: number;
+    created_at: string | null;
+  }[];
+  recent_views: { route: string; path: string; created_at: string | null }[];
+  recent_notifies: {
+    status: string;
+    channel: string;
+    event_type: string | null;
+    product_name: string | null;
+    error: string | null;
+    sent_at: string | null;
+  }[];
+}
+
+export function getAdminUsers(opts: { q?: string; limit?: number; offset?: number } = {}): Promise<AdminUsersResponse> {
+  const qs = new URLSearchParams();
+  if (opts.q) qs.set("q", opts.q);
+  if (opts.limit) qs.set("limit", String(opts.limit));
+  if (opts.offset) qs.set("offset", String(opts.offset));
+  const q = qs.toString();
+  return apiFetch(`/api/admin/users${q ? `?${q}` : ""}`, { cache: "no-store" });
+}
+
+export function getAdminUser(id: number): Promise<AdminUserDetail> {
+  return apiFetch(`/api/admin/users/${id}`, { cache: "no-store" });
+}
+
+
 

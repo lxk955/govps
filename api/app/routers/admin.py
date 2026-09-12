@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 
 from ..crawler.registry import CRAWLERS
 from ..database import get_db
-from ..deps import require_admin
-from ..models import AffClick, CrawlLog, Merchant, PageView, Product, User
+from ..deps import is_admin_email, require_admin
+from ..models import AffClick, CrawlLog, Merchant, NotifyEvent, NotifyLog, PageView, Product, User, Watchlist
 from ..services.scan import run_scan
 from ..services.site_settings import public_settings, upsert_settings
 
@@ -328,4 +328,144 @@ def trigger_crawler_scan(
 ):
     """管理员在后台手动触发全量爬虫执行与数据入库。"""
     return run_scan(db, force=force)
+
+
+def _user_row(u: User, *, watch_count: int = 0, last_seen_at=None) -> dict:
+    return {
+        "id": u.id,
+        "email": u.email,
+        "view_mode": u.view_mode or "card",
+        "currency_mode": getattr(u, "currency_mode", None) or "original",
+        "is_admin": is_admin_email(u.email),
+        "created_at": u.created_at.isoformat() if u.created_at else None,
+        "watch_count": int(watch_count or 0),
+        "last_seen_at": last_seen_at.isoformat() if last_seen_at else None,
+    }
+
+
+@router.get("/users")
+def list_users(
+    q: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    limit = min(max(limit, 1), 200)
+    offset = max(offset, 0)
+    filt = []
+    if q and q.strip():
+        filt.append(User.email.ilike(f"%{q.strip()}%"))
+
+    total = _count(db, select(func.count()).select_from(User).where(*filt) if filt else select(func.count()).select_from(User))
+
+    last_seen = (
+        select(PageView.user_id, func.max(PageView.created_at).label("last_seen"))
+        .where(PageView.user_id.isnot(None))
+        .group_by(PageView.user_id)
+        .subquery()
+    )
+    watch_counts = (
+        select(Watchlist.user_id, func.count().label("n")).group_by(Watchlist.user_id).subquery()
+    )
+    stmt = (
+        select(User, watch_counts.c.n, last_seen.c.last_seen)
+        .outerjoin(watch_counts, watch_counts.c.user_id == User.id)
+        .outerjoin(last_seen, last_seen.c.user_id == User.id)
+    )
+    if filt:
+        stmt = stmt.where(*filt)
+    rows = db.execute(stmt.order_by(User.created_at.desc()).offset(offset).limit(limit)).all()
+    return {
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "users": [_user_row(u, watch_count=n or 0, last_seen_at=seen) for u, n, seen in rows],
+    }
+
+
+@router.get("/users/{user_id}")
+def get_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    u = db.get(User, user_id)
+    if u is None:
+        raise HTTPException(status_code=404, detail="user not found")
+
+    watch_n = _count(db, select(func.count()).select_from(Watchlist).where(Watchlist.user_id == u.id))
+    last_seen = db.scalar(
+        select(func.max(PageView.created_at)).where(PageView.user_id == u.id)
+    )
+    aff_n = _count(db, select(func.count()).select_from(AffClick).where(AffClick.user_id == u.id))
+    pv_n = _count(db, select(func.count()).select_from(PageView).where(PageView.user_id == u.id))
+
+    watches = db.execute(
+        select(Watchlist, Product, Merchant)
+        .join(Product, Product.id == Watchlist.product_id)
+        .join(Merchant, Merchant.id == Product.merchant_id)
+        .where(Watchlist.user_id == u.id)
+        .order_by(Watchlist.created_at.desc())
+    ).all()
+
+    views = db.scalars(
+        select(PageView)
+        .where(PageView.user_id == u.id)
+        .order_by(PageView.created_at.desc())
+        .limit(30)
+    ).all()
+
+    notifies = db.execute(
+        select(NotifyLog, NotifyEvent, Product)
+        .join(NotifyEvent, NotifyEvent.id == NotifyLog.event_id)
+        .outerjoin(Product, Product.id == NotifyEvent.product_id)
+        .where(NotifyLog.user_id == u.id)
+        .order_by(NotifyLog.sent_at.desc())
+        .limit(30)
+    ).all()
+
+    return {
+        "user": {
+            **_user_row(u, watch_count=watch_n, last_seen_at=last_seen),
+            "aff_clicks": aff_n,
+            "pageviews": pv_n,
+        },
+        "watchlist": [
+            {
+                "product_id": p.id,
+                "name": p.name,
+                "merchant": m.name,
+                "merchant_slug": m.slug,
+                "in_stock": bool(p.in_stock),
+                "price": float(p.price) if p.price is not None else None,
+                "currency": p.currency,
+                "notify_restock": bool(w.notify_restock),
+                "notify_price_drop": bool(w.notify_price_drop),
+                "min_drop_percent": float(w.min_drop_percent or 0),
+                "created_at": w.created_at.isoformat() if w.created_at else None,
+            }
+            for w, p, m in watches
+        ],
+        "recent_views": [
+            {
+                "route": v.route,
+                "path": v.path,
+                "created_at": v.created_at.isoformat() if v.created_at else None,
+            }
+            for v in views
+        ],
+        "recent_notifies": [
+            {
+                "status": log.status,
+                "channel": log.channel,
+                "event_type": ev.type if ev else None,
+                "product_name": p.name if p else None,
+                "error": log.error,
+                "sent_at": log.sent_at.isoformat() if log.sent_at else None,
+            }
+            for log, ev, p in notifies
+        ],
+    }
+
 

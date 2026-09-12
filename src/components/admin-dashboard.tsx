@@ -117,22 +117,36 @@ function StatCard({
   value,
   hint,
   icon: Icon,
+  href,
 }: {
   label: string;
   value: string;
   hint?: string;
   icon: typeof Eye;
+  href?: string;
 }) {
-  return (
-    <div className="border-border bg-card rounded-2xl border p-4 shadow-sm">
+  const body = (
+    <>
       <div className="flex items-center justify-between gap-2">
         <p className="text-[11px] font-medium tracking-wide text-slate-400 uppercase">{label}</p>
         <Icon className="h-3.5 w-3.5 text-slate-300 dark:text-slate-600" aria-hidden />
       </div>
       <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">{value}</p>
       {hint ? <p className="mt-1 text-xs text-slate-400">{hint}</p> : null}
-    </div>
+      {href ? (
+        <p className="mt-2 text-[11px] font-medium text-blue-600 dark:text-blue-400">查看用户列表 →</p>
+      ) : null}
+    </>
   );
+  const cls = "border-border bg-card rounded-2xl border p-4 shadow-sm";
+  if (href) {
+    return (
+      <Link href={href} className={`${cls} block transition-colors hover:border-blue-300 hover:bg-blue-50/40 dark:hover:border-blue-800 dark:hover:bg-blue-950/30`}>
+        {body}
+      </Link>
+    );
+  }
+  return <div className={cls}>{body}</div>;
 }
 
 function SparkBars({
@@ -342,7 +356,13 @@ export function AdminDashboard() {
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="今日浏览" value={n(v.today_pv)} hint={`UV ${n(v.today_uv)} · 近 7 日 ${n(v.d7_pv)}`} icon={Eye} />
         <StatCard label="日活 / 月活" value={`${n(a.dau)} / ${n(a.mau)}`} hint="按独立会话计" icon={Eye} />
-        <StatCard label="注册用户" value={n(u.total)} hint={`今日 +${n(u.today_new)} · 近 7 日 +${n(u.d7_new)}`} icon={Users} />
+        <StatCard
+          label="注册用户"
+          value={n(u.total)}
+          hint={`今日 +${n(u.today_new)} · 近 7 日 +${n(u.d7_new)}`}
+          icon={Users}
+          href="/admin/users"
+        />
         <StatCard
           label="AFF 点击"
           value={n(overview.aff.today)}
