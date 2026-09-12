@@ -1,6 +1,7 @@
 services:
   # 1. FastAPI 后端服务（处理数据库、定时抓取、异步发信、业务评分）
   api:
+    image: ${API_IMAGE:-ghcr.io/lxk955/govps-api:latest}
     build:
       context: ./api
       dockerfile: Dockerfile
@@ -41,6 +42,7 @@ services:
 
   # 2. Next.js 前端服务（App Router 服务端渲染与同域 API 反向代理）
   web:
+    image: ${WEB_IMAGE:-ghcr.io/lxk955/govps-web:latest}
     build:
       context: .
       dockerfile: Dockerfile
@@ -86,6 +88,7 @@ services:
 
   # 4. 可编程权威 DNS 服务（用于 DNS 泄露检测）
   dns:
+    image: ${API_IMAGE:-ghcr.io/lxk955/govps-api:latest}
     build:
       context: ./api
       dockerfile: Dockerfile

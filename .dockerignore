@@ -1,0 +1,23 @@
+# Git & CI
+.git
+.github
+
+# Dependencies & Build artifacts
+node_modules
+.next
+out
+build
+*.tsbuildinfo
+
+# Project subdirectories not needed in web image
+api
+data
+deploy
+scripts
+tests
+
+# Environment & Documentation
+.env*
+!.env.example
+*.md
+.DS_Store

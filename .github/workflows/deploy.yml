@@ -8,6 +8,10 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   test:
     name: Run CI Checks
@@ -39,23 +43,65 @@ jobs:
           pip install -r api/requirements.txt -r api/requirements-dev.txt
           cd api && python -m pytest tests/ -q
 
+  build-and-push:
+    name: Build & Push Docker Images
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lowercase repo name
+        run: |
+          echo "REPO_LOWER=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./api
+          push: true
+          tags: ghcr.io/${{ env.REPO_LOWER }}-api:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build and push Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ env.REPO_LOWER }}-web:latest
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
   deploy:
     name: Deploy to Silicon Valley VPS
-    needs: [test]
+    needs: [build-and-push]
     runs-on: ubuntu-latest
     steps:
       - name: SSH Deploy to VPS
         uses: appleboy/ssh-action@v1.2.0
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
         if: env.VPS_HOST != ''
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME != '' && secrets.VPS_USERNAME || 'ubuntu' }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
+          envs: GHCR_TOKEN,GHCR_USER
           script_stop: true
-          command_timeout: 30m
+          command_timeout: 15m
           script: |
             set -e
             DEPLOY_PATH="/opt/govps"
@@ -66,11 +112,19 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            echo "==> Local SQLite snapshot before rebuild/migrate..."
+            echo "==> Logging in to GHCR on VPS..."
+            if [ -n "${GHCR_TOKEN}" ]; then
+              echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+            fi
+
+            echo "==> Pulling pre-built Docker images from GHCR..."
+            docker compose pull
+
+            echo "==> Local SQLite snapshot before container restart..."
             python3 "${DEPLOY_PATH}/scripts/snapshot-sqlite.py"
 
-            echo "==> Building and starting containers..."
-            docker compose up -d --build --remove-orphans
+            echo "==> Starting containers with new images..."
+            docker compose up -d --remove-orphans
 
             echo "==> Running database migrations..."
             docker compose exec -T api alembic upgrade head
