@@ -311,13 +311,21 @@ def _run_scan_internal(db: Session, force: bool = False) -> dict:
                 return None, exc, dur
 
         max_workers = min(len(due_crawlers), 8)
+        # 单商家最大执行上限设为 45s，保障整批扫描严格控制在 1 分钟内收尾（AGENTS.md）
+        crawler_timeout = 45.0
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_map = [
                 (crawler, merchant, executor.submit(_fetch_one, crawler))
                 for crawler, merchant in due_crawlers
             ]
             for crawler, merchant, fut in future_map:
-                raws, fetch_err, duration_ms = fut.result()
+                try:
+                    raws, fetch_err, duration_ms = fut.result(timeout=crawler_timeout)
+                except concurrent.futures.TimeoutError:
+                    raws = None
+                    fetch_err = TimeoutError(f"爬虫执行超时 (>{crawler_timeout:.0f}s)")
+                    duration_ms = int(crawler_timeout * 1000)
+
                 method_desc = getattr(crawler, "crawl_method", "官方直连")
 
                 if fetch_err is not None:

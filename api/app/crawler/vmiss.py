@@ -88,11 +88,12 @@ def _fetch_live(client: httpx.Client) -> list[RawProduct]:
             with flaresolverr_session(session_name) as (solver, sid):
                 if solver and sid:
                     print(f"[vmiss] solving Turnstile challenge via FlareSolverr session {sid}...")
+                    consecutive_failures = 0
                     for idx, (slug, location, line_tags) in enumerate(CATEGORIES):
                         if idx > 0:
-                            time.sleep(1.0)
+                            time.sleep(0.5)
                         url = f"{BASE}/store/{slug}"
-                        html = solver.fetch(url, session_id=sid, timeout=25.0)
+                        html = solver.fetch(url, session_id=sid, timeout=12.0)
                         if html and not bool(_RE_CF_CHALLENGE.search(html[:3000])):
                             prods = parse_store_page(html, GroupPage(url, location, line_tags), BASE)
                             for p in prods:
@@ -101,6 +102,12 @@ def _fetch_live(client: httpx.Client) -> list[RawProduct]:
                                     p.stock_verified = True
                                     p.from_preset = False
                                     solver_results.append(p)
+                            consecutive_failures = 0
+                        else:
+                            consecutive_failures += 1
+                            if consecutive_failures >= 2:
+                                print(f"[vmiss] FlareSolverr challenge failed ({consecutive_failures} consecutive), aborting remaining categories to fallback")
+                                break
                     if solver_results:
                         print(f"[vmiss] successfully scraped {len(solver_results)} official products via FlareSolverr")
                         return solver_results

@@ -40,7 +40,7 @@ class FlareSolverrClient:
         self.endpoint = (endpoint or settings.FLARESOLVERR_URL).strip()
         self.proxy = proxy
 
-    def fetch(self, url: str, session_id: str | None = None, timeout: float = 35.0) -> str | None:
+    def fetch(self, url: str, session_id: str | None = None, timeout: float = 12.0) -> str | None:
         """通过 FlareSolverr 获取指定 URL 的真实 HTML。若求解失败返回 None。"""
         if not self.endpoint:
             return None
@@ -55,7 +55,7 @@ class FlareSolverrClient:
             payload["proxy"] = {"url": self.proxy}
 
         try:
-            with httpx.Client(timeout=timeout + 10.0) as client:
+            with httpx.Client(timeout=timeout + 3.0) as client:
                 resp = client.post(self.endpoint, json=payload)
                 if resp.status_code != 200:
                     logger.warning("[flaresolverr] HTTP %s from %s for %s", resp.status_code, self.endpoint, url)
@@ -78,7 +78,7 @@ class FlareSolverrClient:
             logger.warning("[flaresolverr] request error for %s: %s", url, e)
             return None
 
-    def create_session(self, session_id: str, timeout: float = 15.0) -> bool:
+    def create_session(self, session_id: str, timeout: float = 10.0) -> bool:
         """在 FlareSolverr 中创建浏览器会话。"""
         if not self.endpoint:
             return False
@@ -94,7 +94,7 @@ class FlareSolverrClient:
             logger.warning("[flaresolverr] create_session %s failed: %s", session_id, e)
             return False
 
-    def destroy_session(self, session_id: str, timeout: float = 10.0) -> bool:
+    def destroy_session(self, session_id: str, timeout: float = 5.0) -> bool:
         """销毁 FlareSolverr 浏览器会话，释放 Chromium 进程与内存。"""
         if not self.endpoint:
             return False
@@ -135,7 +135,7 @@ def flaresolverr_session(
             client.destroy_session(session_name)
 
 
-def fetch_with_flaresolverr(url: str, proxy: str | None = None, timeout: float = 35.0) -> str | None:
+def fetch_with_flaresolverr(url: str, proxy: str | None = None, timeout: float = 12.0) -> str | None:
     """单次求解单页面 helper。"""
     client = FlareSolverrClient(proxy=proxy)
     return client.fetch(url, timeout=timeout)

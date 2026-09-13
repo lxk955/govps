@@ -475,15 +475,22 @@ def _fetch_official_dmit(target_pids: list[str]) -> list[RawProduct]:
         with flaresolverr_session(session_name) as (solver, sid):
             if not solver or not sid:
                 return []
+            consecutive_failures = 0
             for idx, pid in enumerate(target_pids):
                 if idx > 0:
-                    time.sleep(1.0)
+                    time.sleep(0.5)
                 url = f"https://www.dmit.io/cart.php?a=add&pid={pid}"
-                html = solver.fetch(url, session_id=sid, timeout=20.0)
-                if html:
+                html = solver.fetch(url, session_id=sid, timeout=12.0)
+                if html and "Just a moment" not in html[:2000]:
                     p = _parse_dmit_html(pid, html)
                     if p:
                         products.append(p)
+                        consecutive_failures = 0
+                        continue
+                consecutive_failures += 1
+                if consecutive_failures >= 2:
+                    print(f"[dmit] FlareSolverr failed ({consecutive_failures} consecutive), aborting remaining targets to fallback")
+                    break
         if products:
             print(f"[dmit] official store scraping succeeded: {len(products)} products verified")
         return products

@@ -280,6 +280,7 @@ class GomamiCrawler(MerchantCrawler):
     def fetch(self, client: httpx.Client) -> list[RawProduct]:
         results: list[RawProduct] = []
         errors: list[str] = []
+        consecutive_errors = 0
 
         for cat in CATEGORIES:
             try:
@@ -287,10 +288,17 @@ class GomamiCrawler(MerchantCrawler):
                 if resp.status_code == 200:
                     parsed = parse_gomami_page(resp.text, cat.location, cat.line_tags)
                     results.extend(parsed)
+                    consecutive_errors = 0
                 else:
+                    consecutive_errors += 1
                     errors.append(f"{cat.url}: HTTP {resp.status_code}")
+                    if consecutive_errors >= 2 and not results:
+                        break
             except Exception as e:
+                consecutive_errors += 1
                 errors.append(f"{cat.url}: {e}")
+                if consecutive_errors >= 2 and not results:
+                    break
 
         # 若官网直连抓取受阻（如 Cloudflare 挑战），尝试通过 FlareSolverr 求解
         if len(results) < 15 and settings.FLARESOLVERR_URL.strip():
@@ -301,13 +309,23 @@ class GomamiCrawler(MerchantCrawler):
                 with flaresolverr_session(session_name) as (solver, sid):
                     if solver and sid:
                         solver_results: list[RawProduct] = []
+                        consecutive_failures = 0
                         for idx, cat in enumerate(CATEGORIES):
                             if idx > 0:
                                 time.sleep(0.5)
-                            html = solver.fetch(cat.url, session_id=sid, timeout=25.0)
+                            html = solver.fetch(cat.url, session_id=sid, timeout=12.0)
                             if html and "Just a moment..." not in html[:1500]:
                                 parsed = parse_gomami_page(html, cat.location, cat.line_tags)
                                 solver_results.extend(parsed)
+                                consecutive_failures = 0
+                            else:
+                                consecutive_failures += 1
+                                if consecutive_failures >= 2:
+                                    logger.warning(
+                                        "[gomami] FlareSolverr failed (%s consecutive), aborting remaining categories to fallback",
+                                        consecutive_failures,
+                                    )
+                                    break
                         if len(solver_results) >= 15:
                             results = solver_results
                             print(f"[gomami] successfully scraped {len(results)} official products via FlareSolverr")
