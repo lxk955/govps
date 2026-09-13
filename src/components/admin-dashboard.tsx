@@ -35,17 +35,18 @@ import {
   type AdminOverview,
   type AdminSettings,
 } from "@/lib/api/endpoints";
+import { parseUtcDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 function n(v: number | null | undefined): string {
   return (v ?? 0).toLocaleString("zh-CN");
 }
 
-function relTime(iso: string | null): string {
+function relTime(iso: string | null | undefined): string {
   if (!iso) return "从未成功";
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return "—";
-  const mins = Math.round((Date.now() - t) / 60000);
+  const d = parseUtcDate(iso);
+  if (!d) return "—";
+  const mins = Math.round((Date.now() - d.getTime()) / 60000);
   if (mins < 1) return "刚刚";
   if (mins < 60) return `${mins} 分钟前`;
   const hours = Math.round(mins / 60);
@@ -53,10 +54,9 @@ function relTime(iso: string | null): string {
   return `${Math.round(hours / 24)} 天前`;
 }
 
-function formatDateTime(iso: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+function formatDateTime(iso: string | null | undefined): string {
+  const d = parseUtcDate(iso);
+  if (!d) return "—";
   return d.toLocaleString("zh-CN", {
     month: "2-digit",
     day: "2-digit",
@@ -280,9 +280,10 @@ export function AdminDashboard() {
     try {
       const res = await triggerAdminScan(force);
       setTriggerMsg(
-        res.ok
-          ? `爬虫扫描已触发（扫描结果将保存到执行流水中，刷新即可查阅）`
-          : "触发返回异常",
+        res.message ||
+          (res.ok
+            ? "全量爬虫扫描已在后台启动，扫描流水将在完成后自动落库，请稍后刷新查看"
+            : "触发返回异常"),
       );
       await reloadLogs();
     } catch (err: unknown) {

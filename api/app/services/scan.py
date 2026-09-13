@@ -7,6 +7,7 @@
 import concurrent.futures
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+import threading
 import time
 
 from sqlalchemy import delete, func, select
@@ -236,8 +237,27 @@ def maybe_update_rates(db: Session) -> dict:
         return {"error": str(e)[:200]}
 
 
+_SCAN_MUTEX = threading.Lock()
+
+
 def run_scan(db: Session, force: bool = False) -> dict:
-    """全量扫描入口。P7 分级调度：非 force 时仅抓取「已到期」的商家
+    """全量扫描入口（线程安全与防并发保护）。
+    若已有扫描在运行，则非阻塞快速返回，避免并发争抢 SQLite 锁与无头浏览器会话。
+    """
+    if not _SCAN_MUTEX.acquire(blocking=False):
+        return {
+            "ok": True,
+            "skipped": "another scan is currently running",
+            "summary": {},
+        }
+    try:
+        return _run_scan_internal(db, force=force)
+    finally:
+        _SCAN_MUTEX.release()
+
+
+def _run_scan_internal(db: Session, force: bool = False) -> dict:
+    """全量扫描内部实现。P7 分级调度：非 force 时仅抓取「已到期」的商家
     （now - last_success_at ≥ 抓取间隔；从未成功抓取过视为已到期）。
     网络抓取阶段多线程并发执行（提升吞吐）；入库更新保留在主线程执行保障事务安全。
     单个商家失败不影响其他商家（AGENTS.md）。"""

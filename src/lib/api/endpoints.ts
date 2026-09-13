@@ -499,8 +499,15 @@ export function getAdminCrawlLogs(limit: number = 100, slug?: string): Promise<A
   return apiFetch<AdminCrawlLogsResponse>(`/api/admin/crawler/logs${q ? `?${q}` : ""}`, { cache: "no-store" });
 }
 
-export function triggerAdminScan(force: boolean = false): Promise<{ ok: boolean; summary: Record<string, string> }> {
-  return apiFetch<{ ok: boolean; summary: Record<string, string> }>("/api/admin/crawler/scan", {
+export interface TriggerAdminScanResponse {
+  ok: boolean;
+  running?: boolean;
+  message?: string;
+  summary?: Record<string, string>;
+}
+
+export function triggerAdminScan(force: boolean = true): Promise<TriggerAdminScanResponse> {
+  return apiFetch<TriggerAdminScanResponse>("/api/admin/crawler/scan", {
     method: "POST",
     body: { force },
   });

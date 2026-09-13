@@ -7,11 +7,13 @@ from pydantic import BaseModel
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
+import threading
+
 from ..crawler.registry import CRAWLERS
 from ..database import get_db
 from ..deps import is_admin_email, require_admin
-from ..models import AffClick, CrawlLog, Merchant, NotifyEvent, NotifyLog, PageView, Product, User, Watchlist
-from ..services.scan import run_scan
+from ..models import AffClick, CrawlLog, Merchant, NotifyEvent, NotifyLog, PageView, Product, User, Watchlist, to_iso_utc
+from ..services.scan import _SCAN_MUTEX, run_scan
 from ..services.site_settings import public_settings, upsert_settings
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -246,7 +248,7 @@ def list_merchants(db: Session = Depends(get_db), _admin: User = Depends(require
                 "enabled": bool(r.enabled),
                 "crawl_interval_minutes": r.crawl_interval_minutes,
                 "crawl_method": crawler_map.get(r.slug, "官方直连"),
-                "last_success_at": last.isoformat() if last else None,
+                "last_success_at": to_iso_utc(last),
                 "last_error": r.last_error,
                 "products": int(r.products or 0),
                 "in_stock": int(r.in_stock or 0),
@@ -372,7 +374,7 @@ def get_crawler_logs(
                 "duration_ms": l.duration_ms,
                 "message": l.message,
                 "error": l.error,
-                "created_at": l.created_at.isoformat() if l.created_at else None,
+                "created_at": to_iso_utc(l.created_at),
             }
 
         return {
@@ -387,14 +389,55 @@ def get_crawler_logs(
         }
 
 
+class TriggerScanIn(BaseModel):
+    force: bool = True
+
+
+def _run_scan_background(force: bool) -> None:
+    from ..database import SessionLocal
+
+    try:
+        with SessionLocal() as db:
+            run_scan(db, force=force)
+    except Exception as e:
+        print(f"[admin-scan] background scan error: {e}")
+
+
 @router.post("/crawler/scan")
 def trigger_crawler_scan(
-    force: bool = True,
-    db: Session = Depends(get_db),
+    payload: TriggerScanIn | None = None,
+    force: bool | None = None,
     _admin: User = Depends(require_admin),
 ):
-    """管理员在后台手动触发全量爬虫执行与数据入库。"""
-    return run_scan(db, force=force)
+    """管理员在后台手动触发全量爬虫执行与数据入库（异步非阻塞执行）。"""
+    actual_force = True
+    if force is not None:
+        actual_force = force
+    elif payload is not None and payload.force is not None:
+        actual_force = payload.force
+
+    if _SCAN_MUTEX.locked():
+        return {
+            "ok": True,
+            "running": True,
+            "message": "抓取任务正在后台运行中，请勿重复触发，稍后点击「刷新记录」即可查阅最新流水",
+            "summary": {},
+        }
+
+    thread = threading.Thread(
+        target=_run_scan_background,
+        args=(actual_force,),
+        daemon=True,
+        name="admin-background-scan",
+    )
+    thread.start()
+
+    return {
+        "ok": True,
+        "running": True,
+        "message": "全量抓取已在后台启动（预计 1-2 分钟完成），您可稍后点击「刷新记录」查看最新流水",
+        "summary": {},
+    }
 
 
 def _user_row(u: User, *, watch_count: int = 0, last_seen_at=None) -> dict:
@@ -404,9 +447,9 @@ def _user_row(u: User, *, watch_count: int = 0, last_seen_at=None) -> dict:
         "view_mode": u.view_mode or "card",
         "currency_mode": getattr(u, "currency_mode", None) or "original",
         "is_admin": is_admin_email(u.email),
-        "created_at": u.created_at.isoformat() if u.created_at else None,
+        "created_at": to_iso_utc(u.created_at),
         "watch_count": int(watch_count or 0),
-        "last_seen_at": last_seen_at.isoformat() if last_seen_at else None,
+        "last_seen_at": to_iso_utc(last_seen_at),
     }
 
 
@@ -510,7 +553,7 @@ def get_user(
                 "notify_restock": bool(w.notify_restock),
                 "notify_price_drop": bool(w.notify_price_drop),
                 "min_drop_percent": float(w.min_drop_percent or 0),
-                "created_at": w.created_at.isoformat() if w.created_at else None,
+                "created_at": to_iso_utc(w.created_at),
             }
             for w, p, m in watches
         ],
@@ -518,7 +561,7 @@ def get_user(
             {
                 "route": v.route,
                 "path": v.path,
-                "created_at": v.created_at.isoformat() if v.created_at else None,
+                "created_at": to_iso_utc(v.created_at),
             }
             for v in views
         ],
@@ -529,7 +572,7 @@ def get_user(
                 "event_type": ev.type if ev else None,
                 "product_name": p.name if p else None,
                 "error": log.error,
-                "sent_at": log.sent_at.isoformat() if log.sent_at else None,
+                "sent_at": to_iso_utc(log.sent_at),
             }
             for log, ev, p in notifies
         ],

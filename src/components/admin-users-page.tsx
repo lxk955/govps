@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api/client";
 import { getAdminUsers, type AdminUserListItem } from "@/lib/api/endpoints";
+import { parseUtcDate } from "@/lib/format";
 
 const CURRENCY_LABEL: Record<string, string> = {
   original: "原币",
@@ -20,11 +21,11 @@ function n(v: number | null | undefined): string {
   return (v ?? 0).toLocaleString("zh-CN");
 }
 
-function relTime(iso: string | null): string {
+function relTime(iso: string | null | undefined): string {
   if (!iso) return "—";
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return "—";
-  const mins = Math.round((Date.now() - t) / 60000);
+  const d = parseUtcDate(iso);
+  if (!d) return "—";
+  const mins = Math.round((Date.now() - d.getTime()) / 60000);
   if (mins < 1) return "刚刚";
   if (mins < 60) return `${mins} 分钟前`;
   const hours = Math.round(mins / 60);
@@ -32,10 +33,9 @@ function relTime(iso: string | null): string {
   return `${Math.round(hours / 24)} 天前`;
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+function formatDate(iso: string | null | undefined): string {
+  const d = parseUtcDate(iso);
+  if (!d) return "—";
   return d.toLocaleString("zh-CN", {
     year: "numeric",
     month: "2-digit",

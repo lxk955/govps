@@ -57,12 +57,25 @@ export function monthlyEquivalent(price: number, cycle: string): number | null {
 // 映射表写两遍。已统一为 cycleLabel，需要斜杠前缀时在调用处拼接即可
 // （如 /{cycleLabel(cycle)}），避免改映射时漏改一处。
 
+/**
+ * 安全解析 ISO 日期时间。
+ * SQLite 存储的时间通常不带时区后缀（如 "2026-09-13T01:22:07"），浏览器会默认按本地时间解析导致 8 小时偏差。
+ * 本函数自动补齐 UTC 标识（Z），确保所有时间戳均按 UTC 时间基准解析。
+ */
+export function parseUtcDate(iso: string | null | undefined): Date | null {
+  if (!iso || !iso.trim()) return null;
+  const trimmed = iso.trim();
+  const hasTz = /[zZ]|[+-]\d{2}(:?\d{2})?$/.test(trimmed);
+  const normalized = hasTz ? trimmed : `${trimmed}Z`;
+  const d = new Date(normalized);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 /** 相对时间（数据新鲜度提示，AGENTS.md Data Freshness） */
 export function timeAgo(iso: string | null | undefined): string {
-  if (!iso) return "未知";
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "未知";
-  const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000));
+  const d = parseUtcDate(iso);
+  if (!d) return "未知";
+  const seconds = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
   if (seconds < 60) return "刚刚";
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes} 分钟前`;

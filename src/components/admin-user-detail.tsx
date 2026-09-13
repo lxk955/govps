@@ -9,6 +9,7 @@ import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api/client";
 import { getAdminUser, type AdminUserDetail } from "@/lib/api/endpoints";
+import { parseUtcDate } from "@/lib/format";
 import { productHref } from "@/lib/slug";
 
 const CURRENCY_LABEL: Record<string, string> = {
@@ -28,10 +29,9 @@ function n(v: number | null | undefined): string {
   return (v ?? 0).toLocaleString("zh-CN");
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+function formatDate(iso: string | null | undefined): string {
+  const d = parseUtcDate(iso);
+  if (!d) return "—";
   return d.toLocaleString("zh-CN", {
     year: "numeric",
     month: "2-digit",

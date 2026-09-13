@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
 from ..deps import get_current_user
-from ..models import PriceSnapshot, Product, User, Watchlist
+from ..models import PriceSnapshot, Product, User, Watchlist, to_iso_utc
 from ..schemas import WatchIn
 from .products import product_to_dict
 
@@ -43,7 +43,7 @@ def my_watchlist(
             "notify_restock": w.notify_restock,
             "notify_price_drop": w.notify_price_drop,
             "min_drop_percent": float(w.min_drop_percent),
-            "created_at": w.created_at.isoformat(),
+            "created_at": to_iso_utc(w.created_at),
         }
         for w in rows
     ]

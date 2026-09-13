@@ -5,7 +5,7 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
-from ..models import EventType, NotifyEvent, Product
+from ..models import EventType, NotifyEvent, Product, to_iso_utc
 
 router = APIRouter(prefix="/api/events", tags=["events"])
 
@@ -67,7 +67,7 @@ def recent_events(
                 "old_value": ev.old_value,
                 "new_value": ev.new_value,
                 "drop_percent": drop_percent,
-                "created_at": ev.created_at.isoformat(),
+                "created_at": to_iso_utc(ev.created_at),
                 "product": {
                     "id": p.id,
                     "name": p.name,

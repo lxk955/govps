@@ -16,6 +16,7 @@ from ..models import (
     StockSnapshot,
     User,
     Watchlist,
+    to_iso_utc,
 )
 from ..schemas import yearly_price
 from ..services.materialize import engagement_snapshot, fill_static_fields, score_product
@@ -268,8 +269,8 @@ def product_to_dict(
         "popularity_score": round(popularity_score, 1) if popularity_score is not None else None,
         "recommend_reasons": recommend_reasons or [],
         "is_recent_restock": is_recent_restock,
-        "updated_at": p.updated_at.isoformat() if p.updated_at else None,
-        "last_checked_at": p.last_checked_at.isoformat() if p.last_checked_at else None,
+        "updated_at": to_iso_utc(p.updated_at),
+        "last_checked_at": to_iso_utc(p.last_checked_at),
     }
 
 
@@ -607,7 +608,7 @@ def list_merchants(db: Session = Depends(get_db)):
             "website": m.website,
             "count": counts.get(m.id, 0),
             "in_stock_count": in_stock_counts.get(m.id, 0),
-            "last_success_at": m.last_success_at.isoformat() if m.last_success_at else None,
+            "last_success_at": to_iso_utc(m.last_success_at),
         })
     res.sort(key=lambda x: priority_order.get(x["slug"], 99))
     return res
@@ -658,11 +659,11 @@ def product_detail(product_id: int, db: Session = Depends(get_db)):
         )
         data.update(hot_score=h_s, deal_score=d_s, popularity_score=pop_s, recommend_reasons=reasons)
     data["price_snapshots"] = [
-        {"price": float(s.price), "checked_at": s.checked_at.isoformat()}
+        {"price": float(s.price), "checked_at": to_iso_utc(s.checked_at)}
         for s in _recent_snapshots(db, PriceSnapshot, p.id)
     ]
     data["stock_snapshots"] = [
-        {"in_stock": s.in_stock, "checked_at": s.checked_at.isoformat()}
+        {"in_stock": s.in_stock, "checked_at": to_iso_utc(s.checked_at)}
         for s in _recent_snapshots(db, StockSnapshot, p.id)
     ]
     # P5：USD 换算价只加不改

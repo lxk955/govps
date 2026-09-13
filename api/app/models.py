@@ -26,6 +26,15 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def to_iso_utc(dt: datetime | None) -> str | None:
+    """保证输出含 +00:00 明确时区后缀，避免 SQLite 存取的朴素时间被前端默认当作本地时间解析导致时差。"""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat()
+
+
 class Merchant(Base):
     __tablename__ = "merchants"
 
