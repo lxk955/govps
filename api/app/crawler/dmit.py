@@ -517,15 +517,19 @@ class DmitCrawler(MerchantCrawler):
             vpsoso = _fetch_vpsoso(client)
             live = _merge(live, vpsoso)
 
-        # 2. 若配置了 FlareSolverr，从官方网站抓取一手数据覆盖/验证核心及有货套餐
+        # 2. 若配置了 FlareSolverr，从官方网站抓取一手数据覆盖/验证核心及有货套餐（优先有货款与核心款，限 8 款控时）
         if settings.FLARESOLVERR_URL.strip():
-            candidate_pids = [p.external_id.replace("dmit-", "") for p in DMIT_PRESETS]
-            for p in live:
-                clean_id = p.external_id.replace("dmit-", "")
-                if p.in_stock and clean_id not in candidate_pids:
-                    candidate_pids.append(clean_id)
+            instock_pids = [
+                p.external_id.replace("dmit-", "") for p in live if p.in_stock
+            ]
+            core_preset_pids = [
+                p.external_id.replace("dmit-", "")
+                for p in DMIT_PRESETS
+                if getattr(p, "recommended", False)
+            ]
+            target_pids = list(dict.fromkeys(instock_pids + core_preset_pids))[:8]
 
-            official_products = _fetch_official_dmit(candidate_pids[:30])
+            official_products = _fetch_official_dmit(target_pids)
             if official_products:
                 live = _merge(official_products, live)
 
