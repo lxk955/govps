@@ -311,8 +311,8 @@ def _run_scan_internal(db: Session, force: bool = False) -> dict:
                 return None, exc, dur
 
         max_workers = min(len(due_crawlers), 8)
-        # 单商家最大执行上限设为 45s，保障整批扫描严格控制在 1 分钟内收尾（AGENTS.md）
-        crawler_timeout = 45.0
+        # 单商家最大执行上限设为 70s，留足 FlareSolverr 锁排队缓冲，保障整批扫描在 1-2 分钟内稳健收尾（AGENTS.md）
+        crawler_timeout = 70.0
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_map = [
                 (crawler, merchant, executor.submit(_fetch_one, crawler))
