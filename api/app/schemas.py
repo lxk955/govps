@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 CYCLE_TO_YEAR = {
     "monthly": 12,
@@ -89,3 +89,61 @@ class WatchOut(BaseModel):
     notify_price_drop: bool
     min_drop_percent: Decimal
     created_at: datetime
+
+
+class NodeCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    country: str = Field(default="hk", max_length=10)
+    group_name: str = Field(default="主力", max_length=50)
+    tags: list[str] = Field(default_factory=list)
+    os_type: str = Field(default="debian", max_length=30)
+    cpu_cores: int | None = 1
+    price: float | None = None
+    currency: str = Field(default="USD", max_length=10)
+    billing_cycle: str = Field(default="monthly", max_length=20)
+    expires_at: datetime | None = None
+    traffic_limit_gb: float | None = None
+
+
+class NodeUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    country: str | None = Field(default=None, max_length=10)
+    group_name: str | None = Field(default=None, max_length=50)
+    tags: list[str] | None = None
+    os_type: str | None = Field(default=None, max_length=30)
+    cpu_cores: int | None = None
+    price: float | None = None
+    currency: str | None = Field(default=None, max_length=10)
+    billing_cycle: str | None = Field(default=None, max_length=20)
+    expires_at: datetime | None = None
+    traffic_limit_gb: float | None = None
+
+
+class PingMetric(BaseModel):
+    name: str  # 电信 / 联通 / 移动
+    latency_ms: float
+    loss_rate: float = 0.0
+
+
+class NodeReport(BaseModel):
+    cpu_percent: float = 0.0
+    cpu_cores: int | None = None
+    ram_used_bytes: int = 0
+    ram_total_bytes: int = 0
+    swap_used_bytes: int = 0
+    swap_total_bytes: int = 0
+    disk_used_bytes: int = 0
+    disk_total_bytes: int = 0
+    load_1: float = 0.0
+    load_5: float = 0.0
+    load_15: float = 0.0
+    net_rx_rate: float = 0.0
+    net_tx_rate: float = 0.0
+    net_rx_total: int = 0
+    net_tx_total: int = 0
+    uptime_seconds: int = 0
+    os_type: str | None = None
+    os_version: str | None = None
+    arch: str | None = None
+    ping_stats: list[PingMetric] = Field(default_factory=list)
+

@@ -11,6 +11,7 @@ export const MOBILE_NAV: readonly NavItem[] = [
   { href: "/", label: "雷达" },
   { href: "/deals", label: "动态" },
   { href: "/ip", label: "IP工具", prefix: true },
+  { href: "/monitor", label: "探针" },
   { href: "/watchlist", label: "关注" },
 ];
 
@@ -18,6 +19,7 @@ export const DESKTOP_NAV: readonly NavItem[] = [
   { href: "/", label: "雷达" },
   { href: "/deals", label: "动态" },
   { href: "/ip", label: "IP 工具", prefix: true },
+  { href: "/monitor", label: "探针" },
   { href: "/watchlist", label: "我的关注" },
 ];
 

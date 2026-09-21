@@ -5,6 +5,7 @@ from datetime import date, datetime, timezone
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     Date,
     DateTime,
@@ -150,7 +151,11 @@ class User(Base):
     api_token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     view_mode: Mapped[str] = mapped_column(String(20), default="card")
     currency_mode: Mapped[str] = mapped_column(String(20), default="original")
+    monitor_public_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    monitor_share_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    nodes: Mapped[list["UserNode"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class SiteSetting(Base):
@@ -370,4 +375,81 @@ class CrawlLog(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True
     )
+
+
+class UserNode(Base):
+    """用户自建/托管的 VPS 探针节点。"""
+
+    __tablename__ = "user_nodes"
+    __table_args__ = (
+        Index("ix_user_nodes_user_created", "user_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    token: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(100), index=True)
+    country: Mapped[str] = mapped_column(String(10), default="hk")  # hk, jp, us, sg, de, gb, etc.
+    group_name: Mapped[str] = mapped_column(String(50), default="主力")
+    tags: Mapped[list] = mapped_column(JSON, default=list)  # ["主力", "V4", "V6", "CN2 GIA"]
+    os_type: Mapped[str] = mapped_column(String(30), default="debian")  # debian, ubuntu, centos, alpine, arch, windows
+    os_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    arch: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    cpu_cores: Mapped[int | None] = mapped_column(Integer, nullable=True, default=1)
+
+    price: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    currency: Mapped[str] = mapped_column(String(10), default="USD")
+    billing_cycle: Mapped[str] = mapped_column(String(20), default="monthly")  # monthly, annually, quarterly, triennially
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    traffic_limit_gb: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    is_online: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    # 冗余缓存最新状态字段，避免首页高频轮询每次关联快照大表
+    cached_status: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    user: Mapped["User"] = relationship(back_populates="nodes")
+    snapshots: Mapped[list["NodeSnapshot"]] = relationship(
+        back_populates="node", cascade="all, delete-orphan"
+    )
+
+
+class NodeSnapshot(Base):
+    """节点时序指标快照（用于详情历史图表）。"""
+
+    __tablename__ = "node_snapshots"
+    __table_args__ = (
+        Index("ix_node_snapshots_node_recorded", "node_id", "recorded_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    node_id: Mapped[int] = mapped_column(ForeignKey("user_nodes.id"), index=True)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, index=True
+    )
+
+    cpu_percent: Mapped[float] = mapped_column(Float, default=0.0)
+    ram_used_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
+    ram_total_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
+    swap_used_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
+    swap_total_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
+    disk_used_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
+    disk_total_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
+    load_1: Mapped[float] = mapped_column(Float, default=0.0)
+    load_5: Mapped[float] = mapped_column(Float, default=0.0)
+    load_15: Mapped[float] = mapped_column(Float, default=0.0)
+    net_rx_rate: Mapped[float] = mapped_column(Float, default=0.0)
+    net_tx_rate: Mapped[float] = mapped_column(Float, default=0.0)
+    net_rx_total: Mapped[int] = mapped_column(BigInteger, default=0)
+    net_tx_total: Mapped[int] = mapped_column(BigInteger, default=0)
+    uptime_seconds: Mapped[int] = mapped_column(BigInteger, default=0)
+    ping_stats: Mapped[list] = mapped_column(JSON, default=list)
+
+    node: Mapped["UserNode"] = relationship(back_populates="snapshots")
 

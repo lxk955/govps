@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Globe, Heart, Radar, Zap } from "lucide-react";
+import { Activity, Globe, Heart, Radar, Zap } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { MOBILE_NAV, navItemActive } from "@/lib/nav";
@@ -15,6 +15,7 @@ const NAV_ICONS = {
   "/": Radar,
   "/deals": Zap,
   "/ip": Globe,
+  "/monitor": Activity,
   "/watchlist": Heart,
 } as const;
 
