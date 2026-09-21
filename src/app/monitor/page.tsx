@@ -343,10 +343,10 @@ export default function MonitorPage() {
             </div>
             <div>
               <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
-                我的探针
+                {shareToken ? "节点监控" : "我的探针"}
               </h1>
               <p className="text-[11px] text-slate-400 font-mono hidden sm:block">
-                GoVPS 节点监控看板 · 4秒自适应刷新
+                {shareToken ? "GoVPS 公开探针监控看板" : "GoVPS 节点监控看板 · 4秒自适应刷新"}
               </p>
             </div>
           </div>
@@ -355,7 +355,7 @@ export default function MonitorPage() {
           {shareToken && (
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>公开只读面板 ({userInfo.email || "访客模式"})</span>
+              <span>公开只读面板</span>
             </div>
           )}
         </div>

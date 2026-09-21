@@ -71,7 +71,7 @@ def _calculate_cost_cny(price: float | None, currency: str, billing_cycle: str, 
     return monthly_val * units_cny
 
 
-def _node_to_dict(node: UserNode, now: datetime) -> dict:
+def _node_to_dict(node: UserNode, now: datetime, read_only: bool = False) -> dict:
     """格式化节点详情给前端展示。"""
     status = node.cached_status or {}
 
@@ -111,7 +111,7 @@ def _node_to_dict(node: UserNode, now: datetime) -> dict:
 
     return {
         "id": node.id,
-        "token": node.token,
+        "token": None if read_only else node.token,
         "name": node.name,
         "country": (node.country or "hk").lower(),
         "group_name": node.group_name or "主力",
@@ -203,7 +203,7 @@ def get_nodes(
     countries_map: dict[str, int] = {}
 
     for n in nodes:
-        d = _node_to_dict(n, now)
+        d = _node_to_dict(n, now, read_only=read_only)
         node_list.append(d)
 
         # 统计
@@ -253,10 +253,10 @@ def get_nodes(
         "nodes": node_list,
         "summary": summary,
         "user_info": {
-            "email": target_user.email,
+            "email": None if read_only else target_user.email,
             "is_owner": not read_only,
-            "public_enabled": target_user.monitor_public_enabled,
-            "share_token": target_user.monitor_share_token,
+            "public_enabled": target_user.monitor_public_enabled if not read_only else True,
+            "share_token": None if read_only else target_user.monitor_share_token,
         },
     }
 
