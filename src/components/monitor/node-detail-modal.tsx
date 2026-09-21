@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FlagIcon } from "./flag-icon";
 import { HistoryPoint, MonitorNode, NodeHistoryResponse } from "./types";
@@ -13,9 +13,18 @@ interface NodeDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   shareToken?: string | null;
+  onEdit?: (node: MonitorNode) => void;
+  isOwner?: boolean;
 }
 
-export function NodeDetailModal({ node, isOpen, onClose, shareToken }: NodeDetailModalProps) {
+export function NodeDetailModal({
+  node,
+  isOpen,
+  onClose,
+  shareToken,
+  onEdit,
+  isOwner,
+}: NodeDetailModalProps) {
   const [historyData, setHistoryData] = useState<HistoryPoint[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showLossStrip, setShowLossStrip] = useState(true);
@@ -32,7 +41,12 @@ export function NodeDetailModal({ node, isOpen, onClose, shareToken }: NodeDetai
       const url = shareToken
         ? `/api/monitor/nodes/${nodeId}/history?hours=24&share=${encodeURIComponent(shareToken)}`
         : `/api/monitor/nodes/${nodeId}/history?hours=24`;
-      const res = await fetch(url);
+      const token = typeof window !== "undefined" ? localStorage.getItem("govps_token") : null;
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const res = await fetch(url, { headers });
       if (res.ok) {
         const json: NodeHistoryResponse = await res.json();
         setHistoryData(json.points || []);
@@ -152,6 +166,20 @@ export function NodeDetailModal({ node, isOpen, onClose, shareToken }: NodeDetai
           </div>
 
           <div className="flex items-center gap-2">
+            {isOwner && onEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onClose();
+                  onEdit(node);
+                }}
+                className="h-8 gap-1 text-xs px-2.5 rounded-xl border-slate-200/80 dark:border-slate-800 font-medium text-slate-700 dark:text-slate-300"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">编辑配置</span>
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"

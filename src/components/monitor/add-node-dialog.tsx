@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Check, Copy, Server, Terminal } from "lucide-react";
+import { Check, Copy, Server, Terminal, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,37 +32,40 @@ export function AddNodeDialog({
   const [country, setCountry] = useState("hk");
   const [osType, setOsType] = useState("debian");
   const [groupName, setGroupName] = useState("主力");
-  const [tagsInput, setTagsInput] = useState("主力, V4, V6");
-  const [cpuCores, setCpuCores] = useState(1);
-  const [price, setPrice] = useState<string>("");
+  const [tagsInput, setTagsInput] = useState("");
+  const [cpuCores, setCpuCores] = useState("1");
+  const [price, setPrice] = useState("");
   const [currency, setCurrency] = useState("USD");
   const [billingCycle, setBillingCycle] = useState("monthly");
-  const [trafficLimitGb, setTrafficLimitGb] = useState<string>("");
+  const [trafficLimitGb, setTrafficLimitGb] = useState("");
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [installCommand, setInstallCommand] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (editingNode) {
+    if (isOpen && editingNode) {
       setName(editingNode.name);
       setCountry(editingNode.country);
       setOsType(editingNode.os_type);
       setGroupName(editingNode.group_name);
       setTagsInput(editingNode.tags.join(", "));
-      setCpuCores(editingNode.cpu_cores);
+      setCpuCores(String(editingNode.cpu_cores));
       setPrice(editingNode.price !== null ? String(editingNode.price) : "");
       setCurrency(editingNode.currency);
       setBillingCycle(editingNode.billing_cycle);
-      setTrafficLimitGb(editingNode.traffic_limit_gb !== null ? String(editingNode.traffic_limit_gb) : "");
-    } else {
+      setTrafficLimitGb(
+        editingNode.traffic_limit_gb !== null ? String(editingNode.traffic_limit_gb) : "",
+      );
+    } else if (isOpen) {
       setName("");
       setCountry("hk");
       setOsType("debian");
       setGroupName("主力");
-      setTagsInput("主力, V4, V6");
-      setCpuCores(1);
+      setTagsInput("");
+      setCpuCores("1");
       setPrice("");
       setCurrency("USD");
       setBillingCycle("monthly");
@@ -77,6 +80,12 @@ export function AddNodeDialog({
     e.preventDefault();
     if (!name.trim()) {
       setErrorMsg("请输入节点名称");
+      return;
+    }
+
+    const token = typeof window !== "undefined" ? localStorage.getItem("govps_token") : null;
+    if (!token) {
+      setErrorMsg("未检测到有效登录凭证，请先登录账户后再执行此操作");
       return;
     }
 
@@ -101,28 +110,33 @@ export function AddNodeDialog({
       traffic_limit_gb: trafficLimitGb ? parseFloat(trafficLimitGb) : null,
     };
 
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+
     try {
       if (editingNode) {
         const res = await fetch(`/api/monitor/nodes/${editingNode.id}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify(payload),
         });
         if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.detail || "更新失败");
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || (res.status === 401 ? "登录已过期，请重新登录" : "更新失败"));
         }
         onSuccess();
         onClose();
       } else {
         const res = await fetch("/api/monitor/nodes", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify(payload),
         });
         if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.detail || "创建失败");
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || (res.status === 401 ? "登录已过期，请重新登录" : "创建失败"));
         }
         const data = await res.json();
         setInstallCommand(data.install_command);
@@ -132,6 +146,39 @@ export function AddNodeDialog({
       setErrorMsg(err instanceof Error ? err.message : "请求异常，请稍后重试");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editingNode) return;
+    if (!window.confirm(`确定要删除节点「${editingNode.name}」吗？相关监控历史将被彻底清除。`)) return;
+
+    const token = typeof window !== "undefined" ? localStorage.getItem("govps_token") : null;
+    if (!token) {
+      setErrorMsg("未检测到有效登录凭证，请先登录账户");
+      return;
+    }
+
+    setIsDeleting(true);
+    setErrorMsg(null);
+
+    try {
+      const res = await fetch(`/api/monitor/nodes/${editingNode.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || (res.status === 401 ? "登录已过期，请重新登录" : "删除失败"));
+      }
+      onSuccess();
+      onClose();
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "删除失败，请稍后重试");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -281,7 +328,7 @@ export function AddNodeDialog({
                   type="number"
                   min={1}
                   value={cpuCores}
-                  onChange={(e) => setCpuCores(parseInt(e.target.value) || 1)}
+                  onChange={(e) => setCpuCores(e.target.value)}
                   className="h-9 text-xs rounded-xl font-mono"
                 />
               </div>
@@ -358,17 +405,33 @@ export function AddNodeDialog({
               </div>
             </div>
 
-            <DialogFooter className="mt-2">
-              <Button type="button" variant="outline" onClick={onClose} className="rounded-xl h-9 text-xs">
-                取消
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="rounded-xl h-9 text-xs px-5 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
-              >
-                {isSubmitting ? "正在处理..." : editingNode ? "保存更改" : "创建并获取命令"}
-              </Button>
+            <DialogFooter className="mt-2 flex items-center justify-between sm:justify-between w-full">
+              {editingNode ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleDelete}
+                  disabled={isSubmitting || isDeleting}
+                  className="rounded-xl h-9 text-xs px-3 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50 border-red-200 dark:border-red-900"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1" />
+                  <span>{isDeleting ? "正在删除..." : "删除节点"}</span>
+                </Button>
+              ) : (
+                <div />
+              )}
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" onClick={onClose} className="rounded-xl h-9 text-xs">
+                  取消
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting || isDeleting}
+                  className="rounded-xl h-9 text-xs px-5 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                >
+                  {isSubmitting ? "正在处理..." : editingNode ? "保存更改" : "创建并获取命令"}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         )}

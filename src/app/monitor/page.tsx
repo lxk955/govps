@@ -501,6 +501,11 @@ export default function MonitorPage() {
         isOpen={!!detailNode}
         onClose={() => setDetailNode(null)}
         shareToken={shareToken}
+        isOwner={userInfo.is_owner}
+        onEdit={(node) => {
+          setEditingNode(node);
+          setIsAddOpen(true);
+        }}
       />
 
       {/* 添加 / 编辑节点弹窗 */}
