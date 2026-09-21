@@ -45,6 +45,7 @@ export interface MonitorNode {
   remaining_gb: number | null;
   is_online: boolean;
   is_demo: boolean;
+  is_public: boolean;
   uptime_days: number;
   last_seen_at: string | null;
   created_at: string;

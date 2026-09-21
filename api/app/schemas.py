@@ -103,6 +103,7 @@ class NodeCreate(BaseModel):
     billing_cycle: str = Field(default="monthly", max_length=20)
     expires_at: datetime | None = None
     traffic_limit_gb: float | None = None
+    is_public: bool = True
 
 
 class NodeUpdate(BaseModel):
@@ -117,6 +118,12 @@ class NodeUpdate(BaseModel):
     billing_cycle: str | None = Field(default=None, max_length=20)
     expires_at: datetime | None = None
     traffic_limit_gb: float | None = None
+    is_public: bool | None = None
+
+
+class ShareUpdate(BaseModel):
+    enabled: bool = True
+    public_node_ids: list[int] | None = None
 
 
 class PingMetric(BaseModel):

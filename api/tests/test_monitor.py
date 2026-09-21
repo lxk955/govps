@@ -161,6 +161,18 @@ def test_demo_and_share(client, test_user):
     assert guest_data["user_info"]["is_owner"] is False
     assert len(guest_data["nodes"]) >= 4
 
+    # 4.1 测试选择性公开节点（仅公开第一个节点）
+    select_res = client.post(
+        "/api/monitor/share",
+        json={"enabled": True, "public_node_ids": [demo_node["id"]]},
+        headers=headers,
+    )
+    assert select_res.status_code == 200
+    guest_res2 = client.get(f"/api/monitor/nodes?share={share_token}")
+    assert guest_res2.status_code == 200
+    assert len(guest_res2.json()["nodes"]) == 1
+    assert guest_res2.json()["nodes"][0]["id"] == demo_node["id"]
+
     # 5. 游客访问单节点历史曲线
     guest_hist = client.get(f"/api/monitor/nodes/{demo_node['id']}/history?share={share_token}")
     assert guest_hist.status_code == 200

@@ -16,14 +16,14 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
-from sqlalchemy import delete, desc, func, select
+from sqlalchemy import delete, desc, func, select, update
 from sqlalchemy.orm import Session, joinedload
 
 from ..config import settings
 from ..database import get_db
 from ..deps import get_current_user, get_optional_user
 from ..models import ExchangeRate, NodeSnapshot, User, UserNode, to_iso_utc, utcnow
-from ..schemas import NodeCreate, NodeReport, NodeUpdate
+from ..schemas import NodeCreate, NodeReport, NodeUpdate, ShareUpdate
 
 router = APIRouter(prefix="/api/monitor", tags=["monitor"])
 
@@ -129,6 +129,7 @@ def _node_to_dict(node: UserNode, now: datetime, read_only: bool = False) -> dic
         "remaining_gb": remaining_gb,
         "is_online": is_online,
         "is_demo": node.is_demo,
+        "is_public": bool(node.is_public) if getattr(node, "is_public", None) is not None else True,
         "uptime_days": uptime_days,
         "last_seen_at": to_iso_utc(node.last_seen_at),
         "created_at": to_iso_utc(node.created_at),
@@ -179,11 +180,10 @@ def get_nodes(
         target_user = user
 
     now = utcnow()
-    nodes = db.scalars(
-        select(UserNode)
-        .where(UserNode.user_id == target_user.id)
-        .order_by(UserNode.created_at.asc())
-    ).all()
+    stmt = select(UserNode).where(UserNode.user_id == target_user.id)
+    if read_only:
+        stmt = stmt.where(UserNode.is_public == True)
+    nodes = db.scalars(stmt.order_by(UserNode.created_at.asc())).all()
 
     # 拉取当前汇率做资产金额折算
     rates_rows = db.scalars(select(ExchangeRate)).all()
@@ -285,6 +285,7 @@ def create_node(
         traffic_limit_gb=payload.traffic_limit_gb,
         is_online=False,
         is_demo=False,
+        is_public=payload.is_public if payload.is_public is not None else True,
         cached_status={
             "cpu_percent": 0.0,
             "ram_used_bytes": 0,
@@ -351,6 +352,8 @@ def update_node(
         node.expires_at = payload.expires_at
     if payload.traffic_limit_gb is not None:
         node.traffic_limit_gb = payload.traffic_limit_gb
+    if payload.is_public is not None:
+        node.is_public = payload.is_public
 
     db.commit()
     db.refresh(node)
@@ -376,14 +379,28 @@ def delete_node(
 
 @router.post("/share")
 def toggle_share(
-    enabled: bool = Query(default=True),
+    payload: ShareUpdate | None = None,
+    enabled: bool | None = Query(default=None),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """开启或关闭公开监控分享页面。"""
+    """开启或关闭公开监控分享页面，并支持设置公开展示的节点。"""
+    target_enabled = True
+    if payload is not None and payload.enabled is not None:
+        target_enabled = payload.enabled
+    elif enabled is not None:
+        target_enabled = enabled
+
     if not user.monitor_share_token:
         user.monitor_share_token = secrets.token_urlsafe(16)
-    user.monitor_public_enabled = enabled
+    user.monitor_public_enabled = target_enabled
+
+    if payload and payload.public_node_ids is not None:
+        target_ids = set(payload.public_node_ids)
+        user_nodes = db.scalars(select(UserNode).where(UserNode.user_id == user.id)).all()
+        for un in user_nodes:
+            un.is_public = un.id in target_ids
+
     db.commit()
     return {
         "public_enabled": user.monitor_public_enabled,
@@ -601,6 +618,7 @@ def load_demo_nodes(
             traffic_limit_gb=cfg["traffic_limit_gb"],
             is_online=True,
             is_demo=True,
+            is_public=True,
             last_seen_at=now,
             cached_status={
                 "cpu_percent": cfg["cpu_percent"],
@@ -918,7 +936,7 @@ PYTHON_BIN=$(command -v python3 || command -v python || echo "/usr/bin/python3")
 mkdir -p "$INSTALL_DIR"
 
 cat << 'EOF' > "$INSTALL_DIR/govps_agent.py"
-import os, sys, time, json, platform, subprocess, urllib.request, urllib.error
+import os, sys, time, json, platform, subprocess, urllib.request, urllib.error, concurrent.futures
 
 TOKEN = os.environ.get("GOVPS_TOKEN", "")
 SERVER_URL = os.environ.get("GOVPS_SERVER_URL", "https://govps.xyz")
@@ -1088,16 +1106,20 @@ def main():
             rx_rate, tx_rate, rx_total, tx_total = get_net_info()
             uptime = get_uptime()
 
-            # 每 30 秒执行一次三网 Ping 测速
+            # 每 30 秒执行一次三网 Ping 测速（多线程并发探测，避免阻塞心跳上报）
             if ping_cycle % 3 == 0 or not cached_ping_stats:
-                cached_ping_stats = []
-                for pt in PING_TARGETS:
+                def probe(pt):
                     lat, loss = run_ping(pt["host"])
-                    cached_ping_stats.append({
+                    return {
                         "name": pt["name"],
                         "latency_ms": lat,
-                        "loss_rate": loss
-                    })
+                        "loss_rate": loss,
+                    }
+                try:
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+                        cached_ping_stats = list(executor.map(probe, PING_TARGETS))
+                except Exception:
+                    pass
             ping_cycle += 1
 
             payload = {

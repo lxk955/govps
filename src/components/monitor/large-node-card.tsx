@@ -210,14 +210,14 @@ export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
               <span>负载</span>
             </div>
             <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">
-              {metrics.load_1.toFixed(2)}
+              {(metrics?.load_1 ?? 0).toFixed(2)}
             </span>
           </div>
           <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-            {metrics.load_5.toFixed(2)} / {metrics.load_15.toFixed(2)}
+            {(metrics?.load_5 ?? 0).toFixed(2)} / {(metrics?.load_15 ?? 0).toFixed(2)}
           </div>
           <SegmentedMeter
-            percent={Math.min(100, metrics.load_1 * 50)}
+            percent={Math.min(100, (metrics?.load_1 ?? 0) * 50)}
             totalBlocks={14}
             colorClass="bg-rose-500 dark:bg-rose-400"
           />
