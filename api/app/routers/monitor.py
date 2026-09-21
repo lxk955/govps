@@ -887,7 +887,11 @@ def report_metrics(
 
 
 def get_agent_python_code() -> str:
-    """返回纯标准库实现的最新版 Python 探针核心程序代码。"""
+    """返回纯标准库实现的最新版 Python 探针核心程序代码。
+
+    TODO: 针对 64MB/128MB 等极限小内存/NAT 机器，后续规划推出 Go 编写的单文件静态二进制 Agent，
+          将常驻内存 (RSS) 压缩至 2-4MB 以内（详见 docs/TODO.md）。
+    """
     return f"""import os, sys, time, json, platform, subprocess, urllib.request, urllib.error, concurrent.futures, collections, py_compile
 
 AGENT_VERSION = "{CURRENT_AGENT_VERSION}"
