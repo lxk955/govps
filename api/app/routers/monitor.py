@@ -924,14 +924,27 @@ fi
 if [ "$ACTION" = "update" ]; then
   print_info "正在检测并热更新 GoVPS Agent..."
   if [ -z "$TOKEN" ] && [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
-    SAVED_TOKEN=$(grep -E "^Environment=GOVPS_TOKEN=" /etc/systemd/system/${SERVICE_NAME}.service | head -n1 | cut -d'=' -f2- || true)
-    SAVED_URL=$(grep -E "^Environment=GOVPS_SERVER_URL=" /etc/systemd/system/${SERVICE_NAME}.service | head -n1 | cut -d'=' -f2- || true)
+    SAVED_TOKEN=$(grep -E "^Environment=GOVPS_TOKEN=" /etc/systemd/system/${SERVICE_NAME}.service | head -n1 | sed -E 's/^Environment=(")?GOVPS_TOKEN=([^"]*)(")?/\2/' || true)
+    SAVED_URL=$(grep -E "^Environment=GOVPS_SERVER_URL=" /etc/systemd/system/${SERVICE_NAME}.service | head -n1 | sed -E 's/^Environment=(")?GOVPS_SERVER_URL=([^"]*)(")?/\2/' || true)
     [ -n "$SAVED_TOKEN" ] && TOKEN="$SAVED_TOKEN"
     [ -n "$SAVED_URL" ] && SERVER_URL="$SAVED_URL"
   fi
   if [ -z "$TOKEN" ] && [ -f "$INSTALL_DIR/token" ]; then
     TOKEN=$(cat "$INSTALL_DIR/token" 2>/dev/null || true)
   fi
+
+  # 防御性清洗 TOKEN 与 SERVER_URL 前缀
+  while [[ "$TOKEN" =~ ^GOVPS_TOKEN= ]]; do
+    TOKEN="${TOKEN#GOVPS_TOKEN=}"
+  done
+  TOKEN=$(echo "$TOKEN" | tr -d '"' | tr -d "'" | xargs)
+
+  while [[ "$SERVER_URL" =~ ^GOVPS_SERVER_URL= ]]; do
+    SERVER_URL="${SERVER_URL#GOVPS_SERVER_URL=}"
+  done
+  SERVER_URL=$(echo "$SERVER_URL" | tr -d '"' | tr -d "'" | xargs)
+  [ -z "$SERVER_URL" ] && SERVER_URL="https://govps.xyz"
+
   if [ -z "$TOKEN" ]; then
     print_err "未找到当前节点的 Token 记录，请使用: bash agent.sh --token <YOUR_TOKEN> 重新安装更新。"
     exit 1
@@ -949,6 +962,18 @@ if [ "$ACTION" = "update" ]; then
     rm -f "$TMP_SH"
   fi
 fi
+
+# 全局清理防御
+while [[ "$TOKEN" =~ ^GOVPS_TOKEN= ]]; do
+  TOKEN="${TOKEN#GOVPS_TOKEN=}"
+done
+TOKEN=$(echo "$TOKEN" | tr -d '"' | tr -d "'" | xargs)
+
+while [[ "$SERVER_URL" =~ ^GOVPS_SERVER_URL= ]]; do
+  SERVER_URL="${SERVER_URL#GOVPS_SERVER_URL=}"
+done
+SERVER_URL=$(echo "$SERVER_URL" | tr -d '"' | tr -d "'" | xargs)
+[ -z "$SERVER_URL" ] && SERVER_URL="https://govps.xyz"
 
 if [ -z "$TOKEN" ]; then
   print_err "未提供节点 Token！请使用: bash agent.sh --token <YOUR_TOKEN>"
@@ -989,8 +1014,18 @@ chmod +x "$INSTALL_DIR/agent.sh" 2>/dev/null || true
 cat << 'EOF' > "$INSTALL_DIR/govps_agent.py"
 import os, sys, time, json, platform, subprocess, urllib.request, urllib.error, concurrent.futures, collections
 
-TOKEN = os.environ.get("GOVPS_TOKEN", "")
-SERVER_URL = os.environ.get("GOVPS_SERVER_URL", "https://govps.xyz")
+TOKEN = os.environ.get("GOVPS_TOKEN", "").strip()
+while TOKEN.startswith("GOVPS_TOKEN="):
+    TOKEN = TOKEN[len("GOVPS_TOKEN="):].strip()
+TOKEN = TOKEN.strip("\"'")
+
+SERVER_URL = os.environ.get("GOVPS_SERVER_URL", "https://govps.xyz").strip()
+while SERVER_URL.startswith("GOVPS_SERVER_URL="):
+    SERVER_URL = SERVER_URL[len("GOVPS_SERVER_URL="):].strip()
+SERVER_URL = SERVER_URL.strip("\"'")
+if not SERVER_URL.startswith("http://") and not SERVER_URL.startswith("https://"):
+    SERVER_URL = "https://govps.xyz"
+
 PING_COUNT = int(os.environ.get("GOVPS_PING_COUNT", "10"))
 PING_WINDOW = int(os.environ.get("GOVPS_PING_WINDOW", "10"))
 
