@@ -987,14 +987,18 @@ if ! command -v python3 &>/dev/null; then
   print_warn "未检测到 python3，尝试通过包管理器安装..."
   if command -v apt-get &>/dev/null; then
     apt-get update -y && apt-get install -y python3 iputils-ping curl
+  elif command -v dnf &>/dev/null; then
+    dnf install -y python3 iputils curl
   elif command -v yum &>/dev/null; then
     yum install -y python3 iputils curl
   elif command -v apk &>/dev/null; then
     apk add --no-cache python3 iputils curl
   elif command -v pacman &>/dev/null; then
     pacman -Sy --noconfirm python iputils curl
+  elif command -v zypper &>/dev/null; then
+    zypper --non-interactive install python3 iputils curl
   else
-    print_err "未检测到包管理器，请手动安装 Python 3 之后重试。"
+    print_err "未检测到支持的包管理器，请手动安装 Python 3 之后重试。"
     exit 1
   fi
 fi
