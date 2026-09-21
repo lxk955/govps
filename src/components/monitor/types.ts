@@ -22,6 +22,8 @@ export interface NodeMetrics {
   uptime_seconds: number;
   uptime_days: number;
   kernel_version?: string | null;
+  agent_version?: string | null;
+  auto_update?: boolean;
   ping_stats: PingTargetStat[];
   ping_history?: PingTargetStat[][]; // 最近 30 次测速样本
 }

@@ -99,6 +99,8 @@ def test_crud_and_reporting(client, test_user):
         "net_rx_total": 500000000,
         "net_tx_total": 300000000,
         "uptime_seconds": 86400 * 5,
+        "agent_version": "1.0.0",
+        "auto_update": True,
         "ping_stats": [
             {"name": "电信", "latency_ms": 42.5, "loss_rate": 0.0},
             {"name": "联通", "latency_ms": 38.2, "loss_rate": 0.0},
@@ -111,7 +113,20 @@ def test_crud_and_reporting(client, test_user):
         headers={"X-Node-Token": token},
     )
     assert report_res.status_code == 200
-    assert report_res.json()["status"] == "ok"
+    res_json = report_res.json()
+    assert res_json["status"] == "ok"
+    assert res_json["upgrade_available"] is True
+    assert res_json["latest_version"] == "1.2.0"
+
+    # 3.1 上报已是最新版本，应无升级提示
+    report_payload["agent_version"] = "1.2.0"
+    report_res2 = client.post(
+        "/api/monitor/report",
+        json=report_payload,
+        headers={"X-Node-Token": token},
+    )
+    assert report_res2.status_code == 200
+    assert report_res2.json()["upgrade_available"] is False
 
     # 4. 再次获取列表，验证状态已更新为在线且指标正确
     updated_res = client.get("/api/monitor/nodes", headers=headers)
@@ -119,6 +134,8 @@ def test_crud_and_reporting(client, test_user):
     assert target["is_online"] is True
     assert target["metrics"]["cpu_percent"] == 15.5
     assert target["metrics"]["uptime_days"] == 5
+    assert target["metrics"]["agent_version"] == "1.2.0"
+    assert target["metrics"]["auto_update"] is True
 
     # 5. 历史曲线查询
     hist_res = client.get(f"/api/monitor/nodes/{node_id}/history", headers=headers)
@@ -190,3 +207,18 @@ def test_agent_script_distribution(client):
     assert "python3" in res.text
     assert "--uninstall" in res.text
     assert "--update" in res.text
+    assert "--auto-update" in res.text
+    assert "--no-auto-update" in res.text
+
+
+def test_agent_python_distribution(client):
+    res = client.get("/api/monitor/agent.py")
+    assert res.status_code == 200
+    assert res.headers.get("X-Agent-Version") == "1.2.0"
+    assert "check_and_apply_update" in res.text
+    assert "os.execv" in res.text
+    assert "py_compile" in res.text
+    # 确保返回的代码在语法上完全有效
+    compiled = compile(res.text, "govps_agent.py", "exec")
+    assert compiled is not None
+

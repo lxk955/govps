@@ -27,6 +27,8 @@ from ..schemas import NodeCreate, NodeReport, NodeUpdate, ShareUpdate
 
 router = APIRouter(prefix="/api/monitor", tags=["monitor"])
 
+CURRENT_AGENT_VERSION = "1.2.0"
+
 
 def _calculate_cost_cny(price: float | None, currency: str, billing_cycle: str, rates: dict[str, float]) -> float:
     """换算为每月 CNY 金额。"""
@@ -142,6 +144,8 @@ def _node_to_dict(node: UserNode, now: datetime, read_only: bool = False) -> dic
         "metrics": {
             "uptime_days": uptime_days,
             "kernel_version": kernel_ver,
+            "agent_version": status.get("agent_version"),
+            "auto_update": status.get("auto_update", True),
             "cpu_percent": round(float(status.get("cpu_percent") if status.get("cpu_percent") is not None else 0.0), 2),
             "ram_used_bytes": int(status.get("ram_used_bytes") or 0),
             "ram_total_bytes": int(status.get("ram_total_bytes") or 0),
@@ -640,6 +644,8 @@ def load_demo_nodes(
                 "net_rx_total": cfg["net_rx_total"],
                 "net_tx_total": cfg["net_tx_total"],
                 "uptime_seconds": cfg["uptime_seconds"],
+                "agent_version": CURRENT_AGENT_VERSION,
+                "auto_update": True,
                 "ping_stats": latest_ping,
                 "ping_history": ping_hist,
             },
@@ -823,6 +829,8 @@ def report_metrics(
         "net_tx_total": payload.net_tx_total,
         "uptime_seconds": payload.uptime_seconds,
         "kernel_version": kernel_ver,
+        "agent_version": payload.agent_version or CURRENT_AGENT_VERSION,
+        "auto_update": payload.auto_update,
         "ping_stats": [p.model_dump() for p in payload.ping_stats],
         "ping_history": ping_history,
     }
@@ -866,167 +874,34 @@ def report_metrics(
         db.add(snap)
 
     db.commit()
-    return {"status": "ok"}
+
+    upgrade_available = False
+    if payload.auto_update and payload.agent_version and payload.agent_version != CURRENT_AGENT_VERSION:
+        upgrade_available = True
+
+    return {
+        "status": "ok",
+        "latest_version": CURRENT_AGENT_VERSION,
+        "upgrade_available": upgrade_available,
+    }
 
 
-@router.api_route("/agent.sh", methods=["GET", "HEAD"])
-def get_agent_script():
-    """动态返回纯原生 Shell + Python3 的高兼容性 VPS 监控 Agent 安装与卸载脚本。"""
-    script_content = r"""#!/usr/bin/env bash
-# ==============================================================================
-# GoVPS Monitor Agent · 一键部署脚本
-# 兼容 Debian, Ubuntu, CentOS, AlmaLinux, Rocky, Alpine, Arch 等各类主流系统
-# ==============================================================================
-set -e
+def get_agent_python_code() -> str:
+    """返回纯标准库实现的最新版 Python 探针核心程序代码。"""
+    return f"""import os, sys, time, json, platform, subprocess, urllib.request, urllib.error, concurrent.futures, collections, py_compile
 
-COLOR_GREEN='\033[0;32m'
-COLOR_BLUE='\033[0;34m'
-COLOR_RED='\033[0;31m'
-COLOR_YELLOW='\033[1;33m'
-COLOR_RESET='\033[0m'
-
-INSTALL_DIR="/opt/govps-agent"
-SERVICE_NAME="govps-agent"
-
-print_info() { echo -e "${COLOR_BLUE}[INFO]${COLOR_RESET} $1"; }
-print_ok()   { echo -e "${COLOR_GREEN}[OK]${COLOR_RESET} $1"; }
-print_warn() { echo -e "${COLOR_YELLOW}[WARN]${COLOR_RESET} $1"; }
-print_err()  { echo -e "${COLOR_RED}[ERROR]${COLOR_RESET} $1"; }
-
-TOKEN=""
-SERVER_URL="https://govps.xyz"
-ACTION="install"
-
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    --token) TOKEN="$2"; shift 2 ;;
-    --url) SERVER_URL="$2"; shift 2 ;;
-    --uninstall) ACTION="uninstall"; shift ;;
-    --update) ACTION="update"; shift ;;
-    *) shift ;;
-  esac
-done
-
-if [ "$ACTION" = "uninstall" ]; then
-  print_info "正在卸载 GoVPS Agent..."
-  if command -v systemctl &>/dev/null; then
-    systemctl stop $SERVICE_NAME || true
-    systemctl disable $SERVICE_NAME || true
-    rm -f /etc/systemd/system/${SERVICE_NAME}.service
-    systemctl daemon-reload || true
-  fi
-  pkill -f "govps_agent.py" || true
-  rm -rf "$INSTALL_DIR"
-  print_ok "GoVPS Agent 卸载完成！"
-  exit 0
-fi
-
-if [ "$ACTION" = "update" ]; then
-  print_info "正在检测并热更新 GoVPS Agent..."
-  if [ -z "$TOKEN" ] && [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
-    SAVED_TOKEN=$(grep -E "^Environment=GOVPS_TOKEN=" /etc/systemd/system/${SERVICE_NAME}.service | head -n1 | sed -E 's/^Environment=(")?GOVPS_TOKEN=([^"]*)(")?/\2/' || true)
-    SAVED_URL=$(grep -E "^Environment=GOVPS_SERVER_URL=" /etc/systemd/system/${SERVICE_NAME}.service | head -n1 | sed -E 's/^Environment=(")?GOVPS_SERVER_URL=([^"]*)(")?/\2/' || true)
-    [ -n "$SAVED_TOKEN" ] && TOKEN="$SAVED_TOKEN"
-    [ -n "$SAVED_URL" ] && SERVER_URL="$SAVED_URL"
-  fi
-  if [ -z "$TOKEN" ] && [ -f "$INSTALL_DIR/token" ]; then
-    TOKEN=$(cat "$INSTALL_DIR/token" 2>/dev/null || true)
-  fi
-
-  # 防御性清洗 TOKEN 与 SERVER_URL 前缀
-  while [[ "$TOKEN" =~ ^GOVPS_TOKEN= ]]; do
-    TOKEN="${TOKEN#GOVPS_TOKEN=}"
-  done
-  TOKEN=$(echo "$TOKEN" | tr -d '"' | tr -d "'" | xargs)
-
-  while [[ "$SERVER_URL" =~ ^GOVPS_SERVER_URL= ]]; do
-    SERVER_URL="${SERVER_URL#GOVPS_SERVER_URL=}"
-  done
-  SERVER_URL=$(echo "$SERVER_URL" | tr -d '"' | tr -d "'" | xargs)
-  [ -z "$SERVER_URL" ] && SERVER_URL="https://govps.xyz"
-
-  if [ -z "$TOKEN" ]; then
-    print_err "未找到当前节点的 Token 记录，请使用: bash agent.sh --token <YOUR_TOKEN> 重新安装更新。"
-    exit 1
-  fi
-  # 仅当本脚本是从本地文件（如 /opt/govps-agent/agent.sh）执行时，尝试拉取服务端最新 agent.sh 链式重载
-  if [ "${GOVPS_UPDATE_REEXEC:-0}" != "1" ] && [ -f "$0" ] && [ "$0" != "bash" ] && [ "$0" != "-bash" ] && [ -n "$SERVER_URL" ]; then
-    export GOVPS_UPDATE_REEXEC=1
-    TMP_SH=$(mktemp /tmp/govps-update.XXXXXX.sh 2>/dev/null || echo "/tmp/govps-update.sh")
-    if curl -fsSL "${SERVER_URL}/api/monitor/agent.sh" -o "$TMP_SH" 2>/dev/null && [ -s "$TMP_SH" ] && grep -q "GOVPS" "$TMP_SH" 2>/dev/null; then
-      bash "$TMP_SH" --update --token "$TOKEN" --url "$SERVER_URL"
-      RET=$?
-      rm -f "$TMP_SH"
-      exit $RET
-    fi
-    rm -f "$TMP_SH"
-  fi
-fi
-
-# 全局清理防御
-while [[ "$TOKEN" =~ ^GOVPS_TOKEN= ]]; do
-  TOKEN="${TOKEN#GOVPS_TOKEN=}"
-done
-TOKEN=$(echo "$TOKEN" | tr -d '"' | tr -d "'" | xargs)
-
-while [[ "$SERVER_URL" =~ ^GOVPS_SERVER_URL= ]]; do
-  SERVER_URL="${SERVER_URL#GOVPS_SERVER_URL=}"
-done
-SERVER_URL=$(echo "$SERVER_URL" | tr -d '"' | tr -d "'" | xargs)
-[ -z "$SERVER_URL" ] && SERVER_URL="https://govps.xyz"
-
-if [ -z "$TOKEN" ]; then
-  print_err "未提供节点 Token！请使用: bash agent.sh --token <YOUR_TOKEN>"
-  exit 1
-fi
-
-print_info "开始部署 GoVPS 探针 Agent..."
-
-# 检查 Python3 与网络工具
-if ! command -v python3 &>/dev/null; then
-  print_warn "未检测到 python3，尝试通过包管理器安装..."
-  if command -v apt-get &>/dev/null; then
-    apt-get update -y && apt-get install -y python3 iputils-ping curl
-  elif command -v dnf &>/dev/null; then
-    dnf install -y python3 iputils curl
-  elif command -v yum &>/dev/null; then
-    yum install -y python3 iputils curl
-  elif command -v apk &>/dev/null; then
-    apk add --no-cache python3 iputils curl
-  elif command -v pacman &>/dev/null; then
-    pacman -Sy --noconfirm python iputils curl
-  elif command -v zypper &>/dev/null; then
-    zypper --non-interactive install python3 iputils curl
-  else
-    print_err "未检测到支持的包管理器，请手动安装 Python 3 之后重试。"
-    exit 1
-  fi
-fi
-
-PYTHON_BIN=$(command -v python3 || command -v python || echo "/usr/bin/python3")
-
-mkdir -p "$INSTALL_DIR"
-echo "$TOKEN" > "$INSTALL_DIR/token"
-chmod 600 "$INSTALL_DIR/token"
-if [ -f "$0" ] && grep -q "GOVPS" "$0" 2>/dev/null; then
-  cp -f "$0" "$INSTALL_DIR/agent.sh" 2>/dev/null || true
-else
-  curl -fsSL "${SERVER_URL}/api/monitor/agent.sh" -o "$INSTALL_DIR/agent.sh" 2>/dev/null || true
-fi
-chmod +x "$INSTALL_DIR/agent.sh" 2>/dev/null || true
-
-cat << 'EOF' > "$INSTALL_DIR/govps_agent.py"
-import os, sys, time, json, platform, subprocess, urllib.request, urllib.error, concurrent.futures, collections
+AGENT_VERSION = "{CURRENT_AGENT_VERSION}"
+AUTO_UPDATE_ENABLED = os.environ.get("GOVPS_AUTO_UPDATE", "1").strip().lower() not in ("0", "false", "no", "off")
 
 TOKEN = os.environ.get("GOVPS_TOKEN", "").strip()
 while TOKEN.startswith("GOVPS_TOKEN="):
     TOKEN = TOKEN[len("GOVPS_TOKEN="):].strip()
-TOKEN = TOKEN.strip("\"'")
+TOKEN = TOKEN.strip().strip('"').strip("'")
 
 SERVER_URL = os.environ.get("GOVPS_SERVER_URL", "https://govps.xyz").strip()
 while SERVER_URL.startswith("GOVPS_SERVER_URL="):
     SERVER_URL = SERVER_URL[len("GOVPS_SERVER_URL="):].strip()
-SERVER_URL = SERVER_URL.strip("\"'")
+SERVER_URL = SERVER_URL.strip().strip('"').strip("'")
 if not SERVER_URL.startswith("http://") and not SERVER_URL.startswith("https://"):
     SERVER_URL = "https://govps.xyz"
 
@@ -1034,12 +909,88 @@ PING_COUNT = int(os.environ.get("GOVPS_PING_COUNT", "10"))
 PING_WINDOW = int(os.environ.get("GOVPS_PING_WINDOW", "10"))
 
 PING_TARGETS = [
-    {"name": "电信", "hosts": ["202.96.209.133", "202.96.128.86"]},   # 上海电信 / 广东电信
-    {"name": "联通", "hosts": ["112.64.120.1", "119.167.0.1"]},       # 上海联通 / 山东联通骨干
-    {"name": "移动", "hosts": ["221.130.33.52", "211.136.192.6"]},   # 北京移动 / 广东移动
+    {{"name": "电信", "hosts": ["202.96.209.133", "202.96.128.86"]}},   # 上海电信 / 广东电信
+    {{"name": "联通", "hosts": ["112.64.120.1", "119.167.0.1"]}},       # 上海联通 / 山东联通骨干
+    {{"name": "移动", "hosts": ["221.130.33.52", "211.136.192.6"]}},   # 北京移动 / 广东移动
 ]
 
 _rolling_ping_records = collections.defaultdict(lambda: collections.deque(maxlen=PING_WINDOW))
+_last_update_check = 0.0
+_UPDATE_CHECK_COOLDOWN = 1800.0  # 自动更新最小冷却时间 30 分钟，避免高频打服务端
+
+def check_and_apply_update(target_version=None):
+    \"\"\"检测并执行平滑自更新：原子替换本地文件并通过 os.execv 原地重载，保持 PID 与进程生命周期。\"\"\"
+    global _last_update_check
+    now = time.time()
+    if not AUTO_UPDATE_ENABLED:
+        return
+    if now - _last_update_check < _UPDATE_CHECK_COOLDOWN:
+        return
+    _last_update_check = now
+
+    script_path = os.path.abspath(__file__)
+    install_dir = os.path.dirname(script_path)
+    if not os.path.isdir(install_dir):
+        return
+
+    update_url = f"{{SERVER_URL.rstrip('/')}}/api/monitor/agent.py"
+    tmp_path = os.path.join(install_dir, "govps_agent.py.new")
+
+    try:
+        req = urllib.request.Request(
+            update_url,
+            headers={{
+                "User-Agent": f"GoVPS-Agent/{{AGENT_VERSION}}",
+                "X-Node-Token": TOKEN,
+            }},
+        )
+        with urllib.request.urlopen(req, timeout=15) as res:
+            if res.status != 200:
+                return
+            new_code = res.read().decode("utf-8")
+
+        # 校验新脚本完整性与特征
+        if "AGENT_VERSION" not in new_code or "def main():" not in new_code:
+            return
+
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            f.write(new_code)
+
+        # 语法校验：若编译出错抛出异常放弃覆盖
+        py_compile.compile(tmp_path, doraise=True)
+
+        # 原子覆盖替换
+        os.replace(tmp_path, script_path)
+        os.chmod(script_path, 0o755)
+
+        # 同步静默拉取最新的 agent.sh 维护脚本
+        try:
+            sh_url = f"{{SERVER_URL.rstrip('/')}}/api/monitor/agent.sh"
+            sh_path = os.path.join(install_dir, "agent.sh")
+            sh_tmp = os.path.join(install_dir, "agent.sh.new")
+            sh_req = urllib.request.Request(sh_url, headers={{"User-Agent": f"GoVPS-Agent/{{AGENT_VERSION}}"}})
+            with urllib.request.urlopen(sh_req, timeout=10) as res_sh:
+                if res_sh.status == 200:
+                    sh_code = res_sh.read().decode("utf-8")
+                    if "GOVPS" in sh_code:
+                        with open(sh_tmp, "w", encoding="utf-8") as f:
+                            f.write(sh_code)
+                        os.replace(sh_tmp, sh_path)
+                        os.chmod(sh_path, 0o755)
+        except Exception:
+            pass
+
+        print(f"[{{time.strftime('%Y-%m-%d %H:%M:%S')}}] 探针已成功自动平滑升级至版本 {{target_version or '最新版'}}，正在原地重载...", flush=True)
+        # 原地替换当前进程镜像，PID 不变，平滑进入新版循环
+        os.execv(sys.executable, [sys.executable, script_path] + sys.argv[1:])
+    except Exception as e:
+        print(f"[{{time.strftime('%Y-%m-%d %H:%M:%S')}}] 自动更新执行异常: {{e}}", file=sys.stderr, flush=True)
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
 
 def get_uptime():
     try:
@@ -1099,7 +1050,7 @@ def get_mem_info():
     ram_used, ram_total = 0, 0
     swap_used, swap_total = 0, 0
     try:
-        mem = {}
+        mem = {{}}
         with open("/proc/meminfo", "r") as f:
             for line in f:
                 parts = line.split(":")
@@ -1166,12 +1117,12 @@ def get_os_info():
         found_distro = False
         for p in ["/etc/os-release", "/usr/lib/os-release"]:
             if os.path.exists(p):
-                data = {}
+                data = {{}}
                 with open(p, "r") as f:
                     for line in f:
                         if "=" in line:
                             k, v = line.strip().split("=", 1)
-                            data[k.strip()] = v.strip().strip("\"'")
+                            data[k.strip()] = v.strip().strip('"').strip("'")
                 distro_id = data.get("ID", "").lower()
                 if distro_id:
                     os_name = distro_id
@@ -1281,7 +1232,7 @@ def run_ping_carrier(carrier_name, target_or_targets):
 
     # 滑动窗口累计多轮探测（默认保存最近 10 轮采样，共 100 个 ICMP 样本，时间跨度 5 分钟）
     dq = _rolling_ping_records[carrier_name]
-    dq.append({"sent": chosen_sent, "recv": chosen_recv, "rtt": chosen_rtt})
+    dq.append({{"sent": chosen_sent, "recv": chosen_recv, "rtt": chosen_rtt}})
 
     total_sent = sum(item["sent"] for item in dq)
     total_recv = sum(item["recv"] for item in dq)
@@ -1310,7 +1261,7 @@ def main():
         print("Error: GOVPS_TOKEN not set", file=sys.stderr)
         sys.exit(1)
 
-    url = f"{SERVER_URL.rstrip('/')}/api/monitor/report"
+    url = f"{{SERVER_URL.rstrip('/')}}/api/monitor/report"
 
     # 探测操作系统发行版与内核信息
     os_type, os_version, kernel_version = get_os_info()
@@ -1322,6 +1273,8 @@ def main():
     ping_cycle = 0
     cached_ping_stats = []
 
+    print(f"[{{time.strftime('%Y-%m-%d %H:%M:%S')}}] GoVPS Agent v{{AGENT_VERSION}} 启动成功 (自动更新: {{'已启用' if AUTO_UPDATE_ENABLED else '已禁用'}})", flush=True)
+
     while True:
         try:
             cpu_pct, cores, l1, l5, l15 = get_cpu_info()
@@ -1330,16 +1283,16 @@ def main():
             rx_rate, tx_rate, rx_total, tx_total = get_net_info()
             uptime = get_uptime()
 
-            # 每 30 秒执行一次 Ping 测速（主循环 3 秒，每 10 次循环运行一次）
-            if ping_cycle % 10 == 0:
+            # 每 30 秒执行一次 Ping 测速（主循环 10 秒，每 3 次循环运行一次）
+            if ping_cycle % 3 == 0:
                 def probe(pt):
                     targets = pt.get("hosts") or [pt.get("host")]
                     lat, loss = run_ping_carrier(pt["name"], targets)
-                    return {
+                    return {{
                         "name": pt["name"],
                         "latency_ms": lat,
                         "loss_rate": loss,
-                    }
+                    }}
                 try:
                     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
                         cached_ping_stats = list(executor.map(probe, PING_TARGETS))
@@ -1347,7 +1300,7 @@ def main():
                     pass
             ping_cycle += 1
 
-            payload = {
+            payload = {{
                 "cpu_percent": cpu_pct,
                 "cpu_cores": cores,
                 "ram_used_bytes": r_used,
@@ -1368,28 +1321,218 @@ def main():
                 "os_version": os_version,
                 "kernel_version": kernel_version,
                 "arch": platform.machine(),
-                "ping_stats": cached_ping_stats
-            }
+                "agent_version": AGENT_VERSION,
+                "auto_update": AUTO_UPDATE_ENABLED,
+                "ping_stats": cached_ping_stats,
+            }}
 
             req = urllib.request.Request(
                 url,
                 data=json.dumps(payload).encode("utf-8"),
-                headers={
+                headers={{
                     "Content-Type": "application/json",
                     "X-Node-Token": TOKEN,
-                    "User-Agent": "Mozilla/5.0 (compatible; GoVPS-Agent/1.0; +https://govps.xyz)"
-                }
+                    "User-Agent": f"Mozilla/5.0 (compatible; GoVPS-Agent/{{AGENT_VERSION}}; +https://govps.xyz)",
+                }}
             )
             with urllib.request.urlopen(req, timeout=8) as res:
                 if res.status == 200:
-                    pass
+                    try:
+                        resp_data = json.loads(res.read().decode("utf-8"))
+                        if resp_data.get("upgrade_available") and AUTO_UPDATE_ENABLED:
+                            check_and_apply_update(resp_data.get("latest_version"))
+                    except Exception:
+                        pass
         except Exception as e:
-            print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 数据上报异常: {e}", file=sys.stderr, flush=True)
+            print(f"[{{time.strftime('%Y-%m-%d %H:%M:%S')}}] 数据上报异常: {{e}}", file=sys.stderr, flush=True)
+
+        # 每日定期或心跳空闲时兜底检测自动更新（每 360 次循环约为 1 小时）
+        if ping_cycle % 360 == 0 and AUTO_UPDATE_ENABLED:
+            try:
+                check_and_apply_update()
+            except Exception:
+                pass
 
         time.sleep(10)
 
 if __name__ == "__main__":
     main()
+"""
+
+
+@router.api_route("/agent.py", methods=["GET", "HEAD"])
+def get_agent_py():
+    """动态返回纯原生 Python 3 的 Agent 探针核心执行代码。"""
+    code = get_agent_python_code()
+    return Response(
+        content=code,
+        media_type="text/x-python",
+        headers={
+            "X-Agent-Version": CURRENT_AGENT_VERSION,
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
+    )
+
+
+@router.api_route("/agent.sh", methods=["GET", "HEAD"])
+def get_agent_script():
+    """动态返回纯原生 Shell + Python3 的高兼容性 VPS 监控 Agent 安装与卸载脚本。"""
+    py_code = get_agent_python_code()
+    script_content = r"""#!/usr/bin/env bash
+# ==============================================================================
+# GoVPS Monitor Agent · 一键部署脚本
+# 兼容 Debian, Ubuntu, CentOS, AlmaLinux, Rocky, Alpine, Arch, Fedora 等各类主流系统
+# ==============================================================================
+set -e
+
+COLOR_GREEN='\033[0;32m'
+COLOR_BLUE='\033[0;34m'
+COLOR_RED='\033[0;31m'
+COLOR_YELLOW='\033[1;33m'
+COLOR_RESET='\033[0m'
+
+INSTALL_DIR="/opt/govps-agent"
+SERVICE_NAME="govps-agent"
+
+print_info() { echo -e "${COLOR_BLUE}[INFO]${COLOR_RESET} $1"; }
+print_ok()   { echo -e "${COLOR_GREEN}[OK]${COLOR_RESET} $1"; }
+print_warn() { echo -e "${COLOR_YELLOW}[WARN]${COLOR_RESET} $1"; }
+print_err()  { echo -e "${COLOR_RED}[ERROR]${COLOR_RESET} $1"; }
+
+TOKEN=""
+SERVER_URL="https://govps.xyz"
+ACTION="install"
+AUTO_UPDATE="1"
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --token) TOKEN="$2"; shift 2 ;;
+    --url) SERVER_URL="$2"; shift 2 ;;
+    --auto-update) AUTO_UPDATE="1"; shift ;;
+    --no-auto-update) AUTO_UPDATE="0"; shift ;;
+    --uninstall) ACTION="uninstall"; shift ;;
+    --update) ACTION="update"; shift ;;
+    *) shift ;;
+  esac
+done
+
+if [ "$ACTION" = "uninstall" ]; then
+  print_info "正在卸载 GoVPS Agent..."
+  if command -v systemctl &>/dev/null; then
+    systemctl stop $SERVICE_NAME || true
+    systemctl disable $SERVICE_NAME || true
+    rm -f /etc/systemd/system/${SERVICE_NAME}.service
+    systemctl daemon-reload || true
+  fi
+  rm -f /etc/cron.d/govps-agent-update /etc/cron.daily/govps-agent-update 2>/dev/null || true
+  pkill -f "govps_agent.py" || true
+  rm -rf "$INSTALL_DIR"
+  print_ok "GoVPS Agent 卸载完成！"
+  exit 0
+fi
+
+if [ "$ACTION" = "update" ]; then
+  print_info "正在检测并更新 GoVPS Agent..."
+  if [ -z "$TOKEN" ] && [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
+    SAVED_TOKEN=$(grep -E "^Environment=GOVPS_TOKEN=" /etc/systemd/system/${SERVICE_NAME}.service | head -n1 | sed -E 's/^Environment=(")?GOVPS_TOKEN=([^"]*)(")?/\2/' || true)
+    SAVED_URL=$(grep -E "^Environment=GOVPS_SERVER_URL=" /etc/systemd/system/${SERVICE_NAME}.service | head -n1 | sed -E 's/^Environment=(")?GOVPS_SERVER_URL=([^"]*)(")?/\2/' || true)
+    SAVED_AUTO=$(grep -E "^Environment=GOVPS_AUTO_UPDATE=" /etc/systemd/system/${SERVICE_NAME}.service | head -n1 | sed -E 's/^Environment=(")?GOVPS_AUTO_UPDATE=([^"]*)(")?/\2/' || true)
+    [ -n "$SAVED_TOKEN" ] && TOKEN="$SAVED_TOKEN"
+    [ -n "$SAVED_URL" ] && SERVER_URL="$SAVED_URL"
+    [ -n "$SAVED_AUTO" ] && AUTO_UPDATE="$SAVED_AUTO"
+  fi
+  if [ -z "$TOKEN" ] && [ -f "$INSTALL_DIR/token" ]; then
+    TOKEN=$(cat "$INSTALL_DIR/token" 2>/dev/null || true)
+  fi
+  if [ -f "$INSTALL_DIR/auto_update" ]; then
+    AUTO_UPDATE=$(cat "$INSTALL_DIR/auto_update" 2>/dev/null || echo "1")
+  fi
+
+  # 防御性清洗 TOKEN 与 SERVER_URL 前缀
+  while [[ "$TOKEN" =~ ^GOVPS_TOKEN= ]]; do
+    TOKEN="${TOKEN#GOVPS_TOKEN=}"
+  done
+  TOKEN=$(echo "$TOKEN" | tr -d '"' | tr -d "'" | xargs)
+
+  while [[ "$SERVER_URL" =~ ^GOVPS_SERVER_URL= ]]; do
+    SERVER_URL="${SERVER_URL#GOVPS_SERVER_URL=}"
+  done
+  SERVER_URL=$(echo "$SERVER_URL" | tr -d '"' | tr -d "'" | xargs)
+  [ -z "$SERVER_URL" ] && SERVER_URL="https://govps.xyz"
+
+  if [ -z "$TOKEN" ]; then
+    print_err "未找到当前节点的 Token 记录，请使用: bash agent.sh --token <YOUR_TOKEN> 重新安装更新。"
+    exit 1
+  fi
+  # 仅当本脚本是从本地文件（如 /opt/govps-agent/agent.sh）执行时，尝试拉取服务端最新 agent.sh 链式重载
+  if [ "${GOVPS_UPDATE_REEXEC:-0}" != "1" ] && [ -f "$0" ] && [ "$0" != "bash" ] && [ "$0" != "-bash" ] && [ -n "$SERVER_URL" ]; then
+    export GOVPS_UPDATE_REEXEC=1
+    TMP_SH=$(mktemp /tmp/govps-update.XXXXXX.sh 2>/dev/null || echo "/tmp/govps-update.sh")
+    if curl -fsSL "${SERVER_URL}/api/monitor/agent.sh" -o "$TMP_SH" 2>/dev/null && [ -s "$TMP_SH" ] && grep -q "GOVPS" "$TMP_SH" 2>/dev/null; then
+      bash "$TMP_SH" --update --token "$TOKEN" --url "$SERVER_URL"
+      RET=$?
+      rm -f "$TMP_SH"
+      exit $RET
+    fi
+    rm -f "$TMP_SH"
+  fi
+fi
+
+# 全局清理防御
+while [[ "$TOKEN" =~ ^GOVPS_TOKEN= ]]; do
+  TOKEN="${TOKEN#GOVPS_TOKEN=}"
+done
+TOKEN=$(echo "$TOKEN" | tr -d '"' | tr -d "'" | xargs)
+
+while [[ "$SERVER_URL" =~ ^GOVPS_SERVER_URL= ]]; do
+  SERVER_URL="${SERVER_URL#GOVPS_SERVER_URL=}"
+done
+SERVER_URL=$(echo "$SERVER_URL" | tr -d '"' | tr -d "'" | xargs)
+[ -z "$SERVER_URL" ] && SERVER_URL="https://govps.xyz"
+
+if [ -z "$TOKEN" ]; then
+  print_err "未提供节点 Token！请使用: bash agent.sh --token <YOUR_TOKEN>"
+  exit 1
+fi
+
+print_info "开始部署 GoVPS 探针 Agent..."
+
+# 检查 Python3 与网络工具
+if ! command -v python3 &>/dev/null; then
+  print_warn "未检测到 python3，尝试通过包管理器安装..."
+  if command -v apt-get &>/dev/null; then
+    apt-get update -y && apt-get install -y python3 iputils-ping curl
+  elif command -v dnf &>/dev/null; then
+    dnf install -y python3 iputils curl
+  elif command -v yum &>/dev/null; then
+    yum install -y python3 iputils curl
+  elif command -v apk &>/dev/null; then
+    apk add --no-cache python3 iputils curl
+  elif command -v pacman &>/dev/null; then
+    pacman -Sy --noconfirm python iputils curl
+  elif command -v zypper &>/dev/null; then
+    zypper --non-interactive install python3 iputils curl
+  else
+    print_err "未检测到支持的包管理器，请手动安装 Python 3 之后重试。"
+    exit 1
+  fi
+fi
+
+PYTHON_BIN=$(command -v python3 || command -v python || echo "/usr/bin/python3")
+
+mkdir -p "$INSTALL_DIR"
+echo "$TOKEN" > "$INSTALL_DIR/token"
+echo "$AUTO_UPDATE" > "$INSTALL_DIR/auto_update"
+chmod 600 "$INSTALL_DIR/token"
+if [ -f "$0" ] && grep -q "GOVPS" "$0" 2>/dev/null; then
+  cp -f "$0" "$INSTALL_DIR/agent.sh" 2>/dev/null || true
+else
+  curl -fsSL "${SERVER_URL}/api/monitor/agent.sh" -o "$INSTALL_DIR/agent.sh" 2>/dev/null || true
+fi
+chmod +x "$INSTALL_DIR/agent.sh" 2>/dev/null || true
+
+cat << 'EOF' > "$INSTALL_DIR/govps_agent.py"
+""" + py_code + r"""
 EOF
 
 chmod +x "$INSTALL_DIR/govps_agent.py"
@@ -1405,6 +1548,7 @@ After=network.target
 Type=simple
 Environment=GOVPS_TOKEN=${TOKEN}
 Environment=GOVPS_SERVER_URL=${SERVER_URL}
+Environment=GOVPS_AUTO_UPDATE=${AUTO_UPDATE}
 ExecStart=${PYTHON_BIN} ${INSTALL_DIR}/govps_agent.py
 Restart=always
 RestartSec=5
@@ -1428,15 +1572,32 @@ EOF
 else
   # 降级 nohup 后台运行
   pkill -f "govps_agent.py" || true
-  GOVPS_TOKEN="$TOKEN" GOVPS_SERVER_URL="$SERVER_URL" nohup "$PYTHON_BIN" "$INSTALL_DIR/govps_agent.py" >/dev/null 2>&1 &
+  GOVPS_TOKEN="$TOKEN" GOVPS_SERVER_URL="$SERVER_URL" GOVPS_AUTO_UPDATE="$AUTO_UPDATE" nohup "$PYTHON_BIN" "$INSTALL_DIR/govps_agent.py" >/dev/null 2>&1 &
   print_ok "GoVPS Agent 已在后台启动！"
+fi
+
+# 配置每日自动更新维护定时任务（Cron 兜底）
+if [ "$AUTO_UPDATE" = "1" ] && [ -d "/etc/cron.d" ] && [ -w "/etc/cron.d" ]; then
+  cat << 'EOF_CRON' > /etc/cron.d/govps-agent-update
+# GoVPS Agent 每日自动维护与检查更新
+0 4 * * * root /opt/govps-agent/agent.sh --update >/dev/null 2>&1
+EOF_CRON
+  chmod 644 /etc/cron.d/govps-agent-update 2>/dev/null || true
+fi
+if [ "$AUTO_UPDATE" = "0" ]; then
+  rm -f /etc/cron.d/govps-agent-update /etc/cron.daily/govps-agent-update 2>/dev/null || true
 fi
 
 print_ok "================================================="
 print_ok "  GoVPS 探针监控 Agent 部署/更新成功！"
 print_ok "  数据每 10 秒自动上报，三网延迟每 30 秒测速一次（5 分钟 100 样本滑动窗口）。"
-print_ok "  如需更新，随时执行: curl -sSL https://govps.xyz/api/monitor/agent.sh | sudo bash -s -- --update"
-print_ok "  如需卸载，随时执行: sudo bash /opt/govps-agent/agent.sh --uninstall"
+if [ "$AUTO_UPDATE" = "1" ]; then
+  print_ok "  自动更新: 已开启 (检测到新版本将自动平滑热升级，无需手动干预)"
+else
+  print_ok "  自动更新: 已禁用 (可通过 bash /opt/govps-agent/agent.sh --auto-update 重新开启)"
+fi
+print_ok "  如需手动更新: curl -sSL https://govps.xyz/api/monitor/agent.sh | sudo bash -s -- --update"
+print_ok "  如需卸载: sudo bash /opt/govps-agent/agent.sh --uninstall"
 print_ok "================================================="
 """
     return Response(content=script_content, media_type="text/x-shellscript")

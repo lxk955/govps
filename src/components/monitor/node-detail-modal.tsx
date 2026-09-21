@@ -191,6 +191,20 @@ export function NodeDetailModal({
                 )}
                 <span>·</span>
                 <span>在线 {node.uptime_days} 天</span>
+                {node.metrics?.agent_version && (
+                  <>
+                    <span>·</span>
+                    <span
+                      className="inline-flex items-center gap-1 font-mono text-[11px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium"
+                      title={node.metrics.auto_update !== false ? "探针已开启自动平滑更新" : "探针已禁用自动更新"}
+                    >
+                      v{node.metrics.agent_version}
+                      {node.metrics.auto_update !== false && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" title="自动更新已开启" />
+                      )}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>

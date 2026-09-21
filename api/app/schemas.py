@@ -153,5 +153,7 @@ class NodeReport(BaseModel):
     os_version: str | None = None
     kernel_version: str | None = None
     arch: str | None = None
+    agent_version: str | None = None
+    auto_update: bool = True
     ping_stats: list[PingMetric] = Field(default_factory=list)
 
