@@ -889,6 +889,7 @@ while [[ $# -gt 0 ]]; do
     --token) TOKEN="$2"; shift 2 ;;
     --url) SERVER_URL="$2"; shift 2 ;;
     --uninstall) ACTION="uninstall"; shift ;;
+    --update) ACTION="update"; shift ;;
     *) shift ;;
   esac
 done
@@ -905,6 +906,23 @@ if [ "$ACTION" = "uninstall" ]; then
   rm -rf "$INSTALL_DIR"
   print_ok "GoVPS Agent 卸载完成！"
   exit 0
+fi
+
+if [ "$ACTION" = "update" ]; then
+  print_info "正在检测并热更新 GoVPS Agent..."
+  if [ -z "$TOKEN" ] && [ -f "/etc/systemd/system/${SERVICE_NAME}.service" ]; then
+    SAVED_TOKEN=$(grep -E "^Environment=GOVPS_TOKEN=" /etc/systemd/system/${SERVICE_NAME}.service | head -n1 | cut -d'=' -f2- || true)
+    SAVED_URL=$(grep -E "^Environment=GOVPS_SERVER_URL=" /etc/systemd/system/${SERVICE_NAME}.service | head -n1 | cut -d'=' -f2- || true)
+    [ -n "$SAVED_TOKEN" ] && TOKEN="$SAVED_TOKEN"
+    [ -n "$SAVED_URL" ] && SERVER_URL="$SAVED_URL"
+  fi
+  if [ -z "$TOKEN" ] && [ -f "$INSTALL_DIR/token" ]; then
+    TOKEN=$(cat "$INSTALL_DIR/token" 2>/dev/null || true)
+  fi
+  if [ -z "$TOKEN" ]; then
+    print_err "未找到当前节点的 Token 记录，请使用: bash agent.sh --token <YOUR_TOKEN> 重新安装更新。"
+    exit 1
+  fi
 fi
 
 if [ -z "$TOKEN" ]; then
@@ -934,6 +952,10 @@ fi
 PYTHON_BIN=$(command -v python3 || command -v python || echo "/usr/bin/python3")
 
 mkdir -p "$INSTALL_DIR"
+echo "$TOKEN" > "$INSTALL_DIR/token"
+chmod 600 "$INSTALL_DIR/token"
+cp -f "$0" "$INSTALL_DIR/agent.sh" 2>/dev/null || true
+chmod +x "$INSTALL_DIR/agent.sh" 2>/dev/null || true
 
 cat << 'EOF' > "$INSTALL_DIR/govps_agent.py"
 import os, sys, time, json, platform, subprocess, urllib.request, urllib.error, concurrent.futures, collections
@@ -1290,8 +1312,9 @@ else
 fi
 
 print_ok "================================================="
-print_ok "  GoVPS 探针监控 Agent 部署成功！"
+print_ok "  GoVPS 探针监控 Agent 部署/更新成功！"
 print_ok "  数据每 10 秒自动上报，三网延迟每 30 秒测速一次（5 分钟 100 样本滑动窗口）。"
+print_ok "  如需更新，随时执行: curl -sSL https://govps.xyz/api/monitor/agent.sh | sudo bash -s -- --update"
 print_ok "  如需卸载，随时执行: sudo bash /opt/govps-agent/agent.sh --uninstall"
 print_ok "================================================="
 """

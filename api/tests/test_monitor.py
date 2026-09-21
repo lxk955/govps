@@ -189,3 +189,4 @@ def test_agent_script_distribution(client):
     assert "GoVPS Monitor Agent" in res.text
     assert "python3" in res.text
     assert "--uninstall" in res.text
+    assert "--update" in res.text
