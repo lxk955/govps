@@ -135,23 +135,23 @@ def _node_to_dict(node: UserNode, now: datetime, read_only: bool = False) -> dic
         # 实时指标
         "metrics": {
             "uptime_days": uptime_days,
-            "cpu_percent": round(status.get("cpu_percent", 0.0), 2),
-            "ram_used_bytes": status.get("ram_used_bytes", 0),
-            "ram_total_bytes": status.get("ram_total_bytes", 0),
-            "swap_used_bytes": status.get("swap_used_bytes", 0),
-            "swap_total_bytes": status.get("swap_total_bytes", 0),
-            "disk_used_bytes": status.get("disk_used_bytes", 0),
-            "disk_total_bytes": status.get("disk_total_bytes", 0),
-            "load_1": round(status.get("load_1", 0.0), 2),
-            "load_5": round(status.get("load_5", 0.0), 2),
-            "load_15": round(status.get("load_15", 0.0), 2),
-            "net_rx_rate": round(status.get("net_rx_rate", 0.0), 2),
-            "net_tx_rate": round(status.get("net_tx_rate", 0.0), 2),
+            "cpu_percent": round(float(status.get("cpu_percent") if status.get("cpu_percent") is not None else 0.0), 2),
+            "ram_used_bytes": int(status.get("ram_used_bytes") or 0),
+            "ram_total_bytes": int(status.get("ram_total_bytes") or 0),
+            "swap_used_bytes": int(status.get("swap_used_bytes") or 0),
+            "swap_total_bytes": int(status.get("swap_total_bytes") or 0),
+            "disk_used_bytes": int(status.get("disk_used_bytes") or 0),
+            "disk_total_bytes": int(status.get("disk_total_bytes") or 0),
+            "load_1": round(float(status.get("load_1") if status.get("load_1") is not None else 0.0), 2),
+            "load_5": round(float(status.get("load_5") if status.get("load_5") is not None else 0.0), 2),
+            "load_15": round(float(status.get("load_15") if status.get("load_15") is not None else 0.0), 2),
+            "net_rx_rate": round(float(status.get("net_rx_rate") if status.get("net_rx_rate") is not None else 0.0), 2),
+            "net_tx_rate": round(float(status.get("net_tx_rate") if status.get("net_tx_rate") is not None else 0.0), 2),
             "net_rx_total": rx_bytes,
             "net_tx_total": tx_bytes,
             "uptime_seconds": uptime_sec,
-            "ping_stats": status.get("ping_stats", []),
-            "ping_history": status.get("ping_history", []),  # 最近 30 次测速色带样本
+            "ping_stats": status.get("ping_stats") or [],
+            "ping_history": status.get("ping_history") or [],  # 最近 30 次测速色带样本
         },
     }
 
@@ -774,8 +774,10 @@ def report_metrics(
         if len(ping_history) > 30:
             ping_history = ping_history[-30:]
 
+    cpu_pct = float(payload.cpu_percent if payload.cpu_percent is not None else 0.0)
+
     node.cached_status = {
-        "cpu_percent": payload.cpu_percent,
+        "cpu_percent": cpu_pct,
         "ram_used_bytes": payload.ram_used_bytes,
         "ram_total_bytes": payload.ram_total_bytes,
         "swap_used_bytes": payload.swap_used_bytes,
@@ -813,7 +815,7 @@ def report_metrics(
         snap = NodeSnapshot(
             node_id=node.id,
             recorded_at=now,
-            cpu_percent=payload.cpu_percent,
+            cpu_percent=cpu_pct,
             ram_used_bytes=payload.ram_used_bytes,
             ram_total_bytes=payload.ram_total_bytes,
             swap_used_bytes=payload.swap_used_bytes,
@@ -934,7 +936,10 @@ def get_uptime():
     except Exception:
         return 0
 
+_prev_cpu = None
+
 def get_cpu_info():
+    global _prev_cpu
     cores = os.cpu_count() or 1
     load1, load5, load15 = 0.0, 0.0, 0.0
     try:
@@ -943,23 +948,38 @@ def get_cpu_info():
     except Exception:
         pass
 
+    def read_stat():
+        with open("/proc/stat", "r") as f:
+            fields = [float(x) for x in f.readline().strip().split()[1:]]
+        idle = fields[3] + (fields[4] if len(fields) > 4 else 0.0)
+        total = sum(fields)
+        return idle, total
+
     cpu_pct = 0.0
     try:
-        def read_stat():
-            with open("/proc/stat", "r") as f:
-                fields = [float(x) for x in f.readline().strip().split()[1:]]
-            idle = fields[3] + (fields[4] if len(fields) > 4 else 0.0)
-            total = sum(fields)
-            return idle, total
-        i1, t1 = read_stat()
-        time.sleep(0.5)
-        i2, t2 = read_stat()
-        diff_idle = i2 - i1
-        diff_total = t2 - t1
-        if diff_total > 0:
-            cpu_pct = max(0.0, min(100.0, round((1.0 - diff_idle / diff_total) * 100, 2)))
+        idle_now, total_now = read_stat()
+        if _prev_cpu is not None:
+            prev_idle, prev_total = _prev_cpu
+            diff_idle = idle_now - prev_idle
+            diff_total = total_now - prev_total
+            if diff_total > 0:
+                cpu_pct = max(0.0, min(100.0, round((1.0 - diff_idle / diff_total) * 100, 2)))
+        else:
+            time.sleep(0.2)
+            i2, t2 = read_stat()
+            diff_idle = i2 - idle_now
+            diff_total = t2 - total_now
+            if diff_total > 0:
+                cpu_pct = max(0.0, min(100.0, round((1.0 - diff_idle / diff_total) * 100, 2)))
+            idle_now, total_now = i2, t2
+        _prev_cpu = (idle_now, total_now)
     except Exception:
-        pass
+        if cores > 0:
+            cpu_pct = max(0.0, min(100.0, round((load1 / cores) * 100, 2)))
+
+    # 若瞬时全空闲但存在系统负载，基于负载合理映射避免全 0 显示
+    if cpu_pct <= 0.0 and load1 > 0:
+        cpu_pct = max(0.1, min(100.0, round((load1 / cores) * 100, 2)))
 
     return cpu_pct, cores, load1, load5, load15
 
@@ -1053,8 +1073,9 @@ def main():
 
     url = f"{SERVER_URL.rstrip('/')}/api/monitor/report"
 
-    # 首次采样网络
+    # 首次采样网络与 CPU 基线
     get_net_info()
+    get_cpu_info()
 
     ping_cycle = 0
     cached_ping_stats = []

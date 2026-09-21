@@ -92,9 +92,9 @@ export function NodeListView({ nodes, onSelectNode }: NodeListViewProps) {
                 <td className="py-3 px-3">
                   <div className="flex flex-col">
                     <span className="font-bold text-slate-800 dark:text-slate-200">
-                      {Math.round(metrics.cpu_percent)}%
+                      {Math.round(metrics?.cpu_percent ?? 0)}%
                     </span>
-                    <span className="text-[10px] text-slate-400 font-sans">{node.cpu_cores} 核</span>
+                    <span className="text-[10px] text-slate-400 font-sans">{node.cpu_cores || 1} 核</span>
                   </div>
                 </td>
 

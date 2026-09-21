@@ -51,9 +51,9 @@ export function MiniNodeCard({ node, onClick }: MiniNodeCardProps) {
             />
           </div>
           <div className="text-[10px] text-slate-400 font-mono mt-0.5 flex items-center gap-1.5">
-            <span>CPU: {Math.round(metrics.cpu_percent)}%</span>
+            <span>CPU: {Math.round(metrics?.cpu_percent ?? 0)}%</span>
             <span>·</span>
-            <span>RAM: {Math.round((metrics.ram_used_bytes / (metrics.ram_total_bytes || 1)) * 100)}%</span>
+            <span>RAM: {Math.round(((metrics?.ram_used_bytes ?? 0) / (metrics?.ram_total_bytes || 1)) * 100)}%</span>
           </div>
         </div>
       </div>

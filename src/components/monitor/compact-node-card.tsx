@@ -64,7 +64,7 @@ export function CompactNodeCard({ node, onClick }: CompactNodeCardProps) {
             <span>CPU</span>
           </div>
           <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">
-            {Math.round(metrics.cpu_percent)}%
+            {Math.round(metrics?.cpu_percent ?? 0)}%
           </span>
         </div>
 

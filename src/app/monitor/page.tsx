@@ -279,15 +279,15 @@ export default function MonitorPage() {
 
     // 排序
     result.sort((a, b) => {
-      if (sortMode === "cpu") return b.metrics.cpu_percent - a.metrics.cpu_percent;
+      if (sortMode === "cpu") return (b.metrics?.cpu_percent ?? 0) - (a.metrics?.cpu_percent ?? 0);
       if (sortMode === "ram") {
-        const aRamPct = a.metrics.ram_total_bytes > 0 ? a.metrics.ram_used_bytes / a.metrics.ram_total_bytes : 0;
-        const bRamPct = b.metrics.ram_total_bytes > 0 ? b.metrics.ram_used_bytes / b.metrics.ram_total_bytes : 0;
+        const aRamPct = (a.metrics?.ram_total_bytes ?? 0) > 0 ? (a.metrics?.ram_used_bytes ?? 0) / a.metrics.ram_total_bytes : 0;
+        const bRamPct = (b.metrics?.ram_total_bytes ?? 0) > 0 ? (b.metrics?.ram_used_bytes ?? 0) / b.metrics.ram_total_bytes : 0;
         return bRamPct - aRamPct;
       }
       if (sortMode === "bandwidth") {
-        const aBw = a.metrics.net_rx_rate + a.metrics.net_tx_rate;
-        const bBw = b.metrics.net_rx_rate + b.metrics.net_tx_rate;
+        const aBw = (a.metrics?.net_rx_rate ?? 0) + (a.metrics?.net_tx_rate ?? 0);
+        const bBw = (b.metrics?.net_rx_rate ?? 0) + (b.metrics?.net_tx_rate ?? 0);
         return bBw - aBw;
       }
       if (sortMode === "expires") {

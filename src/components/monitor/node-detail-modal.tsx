@@ -158,7 +158,7 @@ export function NodeDetailModal({
               <div className="flex items-center gap-2 text-xs text-slate-400 font-mono mt-0.5">
                 <span className="capitalize">{node.os_type} {node.os_version || ""}</span>
                 <span>·</span>
-                <span>{node.cpu_cores} 核 CPU</span>
+                <span>{node.cpu_cores || 1} 核 CPU</span>
                 <span>·</span>
                 <span>在线 {node.uptime_days} 天</span>
               </div>
@@ -355,7 +355,7 @@ export function NodeDetailModal({
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
                   <span className="font-sans text-slate-600 dark:text-slate-300">CPU 使用率 (%)</span>
-                  <span className="font-bold text-blue-600 dark:text-blue-400">{Math.round(metrics.cpu_percent)}%</span>
+                  <span className="font-bold text-blue-600 dark:text-blue-400">{Math.round(metrics?.cpu_percent ?? 0)}%</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />

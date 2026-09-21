@@ -147,14 +147,14 @@ export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
               <span>CPU</span>
             </div>
             <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">
-              {metrics.cpu_percent.toFixed(2)} %
+              {(typeof metrics?.cpu_percent === "number" ? metrics.cpu_percent : 0).toFixed(2)} %
             </span>
           </div>
           <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-            {node.cpu_cores} 核
+            {node.cpu_cores || 1} 核
           </div>
           <SegmentedMeter
-            percent={metrics.cpu_percent}
+            percent={metrics?.cpu_percent ?? 0}
             totalBlocks={14}
             colorClass="bg-blue-600 dark:bg-blue-500"
           />
