@@ -91,7 +91,11 @@ export function PingStrip({
           <span
             className={cn(
               "font-medium text-[11px]",
-              loss > 0 ? "text-red-500 font-bold" : "text-emerald-500 dark:text-emerald-400",
+              loss >= 10
+                ? "text-red-500 font-bold"
+                : loss > 0
+                ? "text-amber-500 font-bold dark:text-amber-400"
+                : "text-emerald-500 dark:text-emerald-400",
             )}
           >
             {loss.toFixed(1)} %

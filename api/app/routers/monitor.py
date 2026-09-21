@@ -276,7 +276,7 @@ def create_node(
         country=payload.country.lower(),
         group_name=payload.group_name or "主力",
         tags=payload.tags or [],
-        os_type=payload.os_type.lower() or "debian",
+        os_type=(payload.os_type or "linux").lower(),
         cpu_cores=payload.cpu_cores or 1,
         price=payload.price,
         currency=payload.currency or "USD",
@@ -936,16 +936,20 @@ PYTHON_BIN=$(command -v python3 || command -v python || echo "/usr/bin/python3")
 mkdir -p "$INSTALL_DIR"
 
 cat << 'EOF' > "$INSTALL_DIR/govps_agent.py"
-import os, sys, time, json, platform, subprocess, urllib.request, urllib.error, concurrent.futures
+import os, sys, time, json, platform, subprocess, urllib.request, urllib.error, concurrent.futures, collections
 
 TOKEN = os.environ.get("GOVPS_TOKEN", "")
 SERVER_URL = os.environ.get("GOVPS_SERVER_URL", "https://govps.xyz")
+PING_COUNT = int(os.environ.get("GOVPS_PING_COUNT", "10"))
+PING_WINDOW = int(os.environ.get("GOVPS_PING_WINDOW", "5"))
 
 PING_TARGETS = [
     {"name": "电信", "hosts": ["202.96.209.133", "202.96.128.86"]},   # 上海电信 / 广东电信
     {"name": "联通", "hosts": ["112.64.120.1", "119.167.0.1"]},       # 上海联通 / 山东联通骨干
     {"name": "移动", "hosts": ["221.130.33.52", "211.136.192.6"]},   # 北京移动 / 广东移动
 ]
+
+_rolling_ping_records = collections.defaultdict(lambda: collections.deque(maxlen=PING_WINDOW))
 
 def get_uptime():
     try:
@@ -1064,31 +1068,64 @@ def get_net_info():
     _prev_net_time = now
     return rx_rate, tx_rate, rx_bytes, tx_bytes
 
-def run_ping_target(target):
-    cmd = ["ping", "-c", "4", "-i", "0.2", "-W", "1", target]
+def get_os_info():
+    os_name = platform.system().lower()
+    os_version = platform.release()
     try:
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=3)
+        if os.path.exists("/etc/os-release"):
+            data = {}
+            with open("/etc/os-release", "r") as f:
+                for line in f:
+                    if "=" in line:
+                        k, v = line.strip().split("=", 1)
+                        data[k.strip()] = v.strip().strip("\"'")
+            distro_id = data.get("ID", "").lower()
+            if distro_id:
+                os_name = distro_id
+            version = data.get("VERSION_ID", data.get("VERSION", ""))
+            if version:
+                os_version = version
+    except Exception:
+        pass
+    return os_name, os_version
+
+def run_ping_target(target):
+    cmd = ["ping", "-c", str(PING_COUNT), "-i", "0.2", "-W", "1", target]
+    try:
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
         if res.returncode != 0 and "invalid" in res.stderr.lower():
             # 兼容极少数精简环境不支持浮点间隔的情况
-            cmd = ["ping", "-c", "4", "-W", "1", target]
-            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+            cmd = ["ping", "-c", str(PING_COUNT), "-W", "1", target]
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=8)
         out = res.stdout
-        loss = 100.0
-        rtt = 0.0
+        sent, recv, loss, rtt = PING_COUNT, 0, 100.0, 0.0
         for line in out.splitlines():
             if "packet loss" in line:
-                parts = line.split(",")
-                for p in parts:
-                    if "packet loss" in p:
-                        loss = float(p.replace("% packet loss", "").strip())
+                for p in line.split(","):
+                    p = p.strip()
+                    if "transmitted" in p:
+                        try:
+                            sent = int(p.split()[0])
+                        except Exception:
+                            pass
+                    elif "received" in p:
+                        try:
+                            recv = int(p.split()[0])
+                        except Exception:
+                            pass
+                    elif "packet loss" in p:
+                        try:
+                            loss = float(p.replace("% packet loss", "").strip())
+                        except Exception:
+                            pass
             if "avg" in line and "/" in line:
                 stats = line.split("=")[1].strip().split()[0].split("/")
                 rtt = float(stats[1])
-        return round(rtt, 1), round(loss, 1)
+        return sent, recv, round(rtt, 1), round(loss, 1)
     except Exception:
-        return 0.0, 100.0
+        return PING_COUNT, 0, 0.0, 100.0
 
-def run_ping(target_or_targets):
+def run_ping_carrier(carrier_name, target_or_targets):
     if isinstance(target_or_targets, (list, tuple)):
         targets = [t for t in target_or_targets if t]
     else:
@@ -1096,13 +1133,38 @@ def run_ping(target_or_targets):
     if not targets:
         return 0.0, 100.0
 
-    best_lat, best_loss = 0.0, 100.0
+    chosen_sent, chosen_recv, chosen_rtt = PING_COUNT, 0, 0.0
     for target in targets:
-        lat, loss = run_ping_target(target)
+        sent, recv, rtt, loss = run_ping_target(target)
+        chosen_sent, chosen_recv, chosen_rtt = sent, recv, rtt
         if loss < 100.0:
-            return lat, loss
-        best_lat, best_loss = lat, loss
-    return best_lat, best_loss
+            break
+
+    # 滑动窗口累计多轮探测（默认保存最近 5 轮采样，共 50 个 ICMP 样本，时间跨度约 2.5 分钟）
+    dq = _rolling_ping_records[carrier_name]
+    dq.append({"sent": chosen_sent, "recv": chosen_recv, "rtt": chosen_rtt})
+
+    total_sent = sum(item["sent"] for item in dq)
+    total_recv = sum(item["recv"] for item in dq)
+    if total_sent == 0:
+        return 0.0, 100.0
+
+    # 滑动窗口丢包率：具备细致的 2.0% 阶梯粒度
+    window_loss = round(max(0.0, min(100.0, ((total_sent - total_recv) / total_sent) * 100.0)), 1)
+
+    # 延迟加权平均
+    valid_items = [item for item in dq if item["recv"] > 0 and item["rtt"] > 0]
+    if valid_items:
+        weighted_sum = sum(item["rtt"] * item["recv"] for item in valid_items)
+        weight_count = sum(item["recv"] for item in valid_items)
+        avg_rtt = round(weighted_sum / weight_count, 1) if weight_count > 0 else 0.0
+    else:
+        avg_rtt = 0.0
+
+    return avg_rtt, window_loss
+
+def run_ping(target_or_targets):
+    return run_ping_carrier("default", target_or_targets)
 
 def main():
     if not TOKEN:
@@ -1130,7 +1192,7 @@ def main():
             if ping_cycle % 3 == 0 or not cached_ping_stats:
                 def probe(pt):
                     targets = pt.get("hosts") or [pt.get("host")]
-                    lat, loss = run_ping(targets)
+                    lat, loss = run_ping_carrier(pt["name"], targets)
                     return {
                         "name": pt["name"],
                         "latency_ms": lat,
@@ -1160,8 +1222,8 @@ def main():
                 "net_rx_total": rx_total,
                 "net_tx_total": tx_total,
                 "uptime_seconds": uptime,
-                "os_type": platform.system().lower(),
-                "os_version": platform.release(),
+                "os_type": get_os_info()[0],
+                "os_version": get_os_info()[1],
                 "arch": platform.machine(),
                 "ping_stats": cached_ping_stats
             }

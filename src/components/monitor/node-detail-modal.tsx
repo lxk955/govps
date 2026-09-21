@@ -268,7 +268,15 @@ export function NodeDetailModal({
                       ? "超时"
                       : "--"}
                   </span>
-                  <span className={cn(statCT && statCT.loss_rate > 0 ? "text-rose-500 font-bold" : "text-slate-400")}>
+                  <span
+                    className={cn(
+                      statCT && statCT.loss_rate >= 10
+                        ? "text-rose-500 font-bold"
+                        : statCT && statCT.loss_rate > 0
+                        ? "text-amber-500 font-bold dark:text-amber-400"
+                        : "text-slate-400",
+                    )}
+                  >
                     {statCT ? `${statCT.loss_rate.toFixed(1)}%` : "0%"}
                   </span>
                 </div>
@@ -291,7 +299,15 @@ export function NodeDetailModal({
                       ? "超时"
                       : "--"}
                   </span>
-                  <span className={cn(statCU && statCU.loss_rate > 0 ? "text-rose-500 font-bold" : "text-slate-400")}>
+                  <span
+                    className={cn(
+                      statCU && statCU.loss_rate >= 10
+                        ? "text-rose-500 font-bold"
+                        : statCU && statCU.loss_rate > 0
+                        ? "text-amber-500 font-bold dark:text-amber-400"
+                        : "text-slate-400",
+                    )}
+                  >
                     {statCU ? `${statCU.loss_rate.toFixed(1)}%` : "0%"}
                   </span>
                 </div>
@@ -314,7 +330,15 @@ export function NodeDetailModal({
                       ? "超时"
                       : "--"}
                   </span>
-                  <span className={cn(statCM && statCM.loss_rate > 0 ? "text-rose-500 font-bold" : "text-slate-400")}>
+                  <span
+                    className={cn(
+                      statCM && statCM.loss_rate >= 10
+                        ? "text-rose-500 font-bold"
+                        : statCM && statCM.loss_rate > 0
+                        ? "text-amber-500 font-bold dark:text-amber-400"
+                        : "text-slate-400",
+                    )}
+                  >
                     {statCM ? `${statCM.loss_rate.toFixed(1)}%` : "0%"}
                   </span>
                 </div>
@@ -332,8 +356,10 @@ export function NodeDetailModal({
                           const loss = s ? s.loss_rate : 0;
                           const lat = s ? s.latency_ms : 0;
                           const color =
-                            loss > 0
+                            loss >= 10
                               ? "bg-red-500"
+                              : loss > 0
+                              ? "bg-amber-500"
                               : lat < 60
                               ? "bg-emerald-500"
                               : lat < 120
@@ -341,7 +367,13 @@ export function NodeDetailModal({
                               : lat < 180
                               ? "bg-amber-500"
                               : "bg-orange-500";
-                          return <div key={i} className={cn("flex-1 h-full", color)} />;
+                          return (
+                            <div
+                              key={i}
+                              className={cn("flex-1 h-full", color)}
+                              title={`${cname}: ${lat > 0 && loss < 100 ? `${lat.toFixed(1)}ms` : loss >= 100 ? "超时" : "--"} (丢包: ${loss.toFixed(1)}%)`}
+                            />
+                          );
                         })}
                       </div>
                     </div>

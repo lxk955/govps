@@ -30,7 +30,6 @@ export function AddNodeDialog({
 }: AddNodeDialogProps) {
   const [name, setName] = useState("");
   const [country, setCountry] = useState("hk");
-  const [osType, setOsType] = useState("debian");
   const [groupName, setGroupName] = useState("主力");
   const [tagsInput, setTagsInput] = useState("");
   const [price, setPrice] = useState("");
@@ -48,7 +47,6 @@ export function AddNodeDialog({
     if (isOpen && editingNode) {
       setName(editingNode.name);
       setCountry(editingNode.country);
-      setOsType(editingNode.os_type);
       setGroupName(editingNode.group_name);
       setTagsInput(editingNode.tags.join(", "));
       setPrice(editingNode.price !== null ? String(editingNode.price) : "");
@@ -60,7 +58,6 @@ export function AddNodeDialog({
     } else if (isOpen) {
       setName("");
       setCountry("hk");
-      setOsType("debian");
       setGroupName("主力");
       setTagsInput("");
       setPrice("");
@@ -97,7 +94,6 @@ export function AddNodeDialog({
     const payload = {
       name: name.trim(),
       country: country.trim().toLowerCase(),
-      os_type: osType.trim().toLowerCase(),
       group_name: groupName.trim() || "主力",
       tags,
       price: price ? parseFloat(price) : null,
@@ -293,22 +289,6 @@ export function AddNodeDialog({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-semibold">操作系统</Label>
-                <select
-                  value={osType}
-                  onChange={(e) => setOsType(e.target.value)}
-                  className="h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
-                >
-                  <option value="debian">Debian</option>
-                  <option value="ubuntu">Ubuntu</option>
-                  <option value="centos">CentOS</option>
-                  <option value="alpine">Alpine</option>
-                  <option value="arch">Arch Linux</option>
-                  <option value="windows">Windows</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
                 <Label className="text-xs font-semibold">分组</Label>
                 <Input
                   placeholder="如: 主力 / 吃灰"
@@ -317,16 +297,16 @@ export function AddNodeDialog({
                   className="h-9 text-xs rounded-xl"
                 />
               </div>
-            </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-semibold">标签 (逗号分隔)</Label>
-              <Input
-                placeholder="如: 主力, V4, V6, CN2 GIA, 三网优化"
-                value={tagsInput}
-                onChange={(e) => setTagsInput(e.target.value)}
-                className="h-9 text-xs rounded-xl"
-              />
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-semibold">标签 (逗号分隔)</Label>
+                <Input
+                  placeholder="如: 主力, V4, V6, CN2 GIA"
+                  value={tagsInput}
+                  onChange={(e) => setTagsInput(e.target.value)}
+                  className="h-9 text-xs rounded-xl"
+                />
+              </div>
             </div>
 
             {/* 资产费用与流量 */}

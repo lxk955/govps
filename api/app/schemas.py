@@ -96,7 +96,7 @@ class NodeCreate(BaseModel):
     country: str = Field(default="hk", max_length=10)
     group_name: str = Field(default="主力", max_length=50)
     tags: list[str] = Field(default_factory=list)
-    os_type: str = Field(default="debian", max_length=30)
+    os_type: str | None = Field(default="linux", max_length=30)
     cpu_cores: int | None = 1
     price: float | None = None
     currency: str = Field(default="USD", max_length=10)
