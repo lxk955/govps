@@ -802,8 +802,12 @@ def report_metrics(
         .limit(1)
     )
     should_insert_snapshot = True
-    if last_snap and (now - last_snap.recorded_at).total_seconds() < 10:
-        should_insert_snapshot = False
+    if last_snap:
+        snap_time = last_snap.recorded_at
+        if snap_time.tzinfo is None:
+            snap_time = snap_time.replace(tzinfo=timezone.utc)
+        if (now - snap_time).total_seconds() < 10:
+            should_insert_snapshot = False
 
     if should_insert_snapshot:
         snap = NodeSnapshot(
@@ -890,22 +894,24 @@ fi
 
 print_info "开始部署 GoVPS 探针 Agent..."
 
-# 检查 Python3
+# 检查 Python3 与网络工具
 if ! command -v python3 &>/dev/null; then
   print_warn "未检测到 python3，尝试通过包管理器安装..."
   if command -v apt-get &>/dev/null; then
-    apt-get update -y && apt-get install -y python3
+    apt-get update -y && apt-get install -y python3 iputils-ping curl
   elif command -v yum &>/dev/null; then
-    yum install -y python3
+    yum install -y python3 iputils curl
   elif command -v apk &>/dev/null; then
-    apk add --no-cache python3
+    apk add --no-cache python3 iputils curl
   elif command -v pacman &>/dev/null; then
-    pacman -Sy --noconfirm python
+    pacman -Sy --noconfirm python iputils curl
   else
     print_err "未检测到包管理器，请手动安装 Python 3 之后重试。"
     exit 1
   fi
 fi
+
+PYTHON_BIN=$(command -v python3 || command -v python || echo "/usr/bin/python3")
 
 mkdir -p "$INSTALL_DIR"
 
@@ -916,9 +922,9 @@ TOKEN = os.environ.get("GOVPS_TOKEN", "")
 SERVER_URL = os.environ.get("GOVPS_SERVER_URL", "https://govps.xyz")
 
 PING_TARGETS = [
-    {"name": "电信", "host": "180.149.128.9"},     # 180.149.128.9 / 202.108.22.5
-    {"name": "联通", "host": "123.125.114.144"},    # 123.125.114.144
-    {"name": "移动", "host": "221.130.33.52"},      # 221.130.33.52
+    {"name": "电信", "host": "202.96.209.133"},   # 上海电信骨干网
+    {"name": "联通", "host": "112.64.120.1"},     # 上海联通骨干网
+    {"name": "移动", "host": "221.130.33.52"},    # 北京移动骨干网
 ]
 
 def get_uptime():
@@ -1021,10 +1027,9 @@ def get_net_info():
     return rx_rate, tx_rate, rx_bytes, tx_bytes
 
 def run_ping(target):
-    # 发送 3 个 ping 包
-    cmd = ["ping", "-c", "3", "-W", "2", target]
+    cmd = ["ping", "-c", "2", "-W", "2", target]
     try:
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=4)
         out = res.stdout
         loss = 0.0
         rtt = 0.0
@@ -1035,7 +1040,6 @@ def run_ping(target):
                     if "packet loss" in p:
                         loss = float(p.replace("% packet loss", "").strip())
             if "avg" in line and "/" in line:
-                # rtt min/avg/max/mdev = 42.1/45.2/51.0/2.3 ms
                 stats = line.split("=")[1].strip().split()[0].split("/")
                 rtt = float(stats[1])
         return round(rtt, 1), round(loss, 1)
@@ -1044,7 +1048,7 @@ def run_ping(target):
 
 def main():
     if not TOKEN:
-        print("Error: GOVPS_TOKEN not set")
+        print("Error: GOVPS_TOKEN not set", file=sys.stderr)
         sys.exit(1)
 
     url = f"{SERVER_URL.rstrip('/')}/api/monitor/report"
@@ -1103,12 +1107,15 @@ def main():
                 data=json.dumps(payload).encode("utf-8"),
                 headers={
                     "Content-Type": "application/json",
-                    "X-Node-Token": TOKEN
+                    "X-Node-Token": TOKEN,
+                    "User-Agent": "Mozilla/5.0 (compatible; GoVPS-Agent/1.0; +https://govps.xyz)"
                 }
             )
-            urllib.request.urlopen(req, timeout=8)
+            with urllib.request.urlopen(req, timeout=8) as res:
+                if res.status == 200:
+                    pass
         except Exception as e:
-            pass
+            print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 数据上报异常: {e}", file=sys.stderr, flush=True)
 
         time.sleep(10)
 
@@ -1129,7 +1136,7 @@ After=network.target
 Type=simple
 Environment=GOVPS_TOKEN=${TOKEN}
 Environment=GOVPS_SERVER_URL=${SERVER_URL}
-ExecStart=/usr/bin/python3 ${INSTALL_DIR}/govps_agent.py
+ExecStart=${PYTHON_BIN} ${INSTALL_DIR}/govps_agent.py
 Restart=always
 RestartSec=5
 
@@ -1141,17 +1148,25 @@ EOF
   systemctl enable $SERVICE_NAME
   systemctl restart $SERVICE_NAME
   print_ok "GoVPS Agent 已作为 systemd 服务启动！"
+
+  print_info "正在验证初始心跳上报连通性..."
+  sleep 2
+  if systemctl is-active --quiet $SERVICE_NAME; then
+    print_ok "Agent 服务运行状态正常 (active)！"
+  else
+    print_warn "服务启动异常，请查看: journalctl -u $SERVICE_NAME -n 20"
+  fi
 else
   # 降级 nohup 后台运行
   pkill -f "govps_agent.py" || true
-  GOVPS_TOKEN="$TOKEN" GOVPS_SERVER_URL="$SERVER_URL" nohup python3 "$INSTALL_DIR/govps_agent.py" >/dev/null 2>&1 &
+  GOVPS_TOKEN="$TOKEN" GOVPS_SERVER_URL="$SERVER_URL" nohup "$PYTHON_BIN" "$INSTALL_DIR/govps_agent.py" >/dev/null 2>&1 &
   print_ok "GoVPS Agent 已在后台启动！"
 fi
 
 print_ok "================================================="
 print_ok "  GoVPS 探针监控 Agent 部署成功！"
 print_ok "  数据每 10 秒自动上报，三网延迟每 30 秒测速一次。"
-print_ok "  如需卸载，随时执行: sudo bash $INSTALL_DIR/agent.sh --uninstall"
+print_ok "  如需卸载，随时执行: sudo bash /opt/govps-agent/agent.sh --uninstall"
 print_ok "================================================="
 """
     return Response(content=script_content, media_type="text/x-shellscript")
