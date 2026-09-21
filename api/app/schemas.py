@@ -151,6 +151,7 @@ class NodeReport(BaseModel):
     uptime_seconds: int = 0
     os_type: str | None = None
     os_version: str | None = None
+    kernel_version: str | None = None
     arch: str | None = None
     ping_stats: list[PingMetric] = Field(default_factory=list)
 

@@ -138,6 +138,24 @@ export function NodeDetailModal({
   const statCU = pingStats.find((p) => p.name === "联通");
   const statCM = pingStats.find((p) => p.name === "移动");
 
+  // 智能解析系统发行版与内核展示
+  const isGenericLinux = node.os_type.toLowerCase() === "linux";
+  const isKernelPattern = Boolean(
+    node.os_version &&
+      (node.os_version.includes("-generic") ||
+        node.os_version.includes("-amd64") ||
+        node.os_version.includes("-pve") ||
+        node.os_version.includes("-lts") ||
+        node.os_version.includes("-arch") ||
+        node.os_version.split(".").length >= 3),
+  );
+
+  const kernelDisplay = node.metrics?.kernel_version || (isKernelPattern ? node.os_version : null);
+  const versionDisplay = isKernelPattern ? null : node.os_version;
+  const distroDisplay = isGenericLinux
+    ? (versionDisplay ? `Linux ${versionDisplay}` : "Linux")
+    : `${node.os_type.charAt(0).toUpperCase() + node.os_type.slice(1)}${versionDisplay ? ` ${versionDisplay}` : ""}`;
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-3xl sm:max-w-4xl p-0 gap-0 overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xl">
@@ -155,10 +173,22 @@ export function NodeDetailModal({
                   )}
                 />
               </DialogTitle>
-              <div className="flex items-center gap-2 text-xs text-slate-400 font-mono mt-0.5">
-                <span className="capitalize">{node.os_type} {node.os_version || ""}</span>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400 font-mono mt-0.5">
+                <span>{distroDisplay}</span>
+                {kernelDisplay && (
+                  <>
+                    <span>·</span>
+                    <span title="Linux 内核版本">内核 {kernelDisplay}</span>
+                  </>
+                )}
                 <span>·</span>
                 <span>{node.cpu_cores || 1} 核 CPU</span>
+                {node.arch && (
+                  <>
+                    <span>·</span>
+                    <span className="uppercase">{node.arch}</span>
+                  </>
+                )}
                 <span>·</span>
                 <span>在线 {node.uptime_days} 天</span>
               </div>

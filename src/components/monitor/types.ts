@@ -21,6 +21,7 @@ export interface NodeMetrics {
   net_tx_total: number; // bytes
   uptime_seconds: number;
   uptime_days: number;
+  kernel_version?: string | null;
   ping_stats: PingTargetStat[];
   ping_history?: PingTargetStat[][]; // 最近 30 次测速样本
 }

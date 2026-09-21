@@ -109,7 +109,10 @@ export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
         </div>
 
         {/* 操作系统徽标 */}
-        <div className="p-1 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 shrink-0">
+        <div
+          className="p-1 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 shrink-0"
+          title={`操作系统: ${node.os_type.toUpperCase()}`}
+        >
           <OsLogo os={node.os_type} className="w-4 h-4" />
         </div>
       </div>

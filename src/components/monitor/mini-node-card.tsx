@@ -80,7 +80,9 @@ export function MiniNodeCard({ node, onClick }: MiniNodeCardProps) {
           </span>
         </div>
 
-        <OsLogo os={node.os_type} className="w-3.5 h-3.5 text-slate-400 hidden md:block" />
+        <div title={`操作系统: ${node.os_type.toUpperCase()}`} className="shrink-0 hidden md:block">
+          <OsLogo os={node.os_type} className="w-3.5 h-3.5 text-slate-400" />
+        </div>
       </div>
     </div>
   );

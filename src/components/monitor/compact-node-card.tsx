@@ -53,7 +53,9 @@ export function CompactNodeCard({ node, onClick }: CompactNodeCardProps) {
             )}
           />
         </div>
-        <OsLogo os={node.os_type} className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+        <div title={`操作系统: ${node.os_type.toUpperCase()}`} className="shrink-0">
+          <OsLogo os={node.os_type} className="w-3.5 h-3.5 text-slate-400" />
+        </div>
       </div>
 
       {/* 资源简明进度 */}

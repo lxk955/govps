@@ -109,6 +109,11 @@ def _node_to_dict(node: UserNode, now: datetime, read_only: bool = False) -> dic
         quota_bytes = quota_gb * (1024 ** 3)
         remaining_gb = max(0.0, round((quota_bytes - total_used_bytes) / (1024 ** 3), 1))
 
+    # 内核版本提取（兼容旧探针将内核存入 os_version 的情况）
+    kernel_ver = status.get("kernel_version")
+    if not kernel_ver and node.os_type == "linux" and node.os_version and ("-" in node.os_version or node.os_version.count(".") >= 2):
+        kernel_ver = node.os_version
+
     return {
         "id": node.id,
         "token": None if read_only else node.token,
@@ -136,6 +141,7 @@ def _node_to_dict(node: UserNode, now: datetime, read_only: bool = False) -> dic
         # 实时指标
         "metrics": {
             "uptime_days": uptime_days,
+            "kernel_version": kernel_ver,
             "cpu_percent": round(float(status.get("cpu_percent") if status.get("cpu_percent") is not None else 0.0), 2),
             "ram_used_bytes": int(status.get("ram_used_bytes") or 0),
             "ram_total_bytes": int(status.get("ram_total_bytes") or 0),
@@ -778,8 +784,9 @@ def report_metrics(
     if payload.cpu_cores:
         node.cpu_cores = payload.cpu_cores
     if payload.os_type:
-        node.os_type = payload.os_type.lower()
-    if payload.os_version:
+        if payload.os_type.lower() != "linux" or not node.os_type or node.os_type == "linux":
+            node.os_type = payload.os_type.lower()
+    if payload.os_version is not None:
         node.os_version = payload.os_version
     if payload.arch:
         node.arch = payload.arch
@@ -793,6 +800,11 @@ def report_metrics(
             ping_history = ping_history[-30:]
 
     cpu_pct = float(payload.cpu_percent if payload.cpu_percent is not None else 0.0)
+
+    # 提取并记录内核版本
+    kernel_ver = payload.kernel_version
+    if not kernel_ver and payload.os_type == "linux" and payload.os_version:
+        kernel_ver = payload.os_version
 
     node.cached_status = {
         "cpu_percent": cpu_pct,
@@ -810,6 +822,7 @@ def report_metrics(
         "net_rx_total": payload.net_rx_total,
         "net_tx_total": payload.net_tx_total,
         "uptime_seconds": payload.uptime_seconds,
+        "kernel_version": kernel_ver,
         "ping_stats": [p.model_dump() for p in payload.ping_stats],
         "ping_history": ping_history,
     }
@@ -923,6 +936,18 @@ if [ "$ACTION" = "update" ]; then
     print_err "未找到当前节点的 Token 记录，请使用: bash agent.sh --token <YOUR_TOKEN> 重新安装更新。"
     exit 1
   fi
+  # 若是本地脚本执行 update，联网拉取服务端最新 agent.sh 链式重载
+  if [ "${GOVPS_UPDATE_REEXEC:-0}" != "1" ] && [ -n "$SERVER_URL" ]; then
+    export GOVPS_UPDATE_REEXEC=1
+    TMP_SH=$(mktemp /tmp/govps-update.XXXXXX.sh 2>/dev/null || echo "/tmp/govps-update.sh")
+    if curl -sSL "${SERVER_URL}/api/monitor/agent.sh" -o "$TMP_SH" 2>/dev/null && [ -s "$TMP_SH" ]; then
+      bash "$TMP_SH" --update --token "$TOKEN" --url "$SERVER_URL"
+      RET=$?
+      rm -f "$TMP_SH"
+      exit $RET
+    fi
+    rm -f "$TMP_SH"
+  fi
 fi
 
 if [ -z "$TOKEN" ]; then
@@ -954,7 +979,11 @@ PYTHON_BIN=$(command -v python3 || command -v python || echo "/usr/bin/python3")
 mkdir -p "$INSTALL_DIR"
 echo "$TOKEN" > "$INSTALL_DIR/token"
 chmod 600 "$INSTALL_DIR/token"
-cp -f "$0" "$INSTALL_DIR/agent.sh" 2>/dev/null || true
+if [ -f "$0" ] && grep -q "GOVPS" "$0" 2>/dev/null; then
+  cp -f "$0" "$INSTALL_DIR/agent.sh" 2>/dev/null || true
+else
+  curl -sSL "${SERVER_URL}/api/monitor/agent.sh" -o "$INSTALL_DIR/agent.sh" 2>/dev/null || true
+fi
 chmod +x "$INSTALL_DIR/agent.sh" 2>/dev/null || true
 
 cat << 'EOF' > "$INSTALL_DIR/govps_agent.py"
@@ -1092,24 +1121,73 @@ def get_net_info():
 
 def get_os_info():
     os_name = platform.system().lower()
-    os_version = platform.release()
+    os_version = ""
+    kernel_ver = platform.release()
     try:
-        if os.path.exists("/etc/os-release"):
-            data = {}
-            with open("/etc/os-release", "r") as f:
-                for line in f:
-                    if "=" in line:
-                        k, v = line.strip().split("=", 1)
-                        data[k.strip()] = v.strip().strip("\"'")
-            distro_id = data.get("ID", "").lower()
-            if distro_id:
-                os_name = distro_id
-            version = data.get("VERSION_ID", data.get("VERSION", ""))
-            if version:
-                os_version = version
+        found_distro = False
+        for p in ["/etc/os-release", "/usr/lib/os-release"]:
+            if os.path.exists(p):
+                data = {}
+                with open(p, "r") as f:
+                    for line in f:
+                        if "=" in line:
+                            k, v = line.strip().split("=", 1)
+                            data[k.strip()] = v.strip().strip("\"'")
+                distro_id = data.get("ID", "").lower()
+                if distro_id:
+                    os_name = distro_id
+                    found_distro = True
+                ver = data.get("VERSION_ID", "")
+                if not ver:
+                    raw_v = data.get("VERSION", "")
+                    if raw_v:
+                        ver = raw_v.split()[0]
+                if ver:
+                    os_version = ver
+                break
+
+        if not found_distro:
+            if os.path.exists("/etc/debian_version"):
+                try:
+                    with open("/etc/debian_version", "r") as f:
+                        os_name = "debian"
+                        os_version = f.read().strip()
+                except Exception:
+                    pass
+            elif os.path.exists("/etc/alpine-release"):
+                try:
+                    with open("/etc/alpine-release", "r") as f:
+                        os_name = "alpine"
+                        os_version = f.read().strip()
+                except Exception:
+                    pass
+            elif os.path.exists("/etc/redhat-release"):
+                try:
+                    with open("/etc/redhat-release", "r") as f:
+                        os_name = "centos"
+                        for part in f.read().strip().split():
+                            if part and part[0].isdigit():
+                                os_version = part
+                                break
+                except Exception:
+                    pass
+
+        # 归一化发行版名称
+        if "ubuntu" in os_name:
+            os_name = "ubuntu"
+        elif "debian" in os_name:
+            os_name = "debian"
+        elif any(x in os_name for x in ["alma", "rocky", "centos", "rhel"]):
+            os_name = "centos"
+        elif "alpine" in os_name:
+            os_name = "alpine"
+        elif "arch" in os_name:
+            os_name = "arch"
+        elif "fedora" in os_name:
+            os_name = "fedora"
     except Exception:
         pass
-    return os_name, os_version
+    return os_name, os_version, kernel_ver
 
 def run_ping_target(target):
     cmd = ["ping", "-c", str(PING_COUNT), "-i", "0.2", "-W", "1", target]
@@ -1195,6 +1273,9 @@ def main():
 
     url = f"{SERVER_URL.rstrip('/')}/api/monitor/report"
 
+    # 探测操作系统发行版与内核信息
+    os_type, os_version, kernel_version = get_os_info()
+
     # 首次采样网络与 CPU 基线
     get_net_info()
     get_cpu_info()
@@ -1210,8 +1291,8 @@ def main():
             rx_rate, tx_rate, rx_total, tx_total = get_net_info()
             uptime = get_uptime()
 
-            # 每 30 秒执行一次三网 Ping 测速（多线程并发探测，避免阻塞心跳上报）
-            if ping_cycle % 3 == 0 or not cached_ping_stats:
+            # 每 30 秒执行一次 Ping 测速（主循环 3 秒，每 10 次循环运行一次）
+            if ping_cycle % 10 == 0:
                 def probe(pt):
                     targets = pt.get("hosts") or [pt.get("host")]
                     lat, loss = run_ping_carrier(pt["name"], targets)
@@ -1244,8 +1325,9 @@ def main():
                 "net_rx_total": rx_total,
                 "net_tx_total": tx_total,
                 "uptime_seconds": uptime,
-                "os_type": get_os_info()[0],
-                "os_version": get_os_info()[1],
+                "os_type": os_type,
+                "os_version": os_version,
+                "kernel_version": kernel_version,
                 "arch": platform.machine(),
                 "ping_stats": cached_ping_stats
             }
