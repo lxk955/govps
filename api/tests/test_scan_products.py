@@ -120,6 +120,36 @@ def test_preset_does_not_force_live_sku_oos(db):
     assert p.in_stock is True
 
 
+def test_unverified_preset_does_not_force_oos_sku_instock(db):
+    m = _merchant(db)
+    p, _ = upsert_product(db, m, _raw(in_stock=False, price=Decimal("10")))
+    db.flush()
+    _, events = upsert_product(
+        db,
+        m,
+        _raw(in_stock=True, price=Decimal("10"), from_preset=True, stock_verified=False),
+    )
+    db.flush()
+    db.refresh(p)
+    assert p.in_stock is False
+    assert events == []
+
+
+def test_preset_never_emits_restock_or_price_drop_events(db):
+    m = _merchant(db)
+    p, _ = upsert_product(db, m, _raw(in_stock=False, price=Decimal("20")))
+    db.flush()
+    # 即使预置被强行标记为 stock_verified=True，也绝不允许产生 RESTOCK 或 PRICE_DROP 事件
+    _, events = upsert_product(
+        db,
+        m,
+        _raw(in_stock=True, price=Decimal("10"), from_preset=True, stock_verified=True),
+    )
+    db.flush()
+    assert events == []
+    assert db.scalar(select(func.count(NotifyEvent.id))) == 0
+
+
 def test_min_bw_keeps_unmetered(client, db):
     m = _merchant(db)
     metered = Product(

@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     MAIL_FROM: str = "GoVPS · VPS雷达 <notify@govps.xyz>"
     PUBLIC_API_URL: str = "https://govps.xyz"
     CORS_ORIGINS: str = "https://govps.xyz,http://localhost:3000"
-    EVENT_DEDUP_MINUTES: int = 30
+    EVENT_DEDUP_MINUTES: int = 360
     DAILY_MAIL_CAP: int = 10
     SCAN_TIMEOUT: float = 20.0
     # 爬虫全局默认代理路由（可选，支持 http:// 或 socks5://，留空则尊重系统 HTTP_PROXY/HTTPS_PROXY 或直连）

@@ -127,8 +127,8 @@ def upsert_product(db: Session, merchant: Merchant, raw: RawProduct) -> tuple[Pr
     )
 
     incoming_stock = raw.in_stock
-    # 预置目录且未对实时库存进行验证时：不得把库里仍显示有货的线上 SKU 打成缺货
-    if raw.from_preset and not raw.stock_verified and p is not None and p.in_stock and not raw.in_stock:
+    # 预置目录且未对实时库存进行验证时：不得改变已有商品的库存状态（既不误报有货，也不误打缺货）
+    if raw.from_preset and not raw.stock_verified and p is not None:
         incoming_stock = p.in_stock
 
     incoming_price = raw.price if _positive_price(raw.price) else None
@@ -165,8 +165,11 @@ def upsert_product(db: Session, merchant: Merchant, raw: RawProduct) -> tuple[Pr
 
     events: list[NotifyEvent] = []
 
+    # 静态预设兜底数据严禁触发任何对外的补货或降价事件，防止因源站抖动导致虚假补货海啸
+    is_preset = getattr(raw, "from_preset", False)
+
     # 缺货 → 有货：补货事件（新品已在上面返回，不会走到这里）
-    if not p.in_stock and incoming_stock:
+    if not p.in_stock and incoming_stock and not is_preset:
         if not _has_recent_event(db, p.id, EventType.RESTOCK.value):
             ev = NotifyEvent(product_id=p.id, type=EventType.RESTOCK.value,
                              old_value="out_of_stock", new_value="in_stock")
@@ -175,7 +178,8 @@ def upsert_product(db: Session, merchant: Merchant, raw: RawProduct) -> tuple[Pr
 
     # 降价事件：价格 0 / 解析失败不当作降价
     if (
-        incoming_price is not None
+        not is_preset
+        and incoming_price is not None
         and p.price is not None
         and incoming_price < Decimal(str(p.price))
     ):
