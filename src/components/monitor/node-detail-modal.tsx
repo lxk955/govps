@@ -254,10 +254,21 @@ export function NodeDetailModal({
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/30">
                   <span className="w-2 h-2 rounded-full bg-rose-500" />
                   <span className="font-sans font-bold text-slate-700 dark:text-slate-200">电信</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                    {statCT ? `${statCT.latency_ms.toFixed(1)} ms` : "--"}
+                  <span
+                    className={cn(
+                      "font-bold",
+                      statCT && statCT.loss_rate < 100 && statCT.latency_ms > 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-rose-500",
+                    )}
+                  >
+                    {statCT && statCT.loss_rate < 100 && statCT.latency_ms > 0
+                      ? `${statCT.latency_ms.toFixed(1)} ms`
+                      : statCT && statCT.loss_rate >= 100
+                      ? "超时"
+                      : "--"}
                   </span>
-                  <span className="text-slate-400">
+                  <span className={cn(statCT && statCT.loss_rate > 0 ? "text-rose-500 font-bold" : "text-slate-400")}>
                     {statCT ? `${statCT.loss_rate.toFixed(1)}%` : "0%"}
                   </span>
                 </div>
@@ -266,10 +277,21 @@ export function NodeDetailModal({
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-lime-200 dark:border-lime-900/60 bg-lime-50/60 dark:bg-lime-950/30">
                   <span className="w-2 h-2 rounded-full bg-lime-500" />
                   <span className="font-sans font-bold text-slate-700 dark:text-slate-200">联通</span>
-                  <span className="text-lime-600 dark:text-lime-400 font-bold">
-                    {statCU ? `${statCU.latency_ms.toFixed(1)} ms` : "--"}
+                  <span
+                    className={cn(
+                      "font-bold",
+                      statCU && statCU.loss_rate < 100 && statCU.latency_ms > 0
+                        ? "text-lime-600 dark:text-lime-400"
+                        : "text-rose-500",
+                    )}
+                  >
+                    {statCU && statCU.loss_rate < 100 && statCU.latency_ms > 0
+                      ? `${statCU.latency_ms.toFixed(1)} ms`
+                      : statCU && statCU.loss_rate >= 100
+                      ? "超时"
+                      : "--"}
                   </span>
-                  <span className="text-slate-400">
+                  <span className={cn(statCU && statCU.loss_rate > 0 ? "text-rose-500 font-bold" : "text-slate-400")}>
                     {statCU ? `${statCU.loss_rate.toFixed(1)}%` : "0%"}
                   </span>
                 </div>
@@ -278,10 +300,21 @@ export function NodeDetailModal({
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-sky-200 dark:border-sky-900/60 bg-sky-50/60 dark:bg-sky-950/30">
                   <span className="w-2 h-2 rounded-full bg-sky-500" />
                   <span className="font-sans font-bold text-slate-700 dark:text-slate-200">移动</span>
-                  <span className="text-sky-600 dark:text-sky-400 font-bold">
-                    {statCM ? `${statCM.latency_ms.toFixed(1)} ms` : "--"}
+                  <span
+                    className={cn(
+                      "font-bold",
+                      statCM && statCM.loss_rate < 100 && statCM.latency_ms > 0
+                        ? "text-sky-600 dark:text-sky-400"
+                        : "text-rose-500",
+                    )}
+                  >
+                    {statCM && statCM.loss_rate < 100 && statCM.latency_ms > 0
+                      ? `${statCM.latency_ms.toFixed(1)} ms`
+                      : statCM && statCM.loss_rate >= 100
+                      ? "超时"
+                      : "--"}
                   </span>
-                  <span className="text-slate-400">
+                  <span className={cn(statCM && statCM.loss_rate > 0 ? "text-rose-500 font-bold" : "text-slate-400")}>
                     {statCM ? `${statCM.loss_rate.toFixed(1)}%` : "0%"}
                   </span>
                 </div>

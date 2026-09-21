@@ -19,7 +19,7 @@ export function MiniNodeCard({ node, onClick }: MiniNodeCardProps) {
 
   // 平均延迟
   const pingStats = metrics.ping_stats || [];
-  const validPings = pingStats.filter((p) => p.latency_ms > 0);
+  const validPings = pingStats.filter((p) => p.latency_ms > 0 && (p.loss_rate ?? 0) < 100);
   const avgPing =
     validPings.length > 0
       ? Math.round(validPings.reduce((acc, p) => acc + p.latency_ms, 0) / validPings.length)

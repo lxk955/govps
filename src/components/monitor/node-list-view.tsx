@@ -47,9 +47,12 @@ export function NodeListView({ nodes, onSelectNode }: NodeListViewProps) {
                 : 0;
 
             const pingStats = metrics.ping_stats || [];
-            const pCT = pingStats.find((p) => p.name === "电信")?.latency_ms || 0;
-            const pCU = pingStats.find((p) => p.name === "联通")?.latency_ms || 0;
-            const pCM = pingStats.find((p) => p.name === "移动")?.latency_ms || 0;
+            const sCT = pingStats.find((p) => p.name === "电信");
+            const sCU = pingStats.find((p) => p.name === "联通");
+            const sCM = pingStats.find((p) => p.name === "移动");
+            const pCT = sCT && (sCT.loss_rate ?? 0) < 100 ? sCT.latency_ms : 0;
+            const pCU = sCU && (sCU.loss_rate ?? 0) < 100 ? sCU.latency_ms : 0;
+            const pCM = sCM && (sCM.loss_rate ?? 0) < 100 ? sCM.latency_ms : 0;
 
             return (
               <tr
@@ -137,16 +140,25 @@ export function NodeListView({ nodes, onSelectNode }: NodeListViewProps) {
                 {/* 三网延迟 */}
                 <td className="py-3 px-3 text-[11px]">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-emerald-500 font-bold" title="电信">
-                      {pCT > 0 ? `${Math.round(pCT)}ms` : "--"}
+                    <span
+                      className={pCT > 0 ? "text-emerald-500 font-bold" : sCT && (sCT.loss_rate ?? 0) >= 100 ? "text-rose-500 font-bold" : "text-slate-400"}
+                      title={`电信: ${pCT > 0 ? `${Math.round(pCT)}ms` : sCT && (sCT.loss_rate ?? 0) >= 100 ? "超时" : "--"} (丢包: ${sCT?.loss_rate ?? 0}%)`}
+                    >
+                      {pCT > 0 ? `${Math.round(pCT)}ms` : sCT && (sCT.loss_rate ?? 0) >= 100 ? "超时" : "--"}
                     </span>
                     <span className="text-slate-300">/</span>
-                    <span className="text-lime-500 font-bold" title="联通">
-                      {pCU > 0 ? `${Math.round(pCU)}ms` : "--"}
+                    <span
+                      className={pCU > 0 ? "text-lime-500 font-bold" : sCU && (sCU.loss_rate ?? 0) >= 100 ? "text-rose-500 font-bold" : "text-slate-400"}
+                      title={`联通: ${pCU > 0 ? `${Math.round(pCU)}ms` : sCU && (sCU.loss_rate ?? 0) >= 100 ? "超时" : "--"} (丢包: ${sCU?.loss_rate ?? 0}%)`}
+                    >
+                      {pCU > 0 ? `${Math.round(pCU)}ms` : sCU && (sCU.loss_rate ?? 0) >= 100 ? "超时" : "--"}
                     </span>
                     <span className="text-slate-300">/</span>
-                    <span className="text-amber-500 font-bold" title="移动">
-                      {pCM > 0 ? `${Math.round(pCM)}ms` : "--"}
+                    <span
+                      className={pCM > 0 ? "text-amber-500 font-bold" : sCM && (sCM.loss_rate ?? 0) >= 100 ? "text-rose-500 font-bold" : "text-slate-400"}
+                      title={`移动: ${pCM > 0 ? `${Math.round(pCM)}ms` : sCM && (sCM.loss_rate ?? 0) >= 100 ? "超时" : "--"} (丢包: ${sCM?.loss_rate ?? 0}%)`}
+                    >
+                      {pCM > 0 ? `${Math.round(pCM)}ms` : sCM && (sCM.loss_rate ?? 0) >= 100 ? "超时" : "--"}
                     </span>
                   </div>
                 </td>

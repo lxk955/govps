@@ -86,7 +86,7 @@ export function PingStrip({
         </span>
         <div className="flex items-center gap-2.5">
           <span className={cn("font-bold text-[11px]", colorTone.text)}>
-            {latency > 0 ? `${Math.round(latency)} ms` : "--"}
+            {latency > 0 && loss < 100 ? `${Math.round(latency)} ms` : loss >= 100 ? "超时" : "--"}
           </span>
           <span
             className={cn(
@@ -102,7 +102,7 @@ export function PingStrip({
       {/* 30 格热力色带 */}
       <div
         className="flex items-center gap-[2px] w-full h-[6px] overflow-hidden rounded-xs bg-slate-100 dark:bg-slate-800/80 p-[1px]"
-        title={`${carrierName}: ${latency > 0 ? `${latency}ms` : "无数据"}, 丢包: ${loss}%`}
+        title={`${carrierName}: ${latency > 0 && loss < 100 ? `${Math.round(latency)}ms` : loss >= 100 ? "超时" : "无数据"}, 丢包: ${loss.toFixed(1)}%`}
       >
         {blocks.map((b, idx) => {
           const c = getLatencyColor(b.latency, b.loss);

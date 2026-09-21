@@ -942,9 +942,9 @@ TOKEN = os.environ.get("GOVPS_TOKEN", "")
 SERVER_URL = os.environ.get("GOVPS_SERVER_URL", "https://govps.xyz")
 
 PING_TARGETS = [
-    {"name": "电信", "host": "202.96.209.133"},   # 上海电信骨干网
-    {"name": "联通", "host": "112.64.120.1"},     # 上海联通骨干网
-    {"name": "移动", "host": "221.130.33.52"},    # 北京移动骨干网
+    {"name": "电信", "hosts": ["202.96.209.133", "202.96.128.86"]},   # 上海电信 / 广东电信
+    {"name": "联通", "hosts": ["112.64.120.1", "119.167.0.1"]},       # 上海联通 / 山东联通骨干
+    {"name": "移动", "hosts": ["221.130.33.52", "211.136.192.6"]},   # 北京移动 / 广东移动
 ]
 
 def get_uptime():
@@ -1064,12 +1064,16 @@ def get_net_info():
     _prev_net_time = now
     return rx_rate, tx_rate, rx_bytes, tx_bytes
 
-def run_ping(target):
-    cmd = ["ping", "-c", "2", "-W", "2", target]
+def run_ping_target(target):
+    cmd = ["ping", "-c", "4", "-i", "0.2", "-W", "1", target]
     try:
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=4)
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=3)
+        if res.returncode != 0 and "invalid" in res.stderr.lower():
+            # 兼容极少数精简环境不支持浮点间隔的情况
+            cmd = ["ping", "-c", "4", "-W", "1", target]
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
         out = res.stdout
-        loss = 0.0
+        loss = 100.0
         rtt = 0.0
         for line in out.splitlines():
             if "packet loss" in line:
@@ -1083,6 +1087,22 @@ def run_ping(target):
         return round(rtt, 1), round(loss, 1)
     except Exception:
         return 0.0, 100.0
+
+def run_ping(target_or_targets):
+    if isinstance(target_or_targets, (list, tuple)):
+        targets = [t for t in target_or_targets if t]
+    else:
+        targets = [target_or_targets]
+    if not targets:
+        return 0.0, 100.0
+
+    best_lat, best_loss = 0.0, 100.0
+    for target in targets:
+        lat, loss = run_ping_target(target)
+        if loss < 100.0:
+            return lat, loss
+        best_lat, best_loss = lat, loss
+    return best_lat, best_loss
 
 def main():
     if not TOKEN:
@@ -1109,7 +1129,8 @@ def main():
             # 每 30 秒执行一次三网 Ping 测速（多线程并发探测，避免阻塞心跳上报）
             if ping_cycle % 3 == 0 or not cached_ping_stats:
                 def probe(pt):
-                    lat, loss = run_ping(pt["host"])
+                    targets = pt.get("hosts") or [pt.get("host")]
+                    lat, loss = run_ping(targets)
                     return {
                         "name": pt["name"],
                         "latency_ms": lat,
