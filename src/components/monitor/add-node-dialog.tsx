@@ -33,7 +33,6 @@ export function AddNodeDialog({
   const [osType, setOsType] = useState("debian");
   const [groupName, setGroupName] = useState("主力");
   const [tagsInput, setTagsInput] = useState("");
-  const [cpuCores, setCpuCores] = useState("1");
   const [price, setPrice] = useState("");
   const [currency, setCurrency] = useState("USD");
   const [billingCycle, setBillingCycle] = useState("monthly");
@@ -52,7 +51,6 @@ export function AddNodeDialog({
       setOsType(editingNode.os_type);
       setGroupName(editingNode.group_name);
       setTagsInput(editingNode.tags.join(", "));
-      setCpuCores(String(editingNode.cpu_cores));
       setPrice(editingNode.price !== null ? String(editingNode.price) : "");
       setCurrency(editingNode.currency);
       setBillingCycle(editingNode.billing_cycle);
@@ -65,7 +63,6 @@ export function AddNodeDialog({
       setOsType("debian");
       setGroupName("主力");
       setTagsInput("");
-      setCpuCores("1");
       setPrice("");
       setCurrency("USD");
       setBillingCycle("monthly");
@@ -103,7 +100,6 @@ export function AddNodeDialog({
       os_type: osType.trim().toLowerCase(),
       group_name: groupName.trim() || "主力",
       tags,
-      cpu_cores: Number(cpuCores) || 1,
       price: price ? parseFloat(price) : null,
       currency: currency.toUpperCase(),
       billing_cycle: billingCycle,
@@ -295,7 +291,7 @@ export function AddNodeDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <Label className="text-xs font-semibold">操作系统</Label>
                 <select
@@ -319,17 +315,6 @@ export function AddNodeDialog({
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
                   className="h-9 text-xs rounded-xl"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-semibold">CPU 核数</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={cpuCores}
-                  onChange={(e) => setCpuCores(e.target.value)}
-                  className="h-9 text-xs rounded-xl font-mono"
                 />
               </div>
             </div>
