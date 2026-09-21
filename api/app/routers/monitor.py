@@ -941,7 +941,7 @@ import os, sys, time, json, platform, subprocess, urllib.request, urllib.error, 
 TOKEN = os.environ.get("GOVPS_TOKEN", "")
 SERVER_URL = os.environ.get("GOVPS_SERVER_URL", "https://govps.xyz")
 PING_COUNT = int(os.environ.get("GOVPS_PING_COUNT", "10"))
-PING_WINDOW = int(os.environ.get("GOVPS_PING_WINDOW", "5"))
+PING_WINDOW = int(os.environ.get("GOVPS_PING_WINDOW", "10"))
 
 PING_TARGETS = [
     {"name": "电信", "hosts": ["202.96.209.133", "202.96.128.86"]},   # 上海电信 / 广东电信
@@ -1140,7 +1140,7 @@ def run_ping_carrier(carrier_name, target_or_targets):
         if loss < 100.0:
             break
 
-    # 滑动窗口累计多轮探测（默认保存最近 5 轮采样，共 50 个 ICMP 样本，时间跨度约 2.5 分钟）
+    # 滑动窗口累计多轮探测（默认保存最近 10 轮采样，共 100 个 ICMP 样本，时间跨度 5 分钟）
     dq = _rolling_ping_records[carrier_name]
     dq.append({"sent": chosen_sent, "recv": chosen_recv, "rtt": chosen_rtt})
 
@@ -1149,7 +1149,7 @@ def run_ping_carrier(carrier_name, target_or_targets):
     if total_sent == 0:
         return 0.0, 100.0
 
-    # 滑动窗口丢包率：具备细致的 2.0% 阶梯粒度
+    # 滑动窗口丢包率：具备精准的 1.0% 阶梯粒度
     window_loss = round(max(0.0, min(100.0, ((total_sent - total_recv) / total_sent) * 100.0)), 1)
 
     # 延迟加权平均
@@ -1291,7 +1291,7 @@ fi
 
 print_ok "================================================="
 print_ok "  GoVPS 探针监控 Agent 部署成功！"
-print_ok "  数据每 10 秒自动上报，三网延迟每 30 秒测速一次。"
+print_ok "  数据每 10 秒自动上报，三网延迟每 30 秒测速一次（5 分钟 100 样本滑动窗口）。"
 print_ok "  如需卸载，随时执行: sudo bash /opt/govps-agent/agent.sh --uninstall"
 print_ok "================================================="
 """
