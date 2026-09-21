@@ -869,7 +869,7 @@ def report_metrics(
     return {"status": "ok"}
 
 
-@router.get("/agent.sh")
+@router.api_route("/agent.sh", methods=["GET", "HEAD"])
 def get_agent_script():
     """动态返回纯原生 Shell + Python3 的高兼容性 VPS 监控 Agent 安装与卸载脚本。"""
     script_content = r"""#!/usr/bin/env bash
@@ -936,11 +936,11 @@ if [ "$ACTION" = "update" ]; then
     print_err "未找到当前节点的 Token 记录，请使用: bash agent.sh --token <YOUR_TOKEN> 重新安装更新。"
     exit 1
   fi
-  # 若是本地脚本执行 update，联网拉取服务端最新 agent.sh 链式重载
-  if [ "${GOVPS_UPDATE_REEXEC:-0}" != "1" ] && [ -n "$SERVER_URL" ]; then
+  # 仅当本脚本是从本地文件（如 /opt/govps-agent/agent.sh）执行时，尝试拉取服务端最新 agent.sh 链式重载
+  if [ "${GOVPS_UPDATE_REEXEC:-0}" != "1" ] && [ -f "$0" ] && [ "$0" != "bash" ] && [ "$0" != "-bash" ] && [ -n "$SERVER_URL" ]; then
     export GOVPS_UPDATE_REEXEC=1
     TMP_SH=$(mktemp /tmp/govps-update.XXXXXX.sh 2>/dev/null || echo "/tmp/govps-update.sh")
-    if curl -sSL "${SERVER_URL}/api/monitor/agent.sh" -o "$TMP_SH" 2>/dev/null && [ -s "$TMP_SH" ]; then
+    if curl -fsSL "${SERVER_URL}/api/monitor/agent.sh" -o "$TMP_SH" 2>/dev/null && [ -s "$TMP_SH" ] && grep -q "GOVPS" "$TMP_SH" 2>/dev/null; then
       bash "$TMP_SH" --update --token "$TOKEN" --url "$SERVER_URL"
       RET=$?
       rm -f "$TMP_SH"
@@ -982,7 +982,7 @@ chmod 600 "$INSTALL_DIR/token"
 if [ -f "$0" ] && grep -q "GOVPS" "$0" 2>/dev/null; then
   cp -f "$0" "$INSTALL_DIR/agent.sh" 2>/dev/null || true
 else
-  curl -sSL "${SERVER_URL}/api/monitor/agent.sh" -o "$INSTALL_DIR/agent.sh" 2>/dev/null || true
+  curl -fsSL "${SERVER_URL}/api/monitor/agent.sh" -o "$INSTALL_DIR/agent.sh" 2>/dev/null || true
 fi
 chmod +x "$INSTALL_DIR/agent.sh" 2>/dev/null || true
 
