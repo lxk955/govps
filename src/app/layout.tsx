@@ -102,13 +102,14 @@ export default async function RootLayout({
     }
   }
   const cookieMode = parseCurrencyMode((await cookies()).get(CURRENCY_COOKIE)?.value);
+  const initialRates = Object.keys(ratesMap).length > 0 ? ratesMap : undefined;
 
   return (
     <html lang="zh-CN" className="overflow-x-hidden" suppressHydrationWarning>
       <body className="bg-background text-foreground flex min-h-dvh flex-col antialiased overflow-x-hidden w-full max-w-full">
         <ThemeProvider>
           <AuthProvider>
-            <CurrencyProvider initialRates={ratesMap} initialMode={cookieMode}>
+            <CurrencyProvider initialRates={initialRates} initialMode={cookieMode}>
               <header className="bg-card/90 border-border sticky top-0 z-20 border-b backdrop-blur w-full">
                 <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center justify-between gap-1.5 px-3 sm:gap-6 sm:px-4">
                   <Link
@@ -145,7 +146,13 @@ export default async function RootLayout({
                     <div className="hidden sm:block">
                       <BookmarkDialog />
                     </div>
-                    <HeaderAuth />
+                    <Suspense
+                      fallback={
+                        <span className="inline-flex h-8 w-12" aria-hidden />
+                      }
+                    >
+                      <HeaderAuth />
+                    </Suspense>
                     <ThemeToggle />
                   </div>
                 </div>

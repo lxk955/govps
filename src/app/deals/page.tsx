@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { DealsRangeSelect } from "@/components/deals/deals-range-select";
 import { PriceText } from "@/components/price-text";
+import { ReloadButton } from "@/components/reload-button";
 import { WatchButton } from "@/components/vps/watch-button";
 import { getEvents, getEventsSummary, type EventItem, type EventsSummary } from "@/lib/api/endpoints";
 import { lineInfo, lineTierClass, shortName } from "@/lib/display";
@@ -116,12 +117,9 @@ export default async function DealsPage({ searchParams }: PageProps) {
           <p className="text-sm font-medium text-red-600 dark:text-red-400">
             动态数据加载失败，请稍后重试。
           </p>
-          <Link
-            href={`/deals?type=${type}&hours=${hours}`}
-            className="rounded-xl bg-red-600 px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700"
-          >
+          <ReloadButton className="rounded-xl bg-red-600 px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700">
             重新加载
-          </Link>
+          </ReloadButton>
         </div>
       ) : items.length === 0 ? (
         <div className="border-border rounded-xl border border-dashed p-12 text-center text-sm text-slate-400 dark:text-slate-500">

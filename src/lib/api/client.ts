@@ -34,6 +34,13 @@ const authExpiredListeners = new Set<() => void>();
 /** 登录后注入 token；登出传 null。 */
 export function setApiToken(token: string | null): void {
   authToken = token;
+  if (typeof window === "undefined") return;
+  try {
+    if (token) localStorage.setItem("govps_token", token);
+    else localStorage.removeItem("govps_token");
+  } catch {
+    /* storage 不可用时忽略 */
+  }
 }
 
 /** 注册「凭证失效」回调（401 且请求时带了凭证才触发），返回取消函数。 */

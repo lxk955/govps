@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { WatchButton } from "@/components/vps/watch-button";
 import { watchProduct, type ProductListItem, type WatchPrefs } from "@/lib/api/endpoints";
 import { cycleLabel, monthlyEquivalent } from "@/lib/format";
+import { loginHref } from "@/lib/login-next";
 import { ROW_ACTIONS_ROW } from "@/lib/row-layout";
 
 /**
@@ -59,7 +60,7 @@ export function RowBuyZone({
 
   const restockNotify = async () => {
     if (user === null) {
-      router.push(`/login?next=${encodeURIComponent(pathname || "/")}`);
+      router.push(loginHref(pathname, typeof window !== "undefined" ? window.location.search : ""));
       return;
     }
     setBusy(true);

@@ -284,15 +284,15 @@ export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
         </div>
       </div>
 
-      {/* 剩余月度流量进度条 */}
+      {/* 开机以来累计流量（网卡计数，不是账单月流量） */}
       {node.traffic_limit_gb && (
         <div className="flex flex-col gap-1 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
           <div className="flex items-center justify-between text-[11px] font-mono select-none">
             <span className="text-slate-600 dark:text-slate-300 font-sans">
-              剩余流量 {node.remaining_gb !== null ? `${node.remaining_gb} GB` : "--"}
+              开机累计流量
             </span>
             <span className="text-slate-400 text-[10px]">
-              {formatBytes(metrics.net_rx_total + metrics.net_tx_total).full} / {node.traffic_limit_gb} GB
+              {formatBytes(metrics.net_rx_total + metrics.net_tx_total).full} / {node.traffic_limit_gb} GB 额度
             </span>
           </div>
           <SegmentedMeter

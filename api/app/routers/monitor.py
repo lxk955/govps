@@ -731,6 +731,8 @@ def get_node_history(
         )
         if not target_user or target_user.id != node.user_id:
             raise HTTPException(status_code=403, detail="无权访问该节点监控历史")
+        if not node.is_public:
+            raise HTTPException(status_code=403, detail="无权访问该节点监控历史")
     else:
         if not user or user.id != node.user_id:
             raise HTTPException(status_code=403, detail="无权访问该节点监控历史")

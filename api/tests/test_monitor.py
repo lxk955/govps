@@ -195,6 +195,10 @@ def test_demo_and_share(client, test_user):
     assert guest_hist.status_code == 200
     assert len(guest_hist.json()["points"]) >= 10
 
+    other = next(n for n in data["nodes"] if n["id"] != demo_node["id"])
+    hidden_hist = client.get(f"/api/monitor/nodes/{other['id']}/history?share={share_token}")
+    assert hidden_hist.status_code == 403
+
     # 6. 清理演示节点
     clear_res = client.delete("/api/monitor/demo", headers=headers)
     assert clear_res.status_code == 200

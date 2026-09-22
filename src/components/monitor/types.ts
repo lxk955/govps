@@ -30,7 +30,7 @@ export interface NodeMetrics {
 
 export interface MonitorNode {
   id: number;
-  token: string;
+  token: string | null;
   name: string;
   country: string; // hk, jp, us, sg, de, gb, etc.
   group_name: string;

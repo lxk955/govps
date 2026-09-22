@@ -9,6 +9,7 @@ import { NotifyBanner } from "@/components/vps/notify-banner";
 import { Pagination } from "@/components/vps/Pagination";
 import { VpsCard } from "@/components/vps/VpsCard";
 import { VpsRow } from "@/components/vps/VpsRow";
+import { ReloadButton } from "@/components/reload-button";
 import { getEventsSummary, listMerchants, listProducts, type ProductsResponse } from "@/lib/api/endpoints";
 import { CURRENCY_COOKIE, parseCurrencyMode, priceFilterCurrency } from "@/lib/currency-mode";
 import { timeAgo } from "@/lib/format";
@@ -155,12 +156,9 @@ export default async function HomePage({ searchParams }: PageProps) {
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-12 text-center dark:border-red-900 dark:bg-red-950/30">
             <div className="text-3xl">📡</div>
             <p className="text-sm font-medium text-red-600 dark:text-red-400">{error}</p>
-            <Link
-              href="/"
-              className="rounded-xl bg-red-600 px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700"
-            >
+            <ReloadButton className="rounded-xl bg-red-600 px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700">
               重新加载
-            </Link>
+            </ReloadButton>
           </div>
         ) : items.length === 0 ? (
           /* 智能零结果状态（带推荐快捷动作） */

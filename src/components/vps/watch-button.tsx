@@ -11,6 +11,7 @@ import {
   type WatchPrefs,
 } from "@/lib/api/endpoints";
 import { cn } from "@/lib/utils";
+import { loginHref } from "@/lib/login-next";
 
 /**
  * 关注按钮（P4）。
@@ -86,7 +87,7 @@ export function WatchButton({
   const toggle = useCallback(async () => {
     if (user === undefined) return; // 挂载检查未完成
     if (user === null) {
-      router.push(`/login?next=${encodeURIComponent(pathname || "/")}`);
+      router.push(loginHref(pathname, typeof window !== "undefined" ? window.location.search : ""));
       return;
     }
     setBusy(true);

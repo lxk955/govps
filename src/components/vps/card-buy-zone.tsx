@@ -8,6 +8,7 @@ import { useCurrency } from "@/components/currency-provider";
 import { Button } from "@/components/ui/button";
 import { watchProduct, type ProductListItem } from "@/lib/api/endpoints";
 import { cycleLabel, monthlyEquivalent } from "@/lib/format";
+import { loginHref } from "@/lib/login-next";
 
 /**
  * 卡片底部价格与购买区（1:1 复刻旧站 ProductCard.vue 第 4 段）。
@@ -43,7 +44,7 @@ export function CardBuyZone({ product }: { product: ProductListItem }) {
   /** 缺货时的「到货提醒」：幂等订阅关注（已关注不会反向取消），未登录先去登录 */
   const restockNotify = async () => {
     if (user === null) {
-      router.push(`/login?next=${encodeURIComponent(pathname || "/")}`);
+      router.push(loginHref(pathname, typeof window !== "undefined" ? window.location.search : ""));
       return;
     }
     setBusy(true);

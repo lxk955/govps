@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { CompareButton } from "@/components/compare/compare-button";
+import { ReloadButton } from "@/components/reload-button";
 import {
   DetailBuyButton,
   DetailCycleProvider,
@@ -101,12 +102,9 @@ export default async function VpsDetailPage({ params }: PageProps) {
         <p className="text-sm font-medium text-red-600 dark:text-red-400">
           套餐数据加载失败，通常是数据服务正在启动，请稍后重试。
         </p>
-        <Link
-          href={`/vps/${slug}`}
-          className="rounded-xl bg-red-600 px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700"
-        >
+        <ReloadButton className="rounded-xl bg-red-600 px-4 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700">
           重新加载
-        </Link>
+        </ReloadButton>
       </div>
     );
   }

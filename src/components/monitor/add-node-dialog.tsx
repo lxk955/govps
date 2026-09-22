@@ -15,6 +15,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MonitorNode } from "./types";
 
+const COUNTRIES: { value: string; label: string }[] = [
+  { value: "hk", label: "🇭🇰 香港 (HK)" },
+  { value: "jp", label: "🇯🇵 日本 (JP)" },
+  { value: "us", label: "🇺🇸 美国 (US)" },
+  { value: "sg", label: "🇸🇬 新加坡 (SG)" },
+  { value: "de", label: "🇩🇪 德国 (DE)" },
+  { value: "gb", label: "🇬🇧 英国 (GB)" },
+  { value: "kr", label: "🇰🇷 韩国 (KR)" },
+  { value: "ca", label: "🇨🇦 加拿大 (CA)" },
+  { value: "tw", label: "🇹🇼 台湾 (TW)" },
+  { value: "cn", label: "🇨🇳 中国大陆 (CN)" },
+  { value: "nl", label: "🇳🇱 荷兰 (NL)" },
+  { value: "fr", label: "🇫🇷 法国 (FR)" },
+  { value: "au", label: "🇦🇺 澳大利亚 (AU)" },
+];
+
+function buildInstallCommand(nodeToken: string): string {
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://govps.xyz";
+  return `curl -sSL ${origin}/api/monitor/agent.sh | sudo bash -s -- --token ${nodeToken} --url ${origin}`;
+}
+
 interface AddNodeDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -36,6 +57,7 @@ export function AddNodeDialog({
   const [currency, setCurrency] = useState("USD");
   const [billingCycle, setBillingCycle] = useState("monthly");
   const [trafficLimitGb, setTrafficLimitGb] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -55,6 +77,7 @@ export function AddNodeDialog({
       setTrafficLimitGb(
         editingNode.traffic_limit_gb !== null ? String(editingNode.traffic_limit_gb) : "",
       );
+      setExpiresAt(editingNode.expires_at ? editingNode.expires_at.slice(0, 10) : "");
     } else if (isOpen) {
       setName("");
       setCountry("hk");
@@ -64,6 +87,7 @@ export function AddNodeDialog({
       setCurrency("USD");
       setBillingCycle("monthly");
       setTrafficLimitGb("");
+      setExpiresAt("");
     }
     setInstallCommand(null);
     setErrorMsg(null);
@@ -100,6 +124,7 @@ export function AddNodeDialog({
       currency: currency.toUpperCase(),
       billing_cycle: billingCycle,
       traffic_limit_gb: trafficLimitGb ? parseFloat(trafficLimitGb) : null,
+      ...(expiresAt ? { expires_at: `${expiresAt}T00:00:00.000Z` } : {}),
     };
 
     const headers = {
@@ -273,16 +298,14 @@ export function AddNodeDialog({
                   onChange={(e) => setCountry(e.target.value)}
                   className="h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
                 >
-                  <option value="hk">🇭🇰 香港 (HK)</option>
-                  <option value="jp">🇯🇵 日本 (JP)</option>
-                  <option value="us">🇺🇸 美国 (US)</option>
-                  <option value="sg">🇸🇬 新加坡 (SG)</option>
-                  <option value="de">🇩🇪 德国 (DE)</option>
-                  <option value="gb">🇬🇧 英国 (GB)</option>
-                  <option value="kr">🇰🇷 韩国 (KR)</option>
-                  <option value="ca">🇨🇦 加拿大 (CA)</option>
-                  <option value="tw">🇹🇼 台湾 (TW)</option>
-                  <option value="cn">🇨🇳 中国大陆 (CN)</option>
+                  {COUNTRIES.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                  {!COUNTRIES.some((c) => c.value === country) && country ? (
+                    <option value={country}>{country.toUpperCase()}</option>
+                  ) : null}
                 </select>
               </div>
             </div>
@@ -353,22 +376,74 @@ export function AddNodeDialog({
                     <option value="quarterly">按季付</option>
                     <option value="semi-annually">按半年付</option>
                     <option value="annually">按年付</option>
+                    <option value="biennially">按两年付</option>
                     <option value="triennially">按三年付</option>
                   </select>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1">
-                <Label className="text-[11px] text-slate-500">月度流量额度 (GB)</Label>
-                <Input
-                  type="number"
-                  placeholder="留空为无限制流量，如: 1024"
-                  value={trafficLimitGb}
-                  onChange={(e) => setTrafficLimitGb(e.target.value)}
-                  className="h-8 text-xs rounded-lg font-mono"
-                />
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[11px] text-slate-500">月度流量额度 (GB)</Label>
+                  <Input
+                    type="number"
+                    placeholder="留空为不限，如: 1024"
+                    value={trafficLimitGb}
+                    onChange={(e) => setTrafficLimitGb(e.target.value)}
+                    className="h-8 text-xs rounded-lg font-mono"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[11px] text-slate-500">到期日期</Label>
+                  <Input
+                    type="date"
+                    value={expiresAt}
+                    onChange={(e) => setExpiresAt(e.target.value)}
+                    className="h-8 text-xs rounded-lg font-mono"
+                  />
+                </div>
               </div>
             </div>
+
+            {editingNode?.token ? (
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs text-slate-600 dark:text-slate-300 font-semibold flex items-center gap-1.5">
+                  <Terminal className="w-3.5 h-3.5 text-slate-400" />
+                  <span>一键安装命令</span>
+                </Label>
+                <div className="relative">
+                  <textarea
+                    readOnly
+                    rows={2}
+                    value={buildInstallCommand(editingNode.token)}
+                    className="w-full font-mono text-[11px] p-3 pr-12 rounded-xl bg-slate-900 text-slate-100 border border-slate-800 focus:outline-hidden select-all"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      navigator.clipboard.writeText(buildInstallCommand(editingNode.token as string));
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    className="absolute right-2 top-2 h-8 px-2.5 rounded-lg text-xs gap-1 bg-slate-800 hover:bg-slate-700 text-white"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-400">已复制</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>复制</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
 
             <DialogFooter className="mt-2 flex items-center justify-between sm:justify-between w-full">
               {editingNode ? (

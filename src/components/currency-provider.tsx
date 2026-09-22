@@ -124,7 +124,10 @@ export function CurrencyProvider({
 }) {
   const { user } = useAuth();
   const [mode, setModeState] = useState<CurrencyMode>(initialMode);
-  const [rates, setRates] = useState<Record<string, number>>(initialRates || DEFAULT_RATES);
+  const [rates, setRates] = useState<Record<string, number>>({
+    ...DEFAULT_RATES,
+    ...(initialRates || {}),
+  });
 
   // 无 cookie 的访客：用 localStorage 补一次并写 cookie，之后 SSR 与展示一致
   useEffect(() => {
@@ -163,7 +166,7 @@ export function CurrencyProvider({
 
   // 客户端如果缺失 rates，拉取最新汇率
   useEffect(() => {
-    if (!initialRates) {
+    if (!initialRates || !initialRates.CNY || !initialRates.CAD) {
       fetch("/api/rates")
         .then((res) => res.json())
         .then((data) => {
@@ -172,7 +175,7 @@ export function CurrencyProvider({
             for (const r of data.rates) {
               map[r.code] = r.units_per_usd;
             }
-            if (Object.keys(map).length > 0) setRates(map);
+            if (Object.keys(map).length > 0) setRates({ ...DEFAULT_RATES, ...map });
           }
         })
         .catch(() => {});

@@ -78,8 +78,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (stored) void fetchMe(stored);
     else setUser(null);
 
-    return onAuthExpired(() => setUser(null));
-  }, [fetchMe]);
+    return onAuthExpired(() => {
+      logout();
+    });
+  }, [fetchMe, logout]);
 
   const login = useCallback(
     async (token: string) => {

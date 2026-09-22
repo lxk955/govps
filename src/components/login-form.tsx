@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError, apiFetch } from "@/lib/api/client";
+import { destinationLabel } from "@/lib/login-next";
 
 /** 验证码登录两步表单：邮箱 → 6 位验证码。
  * 发送冷却 60s（后端强制）；dev_code 仅在服务端未配置发信时返回（本地开发）。 */
@@ -82,12 +83,7 @@ export function LoginForm({ next }: { next: string | null }) {
   // 已登录用户提供明确的操作出口：继续前往原目标或切换账号
   if (user) {
     const target = safeNext(next);
-    const targetLabel =
-      target === "/admin"
-        ? "管理后台"
-        : target === "/watchlist"
-          ? "我的关注"
-          : "网站首页";
+    const targetLabel = destinationLabel(target);
 
     return (
       <div className="mx-auto w-full max-w-sm">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -84,6 +84,7 @@ export default function MonitorPage() {
   const [editingNode, setEditingNode] = useState<MonitorNode | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const initialLoadRef = useRef(true);
 
   // 持久化用户偏好的视图模式
   useEffect(() => {
@@ -91,6 +92,8 @@ export default function MonitorPage() {
       const saved = localStorage.getItem("govps_monitor_view_mode") as ViewMode;
       if (saved && ["large", "compact", "mini", "list"].includes(saved)) {
         setViewMode(saved);
+      } else if (window.matchMedia("(max-width: 639px)").matches) {
+        setViewMode("compact");
       }
     } catch {
       // 忽略 localStorage 限制
@@ -129,6 +132,12 @@ export default function MonitorPage() {
         });
 
         if (res.status === 401 && !shareToken) {
+          try {
+            localStorage.removeItem("govps_token");
+          } catch {
+            /* ignore */
+          }
+          setError("登录已过期，请重新登录");
           setIsLoading(false);
           setIsRefreshing(false);
           return;
@@ -145,16 +154,17 @@ export default function MonitorPage() {
         setUserInfo(data.user_info);
         setError(null);
       } catch (err: unknown) {
-        if (isManual || isLoading) {
+        if (isManual || initialLoadRef.current) {
           const message = err instanceof Error ? err.message : "无法连接到探针服务器";
           setError(message);
         }
       } finally {
+        initialLoadRef.current = false;
         setIsLoading(false);
         if (isManual) setIsRefreshing(false);
       }
     },
-    [shareToken, isLoading],
+    [shareToken],
   );
 
   // 初始加载
@@ -236,15 +246,13 @@ export default function MonitorPage() {
   const [isSavingShare, setIsSavingShare] = useState(false);
   const [shareSavedSuccess, setShareSavedSuccess] = useState(false);
 
-  // 初始化或当 nodes 变动时同步公开选择（默认全选或尊重已有 is_public 状态）
   useEffect(() => {
-    if (nodes.length > 0) {
-      const publicIds = nodes
-        .filter((n) => n.is_public !== false)
-        .map((n) => n.id);
-      setSelectedPublicNodeIds(publicIds);
-    }
-  }, [nodes]);
+    if (!isShareModalOpen) return;
+    setSelectedPublicNodeIds(nodes.filter((n) => n.is_public !== false).map((n) => n.id));
+    setShareSavedSuccess(false);
+    // 只在打开弹窗时同步，避免 4 秒轮询冲掉未保存的勾选
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isShareModalOpen]);
 
   const handleToggleNodePublic = (nodeId: number) => {
     setSelectedPublicNodeIds((prev) =>
@@ -397,7 +405,7 @@ export default function MonitorPage() {
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Button asChild size="lg" className="rounded-2xl px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs">
-            <Link href="/login?redirect=/monitor">
+            <Link href="/login?next=%2Fmonitor">
               <LogIn className="w-4 h-4 mr-2" />
               <span>登录并管理我的 VPS</span>
             </Link>

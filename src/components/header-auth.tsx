@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CircleUserRound, LayoutDashboard, LogOut, Star } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { loginHref } from "@/lib/login-next";
 
 /** 头部登录态区域：未登录显示登录链接；已登录显示账户菜单。
  * 挂载前渲染占位（主题同策略），保证 SSR HTML 稳定、不泄露也不误判登录态。 */
@@ -21,6 +22,7 @@ import {
 export function HeaderAuth() {
   const { user } = useAuth();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   // 挂载检查完成前渲染等尺寸占位，避免水合不一致
   if (user === undefined) {
@@ -32,10 +34,11 @@ export function HeaderAuth() {
   }
 
   if (user === null) {
-    const nextPath = pathname && !pathname.startsWith("/login") ? pathname : "/";
+    const qs = searchParams.toString();
+    const nextPath = loginHref(pathname, qs ? `?${qs}` : "");
     return (
       <Button asChild variant="outline" size="sm" className="h-8 gap-1.5 px-2.5 text-xs">
-        <Link href={`/login?next=${encodeURIComponent(nextPath)}`}>登录</Link>
+        <Link href={nextPath}>登录</Link>
       </Button>
     );
   }
@@ -50,7 +53,12 @@ function AccountMenu({ email, isAdmin }: { email: string; isAdmin: boolean }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 max-w-10 sm:max-w-44 gap-1 px-1.5 sm:gap-1.5 sm:px-2 text-xs">
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={`账户菜单 ${email}`}
+          className="h-8 max-w-10 sm:max-w-44 gap-1 px-1.5 sm:gap-1.5 sm:px-2 text-xs"
+        >
           <CircleUserRound aria-hidden className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline truncate">{email}</span>
         </Button>
