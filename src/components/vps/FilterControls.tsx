@@ -125,6 +125,19 @@ export function FilterControls({
     });
   };
 
+  const commitPrice = () => {
+    const min = priceMin === "" ? undefined : Number(priceMin);
+    const max = priceMax === "" ? undefined : Number(priceMax);
+    if (min !== undefined && Number.isNaN(min)) return;
+    if (max !== undefined && Number.isNaN(max)) return;
+    if (min === state.min_price && max === state.max_price) return;
+    apply({ min_price: min, max_price: max, currency: filterCur });
+  };
+
+  const priceDirty =
+    (priceMin === "" ? undefined : Number(priceMin)) !== state.min_price ||
+    (priceMax === "" ? undefined : Number(priceMax)) !== state.max_price;
+
   return (
     <div className="flex flex-col gap-3.5">
       {/* 1. 顶部状态微胶囊（实时监控中 · 到货即时提醒） */}
@@ -332,6 +345,8 @@ export function FilterControls({
                   inputMode="numeric"
                   value={priceMin}
                   onChange={(e) => setPriceMin(e.target.value)}
+                  onBlur={commitPrice}
+                  onKeyDown={(e) => e.key === "Enter" && commitPrice()}
                   placeholder={`最低 ${currencySymbol}`}
                   aria-label={`最低年付价格（${currencySymbol}）`}
                   className="border-border bg-card w-full rounded-lg border px-2 py-1 text-base focus:border-blue-500 focus:outline-none sm:text-xs"
@@ -343,11 +358,14 @@ export function FilterControls({
                   inputMode="numeric"
                   value={priceMax}
                   onChange={(e) => setPriceMax(e.target.value)}
+                  onBlur={commitPrice}
+                  onKeyDown={(e) => e.key === "Enter" && commitPrice()}
                   placeholder={`最高 ${currencySymbol}`}
                   aria-label={`最高年付价格（${currencySymbol}）`}
                   className="border-border bg-card w-full rounded-lg border px-2 py-1 text-base focus:border-blue-500 focus:outline-none sm:text-xs"
                 />
               </div>
+              <p className="text-muted-foreground mt-1 text-[11px]">失焦或回车后生效，也可点下方按钮</p>
             </div>
 
             <NumSelect
@@ -402,9 +420,12 @@ export function FilterControls({
               <button
                 type="button"
                 onClick={applyAdvanced}
-                className="flex-1 rounded-xl bg-blue-600 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-blue-700"
+                className={cn(
+                  "flex-1 rounded-xl py-1.5 text-xs font-bold text-white shadow-sm transition-colors",
+                  priceDirty ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-600/80 hover:bg-blue-700",
+                )}
               >
-                应用配置筛选
+                应用价格
               </button>
               <button
                 type="button"

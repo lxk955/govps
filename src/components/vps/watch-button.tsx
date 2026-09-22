@@ -69,6 +69,7 @@ export function WatchButton({
   const pathname = usePathname();
   const [watching, setWatching] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [errorHint, setErrorHint] = useState(false);
 
   useEffect(() => {
     if (!hydrate || user === null) return;
@@ -91,6 +92,7 @@ export function WatchButton({
       return;
     }
     setBusy(true);
+    setErrorHint(false);
     try {
       if (watching) {
         await unwatchProduct(productId);
@@ -113,7 +115,7 @@ export function WatchButton({
         setWatching(true);
       }
     } catch {
-      /* 失败保持原状态；401 已由统一处理登出 */
+      setErrorHint(true);
     } finally {
       setBusy(false);
     }
@@ -124,8 +126,20 @@ export function WatchButton({
     <Button
       type="button"
       variant="outline"
-      aria-label={watching ? "取消关注" : "关注此套餐，到货或降价时邮件提醒"}
-      title={watching ? "取消关注" : "关注此套餐，到货或降价时邮件提醒"}
+      aria-label={
+        errorHint
+          ? "操作失败，请再试一次"
+          : watching
+            ? "取消关注"
+            : "关注此套餐，到货或降价时邮件提醒"
+      }
+      title={
+        errorHint
+          ? "操作失败，请再试一次"
+          : watching
+            ? "取消关注"
+            : "关注此套餐，到货或降价时邮件提醒"
+      }
       aria-pressed={watching}
       disabled={busy || user === undefined}
       onClick={() => void toggle()}
@@ -137,7 +151,7 @@ export function WatchButton({
       )}
     >
       <HeartMark watching={watching} className="h-4 w-4" />
-      {watching ? "已关注" : "关注"}
+      {errorHint ? "失败" : watching ? "已关注" : "关注"}
     </Button>
   );
 }

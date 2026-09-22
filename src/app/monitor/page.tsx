@@ -241,7 +241,7 @@ export default function MonitorPage() {
     }
   };
 
-  // 公开节点范围配置状态（勾选框，默认全选）
+  // 公开节点范围：打开弹窗时按当前 is_public 勾选，新节点默认不公开
   const [selectedPublicNodeIds, setSelectedPublicNodeIds] = useState<number[]>([]);
   const [isSavingShare, setIsSavingShare] = useState(false);
   const [shareSavedSuccess, setShareSavedSuccess] = useState(false);

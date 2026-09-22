@@ -405,7 +405,7 @@ class UserNode(Base):
 
     is_online: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    is_public: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    is_public: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(

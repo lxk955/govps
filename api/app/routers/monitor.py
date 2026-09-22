@@ -295,7 +295,7 @@ def create_node(
         traffic_limit_gb=payload.traffic_limit_gb,
         is_online=False,
         is_demo=False,
-        is_public=payload.is_public if payload.is_public is not None else True,
+        is_public=payload.is_public if payload.is_public is not None else False,
         cached_status={
             "cpu_percent": 0.0,
             "ram_used_bytes": 0,

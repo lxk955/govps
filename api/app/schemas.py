@@ -103,7 +103,7 @@ class NodeCreate(BaseModel):
     billing_cycle: str = Field(default="monthly", max_length=20)
     expires_at: datetime | None = None
     traffic_limit_gb: float | None = None
-    is_public: bool = True
+    is_public: bool = False
 
 
 class NodeUpdate(BaseModel):

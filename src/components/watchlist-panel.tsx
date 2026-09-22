@@ -289,13 +289,18 @@ function WatchPrefsBar({
     min_drop_percent: item.min_drop_percent,
   });
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   const save = useCallback(
-    async (next: typeof prefs) => {
+    async (next: typeof prefs, previous: typeof prefs) => {
       setSaving(true);
+      setSaveError(false);
       try {
         await watchProduct(p.id, next);
         onPrefsChange(p.id, next);
+      } catch {
+        setPrefs(previous);
+        setSaveError(true);
       } finally {
         setSaving(false);
       }
@@ -304,9 +309,10 @@ function WatchPrefsBar({
   );
 
   const togglePref = (key: "notify_restock" | "notify_price_drop") => {
+    const previous = prefs;
     const next = { ...prefs, [key]: !prefs[key] };
     setPrefs(next);
-    void save(next);
+    void save(next, previous);
   };
 
   return (
@@ -344,9 +350,10 @@ function WatchPrefsBar({
             onBlur={(e) => {
               const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
               e.target.value = String(v);
+              const previous = prefs;
               const next = { ...prefs, min_drop_percent: v };
               setPrefs(next);
-              void save(next);
+              void save(next, previous);
             }}
             className="h-6 w-14 px-1.5 text-center text-base sm:text-xs"
           />
@@ -354,6 +361,9 @@ function WatchPrefsBar({
         </label>
       )}
       {saving && <Loader2 aria-hidden className="h-3 w-3 animate-spin" />}
+      {saveError && !saving && (
+        <span className="text-rose-500 dark:text-rose-400">保存失败，已还原</span>
+      )}
     </div>
   );
 }

@@ -75,6 +75,7 @@ def test_crud_and_reporting(client, test_user):
     token = data["token"]
     assert "install_command" in data
     assert node["name"] == "测试节点-香港"
+    assert node["is_public"] is False
 
     # 2. 列表查询
     list_res = client.get("/api/monitor/nodes", headers=headers)
