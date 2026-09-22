@@ -32,6 +32,34 @@ def test_request_code_dev_code_only_when_mail_unconfigured(client, monkeypatch):
     assert len(body["dev_code"]) == 6
 
 
+def test_zgocloud_oos_uses_post_form(client, db):
+    m = Merchant(slug="zgocloud", name="ZgoCloud", website="https://zgovps.com")
+    db.add(m)
+    db.flush()
+    p = Product(
+        merchant_id=m.id,
+        external_id="148",
+        name="LA 1G",
+        price=Decimal("1"),
+        purchase_url="https://clients.zgovps.com/cart",
+        in_stock=False,
+        billing_cycle="annually",
+    )
+    db.add(p)
+    db.commit()
+
+    resp = client.get(f"/go/{p.id}", follow_redirects=False)
+    assert resp.status_code == 200
+    html = resp.text
+    assert 'method="POST"' in html
+    assert "clients.zgovps.com" in html
+    assert 'name="action"' in html
+    assert 'value="add"' in html
+    assert 'name="id"' in html
+    assert 'value="148"' in html
+    assert "<a href=\"https://clients.zgovps.com" not in html
+
+
 def test_go_escapes_malicious_purchase_url(client, db):
     m = Merchant(slug="evil", name="Evil", website="https://evil.example")
     db.add(m)

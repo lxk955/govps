@@ -43,6 +43,11 @@ export function setApiToken(token: string | null): void {
   }
 }
 
+export function notifyAuthExpired(): void {
+  setApiToken(null);
+  for (const cb of authExpiredListeners) cb();
+}
+
 /** 注册「凭证失效」回调（401 且请求时带了凭证才触发），返回取消函数。 */
 export function onAuthExpired(cb: () => void): () => void {
   authExpiredListeners.add(cb);
@@ -96,8 +101,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
   }
 
   if (res.status === 401 && hadAuth) {
-    setApiToken(null);
-    for (const cb of authExpiredListeners) cb();
+    notifyAuthExpired();
   }
 
   if (!res.ok) {

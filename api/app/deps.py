@@ -53,6 +53,9 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
 def verify_task_token(x_task_token: str | None = Header(default=None)) -> str:
     import secrets
 
-    if not x_task_token or not secrets.compare_digest(x_task_token, settings.TASK_TOKEN):
+    expected = (settings.TASK_TOKEN or "").strip()
+    if not expected or expected == "change-me":
+        raise HTTPException(status_code=503, detail="task token not configured")
+    if not x_task_token or not secrets.compare_digest(x_task_token, expected):
         raise HTTPException(status_code=403, detail="invalid task token")
     return x_task_token

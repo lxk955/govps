@@ -44,9 +44,30 @@ def _auto_post_page(url: str, fields: dict[str, str]) -> HTMLResponse:
     return HTMLResponse(html)
 
 
-def _oos_interstitial(product: Product, target_url: str) -> HTMLResponse:
+def _oos_interstitial(
+    product: Product,
+    target_url: str,
+    post_fields: dict[str, str] | None = None,
+) -> HTMLResponse:
     """缺货兜底页：产品最近一轮检查为缺货时，先提示再让用户自行决定是否继续跳转，
     避免「本站显示有货、跳过去才发现没货」的体感落差。"""
+    if post_fields:
+        inputs = "".join(
+            f'<input type="hidden" name="{escape(name, quote=True)}" value="{escape(value, quote=True)}">'
+            for name, value in post_fields.items()
+        )
+        continue_html = f"""
+  <form method="POST" action="{escape(target_url, quote=True)}" style="margin-top:12px;">
+    {inputs}
+    <button type="submit" style="padding:10px 24px;background:#2563eb;color:#fff;border:0;border-radius:8px;
+           font-size:14px;font-weight:600;cursor:pointer;">仍要前往商家查看</button>
+  </form>"""
+    else:
+        continue_html = (
+            f'<a href="{escape(target_url, quote=True)}" style="display:inline-block;margin-top:12px;'
+            f'padding:10px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">'
+            f"仍要前往商家查看</a>"
+        )
     html = f"""<!doctype html>
 <html lang="zh-CN">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -57,7 +78,7 @@ def _oos_interstitial(product: Product, target_url: str) -> HTMLResponse:
   <h2 style="margin:12px 0 8px;color:#0f172a;">该套餐最近一轮检查为缺货</h2>
   <p style="color:#64748b;font-size:14px;line-height:1.7;">{escape(product.merchant.name)} · {escape(product.name)}<br>
   商家可能刚刚售罄或补货，实际库存以商家页面为准。</p>
-  <a href="{escape(target_url, quote=True)}" style="display:inline-block;margin-top:12px;padding:10px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;">仍要前往商家查看</a>
+  {continue_html}
   <div style="margin-top:14px;"><a href="/" style="color:#94a3b8;font-size:13px;">返回 VPS 雷达看看其他套餐</a></div>
 </div>
 </body>
@@ -183,7 +204,7 @@ def go(
             "cycle": want_cycle,
         }
         if not target_product.in_stock:
-            return _oos_interstitial(target_product, ZGOCLOUD_POST_URL)
+            return _oos_interstitial(target_product, ZGOCLOUD_POST_URL, post_fields)
         return _auto_post_page(ZGOCLOUD_POST_URL, post_fields)
     target = _safe_http_url(build_purchase_url(target_product, purchase_url))
     if not target_product.in_stock:

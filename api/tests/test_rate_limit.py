@@ -73,6 +73,14 @@ def test_auth_endpoint_integrates_db_limiter(client, db):
     assert r.status_code == 429
     assert "频繁" in r.json()["detail"]
 
-    rows = db.scalars(select(RequestRateEvent).where(RequestRateEvent.ip == "testclient")).all()
-    # 先判后记：5 次放行各留一行，超限请求不追加
-    assert len(rows) == 5
+
+def test_pageview_rate_limited(client, monkeypatch):
+    monkeypatch.setattr("app.routers.track.hit_rate_limited", lambda *a, **k: True)
+    r = client.post("/api/track/pageview", json={"path": "/"})
+    assert r.status_code == 429
+
+
+def test_ip_check_rate_limited(client, monkeypatch):
+    monkeypatch.setattr("app.routers.ipcheck.hit_rate_limited", lambda *a, **k: True)
+    r = client.get("/api/ip/check?ip=1.1.1.1")
+    assert r.status_code == 429

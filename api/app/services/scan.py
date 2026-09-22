@@ -21,6 +21,7 @@ from ..models import (
     EventType,
     ExchangeRateSnapshot,
     Merchant,
+    NodeSnapshot,
     NotifyEvent,
     PageView,
     PriceSnapshot,
@@ -37,20 +38,33 @@ STOCK_SNAPSHOT_KEEP_DAYS = 90
 PRICE_SNAPSHOT_KEEP_DAYS = 365
 PAGEVIEW_KEEP_DAYS = 90
 CRAWL_LOG_KEEP_DAYS = 30
+NODE_SNAPSHOT_KEEP_DAYS = 2
 
 
 def prune_snapshots(db: Session) -> dict[str, int]:
-    """删除窗口外的价格/库存快照与历史访问/爬虫日志。返回删除行数。"""
+    """删除窗口外的价格/库存快照、探针时序、历史访问与爬虫日志。返回删除行数。"""
     now = datetime.now(timezone.utc)
     stock_cut = now - timedelta(days=STOCK_SNAPSHOT_KEEP_DAYS)
     price_cut = now - timedelta(days=PRICE_SNAPSHOT_KEEP_DAYS)
     pv_cut = now - timedelta(days=PAGEVIEW_KEEP_DAYS)
     log_cut = now - timedelta(days=CRAWL_LOG_KEEP_DAYS)
+    node_cut = now - timedelta(days=NODE_SNAPSHOT_KEEP_DAYS)
     stock_n = db.execute(delete(StockSnapshot).where(StockSnapshot.checked_at < stock_cut)).rowcount or 0
     price_n = db.execute(delete(PriceSnapshot).where(PriceSnapshot.checked_at < price_cut)).rowcount or 0
     pv_n = db.execute(delete(PageView).where(PageView.created_at < pv_cut)).rowcount or 0
     log_n = db.execute(delete(CrawlLog).where(CrawlLog.created_at < log_cut)).rowcount or 0
-    return {"stock": int(stock_n), "price": int(price_n), "pageviews": int(pv_n), "crawl_logs": int(log_n)}
+    node_n = db.execute(
+        delete(NodeSnapshot)
+        .where(NodeSnapshot.recorded_at < node_cut)
+        .execution_options(synchronize_session=False)
+    ).rowcount or 0
+    return {
+        "stock": int(stock_n),
+        "price": int(price_n),
+        "pageviews": int(pv_n),
+        "crawl_logs": int(log_n),
+        "node_snapshots": int(node_n),
+    }
 
 
 def effective_interval_minutes(merchant: Merchant | None, crawler) -> int:

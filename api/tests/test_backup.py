@@ -86,6 +86,12 @@ def test_backup_endpoint_requires_token(client):
     assert r.status_code == 403
 
 
+def test_task_token_rejects_placeholder(client, monkeypatch):
+    monkeypatch.setattr("app.deps.settings.TASK_TOKEN", "change-me")
+    r = client.post("/api/tasks/backup-db", headers={"X-Task-Token": "change-me"})
+    assert r.status_code == 503
+
+
 def test_backup_endpoint_skips_when_r2_unconfigured(client):
     r = client.post("/api/tasks/backup-db", headers={"X-Task-Token": "test-task-token"})
     assert r.status_code == 200

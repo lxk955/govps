@@ -15,6 +15,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
+import { notifyAuthExpired } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -59,6 +60,8 @@ export default function MonitorPage() {
   const shareToken = searchParams.get("share");
 
   const { user } = useAuth(); // undefined = loading, null = not logged in, object = logged in
+  const canPoll = Boolean(shareToken) || Boolean(user);
+  const pollMsRef = useRef(4000);
 
   const [nodes, setNodes] = useState<MonitorNode[]>([]);
   const [summary, setSummary] = useState<MonitorSummary>(DEFAULT_SUMMARY);
@@ -132,11 +135,7 @@ export default function MonitorPage() {
         });
 
         if (res.status === 401 && !shareToken) {
-          try {
-            localStorage.removeItem("govps_token");
-          } catch {
-            /* ignore */
-          }
+          notifyAuthExpired();
           setError("登录已过期，请重新登录");
           setIsLoading(false);
           setIsRefreshing(false);
@@ -167,16 +166,21 @@ export default function MonitorPage() {
     [shareToken],
   );
 
-  // 初始加载
+  // 初始加载：未登录且无分享链接时不要打接口
   useEffect(() => {
-    if (user !== undefined || shareToken) {
-      fetchData(false);
+    if (shareToken || user) {
+      void fetchData(false);
+      return;
+    }
+    if (user === null) {
+      setIsLoading(false);
     }
   }, [user, shareToken, fetchData]);
 
-  // 3~5 秒自适应短轮询（切后台或熄屏时自动休眠）
+  // 仅登录后或公开分享页轮询；切后台休眠。在线节点 4s，全离线 10s。
   useEffect(() => {
-    let timer: NodeJS.Timeout | null = null;
+    if (!canPoll) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
     const schedulePoll = () => {
       if (timer) clearTimeout(timer);
@@ -185,14 +189,14 @@ export default function MonitorPage() {
           await fetchData(false);
         }
         schedulePoll();
-      }, 4000);
+      }, pollMsRef.current);
     };
 
     schedulePoll();
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
-        fetchData(false);
+        void fetchData(false);
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
@@ -201,7 +205,23 @@ export default function MonitorPage() {
       if (timer) clearTimeout(timer);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [fetchData]);
+  }, [fetchData, canPoll]);
+
+  useEffect(() => {
+    pollMsRef.current = nodes.some((n) => n.is_online) ? 4000 : 10000;
+  }, [nodes]);
+
+  // 公开分享页不把 token 带到外站 Referer
+  useEffect(() => {
+    if (!shareToken) return;
+    const meta = document.createElement("meta");
+    meta.name = "referrer";
+    meta.content = "no-referrer";
+    document.head.appendChild(meta);
+    return () => {
+      meta.remove();
+    };
+  }, [shareToken]);
 
   // 一键载入演示数据
   const handleLoadDemo = async () => {

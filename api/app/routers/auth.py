@@ -121,7 +121,7 @@ def verify(payload: VerifyIn, db: Session = Depends(get_db)):
     if user is None:
         user = User(email=email, api_token=secrets.token_urlsafe(32))
         db.add(user)
-    else:
+    elif not user.api_token:
         user.api_token = secrets.token_urlsafe(32)
     db.commit()
     return TokenOut(token=user.api_token)

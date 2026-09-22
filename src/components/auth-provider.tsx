@@ -8,7 +8,7 @@ import { apiFetch } from "@/lib/api/client";
 /**
  * 登录态上下文（P4）。
  * 凭证策略（refactor-plan P4 风险项既定）：Bearer token 存 localStorage，
- * 每次请求经 Authorization 头携带；登录成功即轮换 token（后端行为）。
+ * 每次请求经 Authorization 头携带；同一账号多端共用同一 token，登出只清本机。
  * 仅浏览器端注入凭证，RSC/SSR 不受登录态影响（SEO 分离）。
  */
 

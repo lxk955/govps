@@ -28,6 +28,7 @@ from ..schemas import NodeCreate, NodeReport, NodeUpdate, ShareUpdate
 router = APIRouter(prefix="/api/monitor", tags=["monitor"])
 
 CURRENT_AGENT_VERSION = "1.2.0"
+SNAPSHOT_TTL = timedelta(hours=48)
 
 
 def _calculate_cost_cny(price: float | None, currency: str, billing_cycle: str, rates: dict[str, float]) -> float:
@@ -319,7 +320,7 @@ def create_node(
     db.refresh(node)
 
     api_origin = settings.PUBLIC_API_URL or "https://govps.xyz"
-    install_command = f"curl -sSL {api_origin}/api/monitor/agent.sh | sudo bash -s -- --token {token} --url {api_origin}"
+    install_command = f"curl -fsSL {api_origin}/api/monitor/agent.sh | sudo bash -s -- --token {token} --url {api_origin}"
 
     return {
         "node": _node_to_dict(node, utcnow()),
@@ -340,30 +341,31 @@ def update_node(
     if not node or node.user_id != user.id:
         raise HTTPException(status_code=404, detail="节点不存在")
 
-    if payload.name is not None:
-        node.name = payload.name
-    if payload.country is not None:
-        node.country = payload.country.lower()
-    if payload.group_name is not None:
-        node.group_name = payload.group_name
-    if payload.tags is not None:
-        node.tags = payload.tags
-    if payload.os_type is not None:
-        node.os_type = payload.os_type.lower()
-    if payload.cpu_cores is not None:
-        node.cpu_cores = payload.cpu_cores
-    if payload.price is not None:
-        node.price = payload.price
-    if payload.currency is not None:
-        node.currency = payload.currency
-    if payload.billing_cycle is not None:
-        node.billing_cycle = payload.billing_cycle
-    if payload.expires_at is not None:
-        node.expires_at = payload.expires_at
-    if payload.traffic_limit_gb is not None:
-        node.traffic_limit_gb = payload.traffic_limit_gb
-    if payload.is_public is not None:
-        node.is_public = payload.is_public
+    data = payload.model_dump(exclude_unset=True)
+    if "name" in data:
+        node.name = data["name"]
+    if "country" in data and data["country"] is not None:
+        node.country = data["country"].lower()
+    if "group_name" in data:
+        node.group_name = data["group_name"]
+    if "tags" in data:
+        node.tags = data["tags"]
+    if "os_type" in data and data["os_type"] is not None:
+        node.os_type = data["os_type"].lower()
+    if "cpu_cores" in data:
+        node.cpu_cores = data["cpu_cores"]
+    if "price" in data:
+        node.price = data["price"]
+    if "currency" in data:
+        node.currency = data["currency"]
+    if "billing_cycle" in data:
+        node.billing_cycle = data["billing_cycle"]
+    if "expires_at" in data:
+        node.expires_at = data["expires_at"]
+    if "traffic_limit_gb" in data:
+        node.traffic_limit_gb = data["traffic_limit_gb"]
+    if "is_public" in data:
+        node.is_public = data["is_public"]
 
     db.commit()
     db.refresh(node)
@@ -874,6 +876,14 @@ def report_metrics(
             ping_stats=[p.model_dump() for p in payload.ping_stats],
         )
         db.add(snap)
+        db.execute(
+            delete(NodeSnapshot)
+            .where(
+                NodeSnapshot.node_id == node.id,
+                NodeSnapshot.recorded_at < now - SNAPSHOT_TTL,
+            )
+            .execution_options(synchronize_session=False)
+        )
 
     db.commit()
 
@@ -1602,7 +1612,7 @@ if [ "$AUTO_UPDATE" = "1" ]; then
 else
   print_ok "  自动更新: 已禁用 (可通过 bash /opt/govps-agent/agent.sh --auto-update 重新开启)"
 fi
-print_ok "  如需手动更新: curl -sSL https://govps.xyz/api/monitor/agent.sh | sudo bash -s -- --update"
+print_ok "  如需手动更新: curl -fsSL https://govps.xyz/api/monitor/agent.sh | sudo bash -s -- --update"
 print_ok "  如需卸载: sudo bash /opt/govps-agent/agent.sh --uninstall"
 print_ok "================================================="
 """

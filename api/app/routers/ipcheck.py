@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import DnsLeakHit
 from ..services.client_ip import client_ip
+from ..services.rate_limit import hit_rate_limited
 
 router = APIRouter(prefix="/api/ip", tags=["ipcheck"])
 
@@ -208,7 +209,10 @@ async def dns_leak_results(
 async def check_ip(
     request: Request,
     ip: str | None = Query(default=None, description="要检测的 IPv4/IPv6 地址或域名，留空则自动检测当前客户端 IP"),
+    db: Session = Depends(get_db),
 ) -> dict[str, Any]:
+    if hit_rate_limited(db, f"ipq:{client_ip(request)}", window_seconds=60, max_requests=30):
+        raise HTTPException(status_code=429, detail="查询过于频繁，请稍后再试")
     # 1. 确定目标 IP
     if not ip or not ip.strip():
         # 兜底解析请求来源。经 Next.js rewrite 转发后这里通常只能拿到前端

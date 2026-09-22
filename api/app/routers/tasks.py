@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..database import get_db
+from ..deps import verify_task_token
 from ..services.backup import run_backup
 from ..services.notify import process_pending_emails
 from ..services.rates import update_rates
@@ -15,13 +16,11 @@ router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 @router.post("/scan")
 def scan(
     force: bool = Query(default=False, description="忽略分级调度到期判断，强制抓取全部商家"),
-    x_task_token: str | None = Header(default=None),
+    _token: str = Depends(verify_task_token),
     db: Session = Depends(get_db),
 ):
     """由 cron-job.org 周期调用：按商家分级调度抓取到期者 → 比对 → 入队通知。
     force=true 时忽略到期判断全量抓取（手动补扫用）。"""
-    if x_task_token != settings.TASK_TOKEN:
-        raise HTTPException(status_code=403, detail="invalid task token")
     return run_scan(db, force=force)
 
 
@@ -34,20 +33,18 @@ class UpdateRatesIn(BaseModel):
 
 @router.post("/update-rates")
 def update_rates_task(
-    x_task_token: str | None = Header(default=None),
+    _token: str = Depends(verify_task_token),
     payload: UpdateRatesIn | None = None,
     db: Session = Depends(get_db),
 ):
     """每日由 cron 调用：拉取汇率并写当日快照；断源时保留旧值不报错污染。
     携带 overrides 即人工覆盖异常汇率。"""
-    if x_task_token != settings.TASK_TOKEN:
-        raise HTTPException(status_code=403, detail="invalid task token")
     return update_rates(db, overrides=payload.overrides if payload else None)
 
 
 @router.post("/process-emails")
 def process_emails_task(
-    x_task_token: str | None = Header(default=None),
+    _token: str = Depends(verify_task_token),
     db: Session = Depends(get_db),
 ):
     """消费 pending NotifyLog（P7 邮件异步化的 cron 兜底入口）。
@@ -55,19 +52,15 @@ def process_emails_task(
     常态由进程内 notify-worker 线程周期消费；本端点用于：
     NOTIFY_WORKER_ENABLED=false 的部署形态、多实例下由 cron 统一驱动、
     以及人工补发排查。幂等——仅 pending 行会被处理，已 sent/failed 不重发。"""
-    if x_task_token != settings.TASK_TOKEN:
-        raise HTTPException(status_code=403, detail="invalid task token")
     return process_pending_emails(db)
 
 
 @router.post("/backup-db")
-def backup_db_task(x_task_token: str | None = Header(default=None)):
+def backup_db_task(_token: str = Depends(verify_task_token)):
     """把 SQLite 一致快照 gzip 后上传到 Cloudflare R2（私有桶）。
 
     由 VPS crontab 每日调用；R2 未配置时返回 skipped，不视为失败。
     WAL 下禁止直接拷贝 .db 文件，本端点走 SQLite Online Backup API。"""
-    if x_task_token != settings.TASK_TOKEN:
-        raise HTTPException(status_code=403, detail="invalid task token")
     result = run_backup()
     if not result.get("ok"):
         raise HTTPException(status_code=500, detail=result.get("error", "backup failed"))
@@ -76,12 +69,10 @@ def backup_db_task(x_task_token: str | None = Header(default=None)):
 
 @router.post("/indexnow")
 def trigger_indexnow(
-    x_task_token: str | None = Header(default=None),
+    _token: str = Depends(verify_task_token),
     db: Session = Depends(get_db),
 ):
     """推送当前在售套餐及核心页面至 Bing IndexNow 搜索引擎秒级收录。"""
-    if x_task_token != settings.TASK_TOKEN:
-        raise HTTPException(status_code=403, detail="invalid task token")
 
     from sqlalchemy import select
     from ..crawler.base import slugify

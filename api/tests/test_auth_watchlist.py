@@ -1,6 +1,6 @@
 """P4 认证与关注域测试（mock 发信，与真实邮件链路验证明确区分）。
 
-覆盖：验证码有效期/单次有效/尝试上限/发送冷却/IP 限流、token 轮换、
+覆盖：验证码有效期/单次有效/尝试上限/发送冷却/IP 限流、登录保留 token、
 401 统一行为、关注幂等（PUT upsert 与 DELETE 缺省成功）。
 真实 Resend 链路不在本套件内（环境未配置 RESEND_API_KEY）。
 """
@@ -96,13 +96,13 @@ def test_verify_is_single_use(client, db, monkeypatch):
     assert replay.status_code == 400
 
 
-def test_login_rotates_token_and_old_token_dies(client, db, monkeypatch):
+def test_login_keeps_existing_token(client, db, monkeypatch):
     t1 = _login(client, db, monkeypatch)
     t2 = _login(client, db, monkeypatch)
-    assert t1 != t2
+    assert t1 == t2
     me_old = client.get("/api/auth/me", headers={"Authorization": f"Bearer {t1}"})
     me_new = client.get("/api/auth/me", headers={"Authorization": f"Bearer {t2}"})
-    assert me_old.status_code == 401
+    assert me_old.status_code == 200
     assert me_new.status_code == 200
     assert me_new.json()["email"] == "u@example.com"
 

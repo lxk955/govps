@@ -9,7 +9,7 @@
 
 import re
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -17,6 +17,7 @@ from ..database import get_db
 from ..deps import get_optional_user
 from ..models import PageView
 from ..services.client_ip import client_ip
+from ..services.rate_limit import hit_rate_limited
 
 router = APIRouter(prefix="/api/track", tags=["track"])
 
@@ -62,6 +63,9 @@ def track_pageview(
     user=Depends(get_optional_user),
 ):
     p = payload.path.split("?", 1)[0].rstrip("/") or "/"
+    ip = client_ip(request)
+    if hit_rate_limited(db, f"pv:{ip}", window_seconds=60, max_requests=80):
+        raise HTTPException(status_code=429, detail="too many requests")
     db.add(
         PageView(
             route=normalize_route(payload.path)[:120],
@@ -69,7 +73,7 @@ def track_pageview(
             product_id=_slug_product_id(p),
             user_id=user.id if user else None,
             referrer=(payload.referrer or None),
-            ip=client_ip(request),
+            ip=ip,
             ua=(request.headers.get("user-agent", "")[:255] or None),
             session_id=payload.session_id[:64] if payload.session_id else None,
         )

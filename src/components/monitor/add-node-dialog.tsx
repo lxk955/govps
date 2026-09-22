@@ -33,7 +33,7 @@ const COUNTRIES: { value: string; label: string }[] = [
 
 function buildInstallCommand(nodeToken: string): string {
   const origin = typeof window !== "undefined" ? window.location.origin : "https://govps.xyz";
-  return `curl -sSL ${origin}/api/monitor/agent.sh | sudo bash -s -- --token ${nodeToken} --url ${origin}`;
+  return `curl -fsSL ${origin}/api/monitor/agent.sh | sudo bash -s -- --token ${nodeToken} --url ${origin}`;
 }
 
 interface AddNodeDialogProps {
@@ -124,7 +124,7 @@ export function AddNodeDialog({
       currency: currency.toUpperCase(),
       billing_cycle: billingCycle,
       traffic_limit_gb: trafficLimitGb ? parseFloat(trafficLimitGb) : null,
-      ...(expiresAt ? { expires_at: `${expiresAt}T00:00:00.000Z` } : {}),
+      expires_at: expiresAt ? `${expiresAt}T00:00:00.000Z` : null,
     };
 
     const headers = {

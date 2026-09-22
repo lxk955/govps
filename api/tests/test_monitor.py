@@ -1,13 +1,15 @@
 """GoVPS 探针监控路由自动化测试。"""
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import Base, engine
 from app.main import app
-from app.models import ExchangeRate, User, UserNode
+from app.models import ExchangeRate, NodeSnapshot, User, UserNode
 
 
 @pytest.fixture(autouse=True)
@@ -74,6 +76,7 @@ def test_crud_and_reporting(client, test_user):
     node_id = node["id"]
     token = data["token"]
     assert "install_command" in data
+    assert "-fsSL" in data["install_command"]
     assert node["name"] == "测试节点-香港"
     assert node["is_public"] is False
 
@@ -212,6 +215,7 @@ def test_agent_script_distribution(client):
     assert "python3" in res.text
     assert "--uninstall" in res.text
     assert "--update" in res.text
+    assert "-fsSL" in res.text
     assert "--auto-update" in res.text
     assert "--no-auto-update" in res.text
 
@@ -226,4 +230,71 @@ def test_agent_python_distribution(client):
     # 确保返回的代码在语法上完全有效
     compiled = compile(res.text, "govps_agent.py", "exec")
     assert compiled is not None
+
+
+def test_update_node_clears_expiry_and_quota(client, test_user):
+    headers = {"Authorization": f"Bearer {test_user.api_token}"}
+    create_res = client.post(
+        "/api/monitor/nodes",
+        json={
+            "name": "可清空",
+            "country": "jp",
+            "expires_at": "2026-12-01T00:00:00.000Z",
+            "traffic_limit_gb": 512,
+        },
+        headers=headers,
+    )
+    assert create_res.status_code == 200
+    node_id = create_res.json()["node"]["id"]
+    assert create_res.json()["node"]["expires_at"] is not None
+    assert create_res.json()["node"]["traffic_limit_gb"] == 512
+
+    upd = client.put(
+        f"/api/monitor/nodes/{node_id}",
+        json={"expires_at": None, "traffic_limit_gb": None},
+        headers=headers,
+    )
+    assert upd.status_code == 200
+    assert upd.json()["node"]["expires_at"] is None
+    assert upd.json()["node"]["traffic_limit_gb"] is None
+
+
+def test_report_prunes_old_snapshots(client, test_user):
+    headers = {"Authorization": f"Bearer {test_user.api_token}"}
+    create_res = client.post(
+        "/api/monitor/nodes",
+        json={"name": "清理快照", "country": "sg"},
+        headers=headers,
+    )
+    node = create_res.json()["node"]
+    token = create_res.json()["token"]
+    old = datetime.now(timezone.utc) - timedelta(days=5)
+    with Session(engine) as db:
+        db.add(
+            NodeSnapshot(
+                node_id=node["id"],
+                recorded_at=old,
+                cpu_percent=1.0,
+            )
+        )
+        db.commit()
+        assert db.scalar(select(func.count()).select_from(NodeSnapshot).where(NodeSnapshot.node_id == node["id"])) == 1
+
+    client.post(
+        "/api/monitor/report",
+        json={
+            "cpu_percent": 2.0,
+            "ram_used_bytes": 1,
+            "ram_total_bytes": 2,
+            "disk_used_bytes": 1,
+            "disk_total_bytes": 2,
+            "uptime_seconds": 10,
+        },
+        headers={"X-Node-Token": token},
+    )
+    with Session(engine) as db:
+        rows = db.scalars(select(NodeSnapshot).where(NodeSnapshot.node_id == node["id"])).all()
+        assert len(rows) == 1
+        assert rows[0].recorded_at.replace(tzinfo=timezone.utc) > old
+
 
