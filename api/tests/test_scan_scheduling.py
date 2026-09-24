@@ -227,3 +227,50 @@ def test_single_merchant_failure_does_not_block_others(db, patched_crawlers):
         )
     }
     assert ids == {"ok-1", "ok-2", "ok-3"}
+
+
+def test_dmit_complete_crawl_deletes_stale_skus(db, patched_crawlers):
+    """pid 已换代的旧 DMIT 行不在本次名单里时直接下架，不再留在缺货列表。"""
+    from app.models import PageView, StockSnapshot, User, Watchlist
+
+    def fetch(client):
+        return [_raw("dmit-253"), _raw("dmit-254"), _raw("dmit-255")]
+
+    patched_crawlers.append(_fake_crawler("dmit", fetch, interval=5))
+    ensure_merchants(db)
+    m = _get_merchant(db, "dmit")
+    ghost = Product(
+        merchant_id=m.id,
+        external_id="legacy-93",
+        name="PVM.LAX.AS3.PRO.TINY",
+        price=Decimal("10.90"),
+        currency="USD",
+        billing_cycle="monthly",
+        purchase_url="https://www.dmit.io/cart.php?a=add&pid=93",
+        in_stock=False,
+    )
+    db.add(ghost)
+    db.flush()
+    user = User(email="watcher@example.com", api_token="tok-dmit-retire")
+    db.add(user)
+    db.flush()
+    db.add(Watchlist(user_id=user.id, product_id=ghost.id))
+    db.add(StockSnapshot(product_id=ghost.id, in_stock=False))
+    db.add(PageView(route="/vps/[slug]", path="/vps/ghost", product_id=ghost.id))
+    db.commit()
+    ghost_id = ghost.id
+
+    result = run_scan(db, force=True)
+    assert "retired" in result["summary"]["dmit"]
+    left = {
+        pid
+        for (pid,) in db.execute(
+            select(Product.external_id).where(Product.merchant_id == m.id)
+        )
+    }
+    assert left == {"dmit-253", "dmit-254", "dmit-255"}
+    assert db.get(Product, ghost_id) is None
+    assert db.scalar(select(Watchlist).where(Watchlist.product_id == ghost_id)) is None
+    view = db.scalar(select(PageView).where(PageView.path == "/vps/ghost"))
+    assert view is not None and view.product_id is None
+

@@ -10,23 +10,26 @@ from decimal import Decimal
 import threading
 import time
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..crawler.base import RawProduct, make_client, normalize_line_tags, normalize_location
 from ..crawler.registry import CRAWLERS
 from ..models import (
+    AffClick,
     CrawlLog,
     EventType,
     ExchangeRateSnapshot,
     Merchant,
     NodeSnapshot,
     NotifyEvent,
+    NotifyLog,
     PageView,
     PriceSnapshot,
     Product,
     StockSnapshot,
+    Watchlist,
 )
 from .materialize import fill_static_fields, refresh_derived_fields
 from .notify import dispatch_event
@@ -39,6 +42,39 @@ PRICE_SNAPSHOT_KEEP_DAYS = 365
 PAGEVIEW_KEEP_DAYS = 90
 CRAWL_LOG_KEEP_DAYS = 30
 NODE_SNAPSHOT_KEEP_DAYS = 2
+
+
+def retire_missing_products(db: Session, merchant_id: int, keep_ids: set[str]) -> int:
+    """下架本次抓取名单里已经不存在的旧 SKU。
+
+    只删商品行及其从属记录（关注、快照、通知、点击）。访问日志保留，product_id 置空。
+    调用方必须先确认这次抓取足够完整，避免一次残缺结果把目录清掉。
+    """
+    if not keep_ids:
+        return 0
+    ids = list(
+        db.scalars(
+            select(Product.id).where(
+                Product.merchant_id == merchant_id,
+                Product.external_id.not_in(keep_ids),
+            )
+        ).all()
+    )
+    if not ids:
+        return 0
+    event_ids = list(
+        db.scalars(select(NotifyEvent.id).where(NotifyEvent.product_id.in_(ids))).all()
+    )
+    if event_ids:
+        db.execute(delete(NotifyLog).where(NotifyLog.event_id.in_(event_ids)))
+    db.execute(delete(NotifyEvent).where(NotifyEvent.product_id.in_(ids)))
+    db.execute(delete(Watchlist).where(Watchlist.product_id.in_(ids)))
+    db.execute(delete(StockSnapshot).where(StockSnapshot.product_id.in_(ids)))
+    db.execute(delete(PriceSnapshot).where(PriceSnapshot.product_id.in_(ids)))
+    db.execute(delete(AffClick).where(AffClick.product_id.in_(ids)))
+    db.execute(update(PageView).where(PageView.product_id.in_(ids)).values(product_id=None))
+    db.execute(delete(Product).where(Product.id.in_(ids)))
+    return len(ids)
 
 
 def prune_snapshots(db: Session) -> dict[str, int]:
@@ -425,6 +461,7 @@ def _run_scan_internal(db: Session, force: bool = False) -> dict:
                 )
 
                 official_ids = {raw.external_id for raw in raws if not raw.from_preset}
+                keep_ids = {raw.external_id for raw in raws}
                 event_count = 0
                 for raw in raws:
                     product, events = upsert_product(db, merchant, raw)
@@ -435,13 +472,18 @@ def _run_scan_internal(db: Session, force: bool = False) -> dict:
                         dispatch_event(db, ev, product)
                         event_count += 1
 
-                # 关键：如果在本次有效抓取中消失的存量商品（商家已下架/停售/缺货/过期ID），自动标记为缺货
-                # 完整性门槛只看官方实时源：预置目录条数再多也不能当作「抓全了」去把线上 SKU 标缺货
+                # 本次有效抓取中消失的存量商品：商家已下架、停售或换过外部 ID。
+                # 完整性门槛只看官方实时源，预置目录条数再多也不能当作「抓全了」。
+                # DMIT 旧目录用过错误 pid，缺货标记会永远留在列表里，抓全后直接删除。
                 existing_count = db.scalar(
                     select(func.count(Product.id)).where(Product.merchant_id == merchant.id)
                 ) or 0
                 missing_products: list[Product] = []
-                if official_ids and len(official_ids) >= max(3, existing_count * 0.5):
+                retired = 0
+                crawl_complete = bool(official_ids) and len(official_ids) >= max(3, existing_count * 0.5)
+                if crawl_complete and crawler.slug == "dmit":
+                    retired = retire_missing_products(db, merchant.id, keep_ids)
+                elif crawl_complete:
                     missing_products = list(
                         db.scalars(
                             select(Product).where(
@@ -461,7 +503,14 @@ def _run_scan_internal(db: Session, force: bool = False) -> dict:
 
                 db.commit()
                 if crawler.slug not in summary:
-                    summary[crawler.slug] = f"{len(raws)} products ({len(missing_products)} marked OOS), {event_count} events"
+                    if retired:
+                        summary[crawler.slug] = (
+                            f"{len(raws)} products ({retired} retired), {event_count} events"
+                        )
+                    else:
+                        summary[crawler.slug] = (
+                            f"{len(raws)} products ({len(missing_products)} marked OOS), {event_count} events"
+                        )
 
     # 扫描收尾：按既有公式全量刷新评分/理由等物化列（refactor-plan §2 #1）。
     # 关注数/点击数等时变信号每扫描周期刷新一次，列表请求不再逐条实时计算。
