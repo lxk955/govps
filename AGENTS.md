@@ -284,4 +284,5 @@ Do not claim that a change is verified unless the relevant checks were actually 
 - For major architectural decisions, explain important trade-offs before making the change.
 - After implementation, review the changed code.
 - Run appropriate checks for the affected functionality.
+- After pushing commits to `main`, track the GitHub Actions deployment workflow until it finishes. If deployment fails, inspect the failure logs immediately, resolve the issue, and ensure production deployment is successful and health checks pass.
 - Report what was changed, what was actually verified, and any remaining issues.
