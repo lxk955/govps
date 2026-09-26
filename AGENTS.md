@@ -284,5 +284,6 @@ Do not claim that a change is verified unless the relevant checks were actually 
 - For major architectural decisions, explain important trade-offs before making the change.
 - After implementation, review the changed code.
 - Run appropriate checks for the affected functionality.
+- Before pushing to remote, always invoke `grok` in the current environment to review the changes (e.g. `grok -p "..."`). Carefully evaluate its feedback, address any valid concerns or bugs, reach consensus, and re-verify before committing/pushing.
 - After pushing commits to `main`, track the GitHub Actions deployment workflow until it finishes. If deployment fails, inspect the failure logs immediately, resolve the issue, and ensure production deployment is successful and health checks pass.
 - Report what was changed, what was actually verified, and any remaining issues.
