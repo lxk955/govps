@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import {
+  ArrowDown,
+  ArrowUp,
   Calendar,
   Check,
   Copy,
@@ -263,90 +265,120 @@ export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
         </div>
       </div>
 
-      {/* 实时上下行速率 */}
-      <div className="grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-        {/* 上行 */}
-        <div className="flex flex-col">
-          <div className="flex items-baseline justify-between">
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-              ↑ 上行
-            </span>
-            <div className="flex items-baseline gap-0.5 font-mono">
-              <span className="text-base font-extrabold text-amber-600 dark:text-amber-500">
+      {/* 实时带宽与累计流量 */}
+      <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80">
+        <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+          {/* 出站 */}
+          <div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 min-w-0">
+            <div className="flex items-center justify-between gap-1">
+              <span className="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300 shrink-0">
+                <ArrowUp className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
+                <span>出站</span>
+              </span>
+              <WaveRateDots
+                count={6}
+                active={node.is_online}
+                rateBytesPerSec={metrics.net_tx_rate}
+                colorClass="bg-amber-500 dark:bg-amber-400"
+              />
+            </div>
+            <div
+              className="flex items-baseline gap-0.5 font-mono text-amber-600 dark:text-amber-500"
+              title={`实时出站速率: ${upRate.full}`}
+            >
+              <span className="text-base font-extrabold tracking-tight truncate">
                 {upRate.value}
               </span>
-              <span className="text-[10px] font-bold text-amber-600/80 dark:text-amber-500/80">
+              <span className="text-[10px] font-bold opacity-80 shrink-0">
                 {upRate.unit}
               </span>
             </div>
+            <div
+              className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/50 text-[11px] font-mono text-slate-500 dark:text-slate-400"
+              title={`网卡累计出站: ${outTraffic.full}`}
+            >
+              <span className="shrink-0 text-slate-400 dark:text-slate-500">累计</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+                {outTraffic.full}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center justify-between mt-1">
-            <WaveRateDots active={node.is_online} rateBytesPerSec={metrics.net_tx_rate} />
-            <span className="text-[9px] text-slate-400 font-sans">● 实时</span>
-          </div>
-        </div>
 
-        {/* 下行 */}
-        <div className="flex flex-col">
-          <div className="flex items-baseline justify-between">
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-              ↓ 下行
-            </span>
-            <div className="flex items-baseline gap-0.5 font-mono">
-              <span className="text-base font-extrabold text-amber-600 dark:text-amber-500">
+          {/* 入站 */}
+          <div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 min-w-0">
+            <div className="flex items-center justify-between gap-1">
+              <span className="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300 shrink-0">
+                <ArrowDown className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0" />
+                <span>入站</span>
+              </span>
+              <WaveRateDots
+                count={6}
+                active={node.is_online}
+                rateBytesPerSec={metrics.net_rx_rate}
+                colorClass="bg-blue-500 dark:bg-blue-400"
+              />
+            </div>
+            <div
+              className="flex items-baseline gap-0.5 font-mono text-blue-600 dark:text-blue-400"
+              title={`实时入站速率: ${downRate.full}`}
+            >
+              <span className="text-base font-extrabold tracking-tight truncate">
                 {downRate.value}
               </span>
-              <span className="text-[10px] font-bold text-amber-600/80 dark:text-amber-500/80">
+              <span className="text-[10px] font-bold opacity-80 shrink-0">
                 {downRate.unit}
               </span>
             </div>
-          </div>
-          <div className="flex items-center justify-between mt-1">
-            <WaveRateDots active={node.is_online} rateBytesPerSec={metrics.net_rx_rate} />
-            <span className="text-[9px] text-slate-400 font-sans">● 实时</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 累计出入站流量 */}
-      <div className="grid grid-cols-2 gap-3 mt-2.5 text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-        <div className="flex items-center justify-between">
-          <span className="font-sans">网卡累计出站</span>
-          <span className="font-semibold text-slate-700 dark:text-slate-300">{outTraffic.full}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="font-sans">网卡累计入站</span>
-          <span className="font-semibold text-slate-700 dark:text-slate-300">{inTraffic.full}</span>
-        </div>
-      </div>
-
-      {/* 本周期流量额度与重置周期 */}
-      {node.traffic_limit_gb && (
-        <div className="flex flex-col gap-1 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
-          <div className="flex items-center justify-between text-[11px] font-mono select-none">
-            <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-sans">
-              <span>本周期已用流量</span>
-              <span className="text-[10px] px-1 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
-                {node.traffic_direction === "out" ? "仅出站" : "双向"}
+            <div
+              className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/50 text-[11px] font-mono text-slate-500 dark:text-slate-400"
+              title={`网卡累计入站: ${inTraffic.full}`}
+            >
+              <span className="shrink-0 text-slate-400 dark:text-slate-500">累计</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+                {inTraffic.full}
               </span>
             </div>
-            <span className="text-slate-400 text-[10px]">
-              {formatBytes(cycleUsedBytes).full} / {node.traffic_limit_gb} GB
-              {typeof node.cycle_reset_days_left === "number" && (
-                <span className="ml-1 text-slate-500 dark:text-slate-400 font-medium">
-                  · {node.cycle_reset_days_left === 0 ? "今天重置" : `${node.cycle_reset_days_left}天后重置`}
-                </span>
-              )}
-            </span>
           </div>
-          <SegmentedMeter
-            percent={trafficPercent}
-            totalBlocks={24}
-            colorClass={trafficMeterColor}
-            size="sm"
-          />
         </div>
-      )}
+
+        {/* 周期流量额度与重置周期 */}
+        {node.traffic_limit_gb && (
+          <div className="flex flex-col gap-1.5 mt-2.5 px-3 py-2 rounded-xl bg-slate-50/60 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/60">
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px] font-mono select-none">
+              <div className="flex items-center gap-1.5 font-sans">
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  周期流量
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 font-medium">
+                  {node.traffic_direction === "out" ? "仅出站" : "双向"}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 text-[11px] flex-wrap">
+                <span className="font-bold text-slate-700 dark:text-slate-200">
+                  {formatBytes(cycleUsedBytes).full}
+                </span>
+                <span className="text-slate-400 dark:text-slate-500">/</span>
+                <span className="text-slate-500 dark:text-slate-400">
+                  {node.traffic_limit_gb} GB
+                </span>
+                {typeof node.cycle_reset_days_left === "number" && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-medium">
+                    {node.cycle_reset_days_left === 0
+                      ? "今日重置"
+                      : `${node.cycle_reset_days_left}天后重置`}
+                  </span>
+                )}
+              </div>
+            </div>
+            <SegmentedMeter
+              percent={trafficPercent}
+              totalBlocks={24}
+              colorClass={trafficMeterColor}
+              size="sm"
+            />
+          </div>
+        )}
+      </div>
 
       {/* 三网延迟丢包热力色带 */}
       <div className="flex flex-col gap-2 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80">

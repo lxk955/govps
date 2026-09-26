@@ -54,15 +54,23 @@ interface WaveRateDotsProps {
   active?: boolean;
   rateBytesPerSec?: number;
   className?: string;
+  count?: number;
+  colorClass?: string;
 }
 
-export function WaveRateDots({ active = true, rateBytesPerSec = 0, className }: WaveRateDotsProps) {
+export function WaveRateDots({
+  active = true,
+  rateBytesPerSec = 0,
+  className,
+  count = 6,
+  colorClass = "bg-amber-500 dark:bg-amber-400",
+}: WaveRateDotsProps) {
   // 根据速率动态改变波形活跃度
   const isHigh = rateBytesPerSec > 1024 * 1024 * 2; // > 2MB/s
 
   return (
-    <div className={cn("flex items-center gap-[3px] select-none", className)}>
-      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((idx) => {
+    <div className={cn("flex items-center gap-[3px] select-none shrink-0", className)}>
+      {Array.from({ length: count }).map((_, idx) => {
         const opacity = active
           ? idx % 3 === 0
             ? "opacity-100"
@@ -74,7 +82,8 @@ export function WaveRateDots({ active = true, rateBytesPerSec = 0, className }: 
           <div
             key={idx}
             className={cn(
-              "w-[3.5px] h-[3.5px] rounded-full bg-amber-500 dark:bg-amber-400 transition-all",
+              "w-[3px] h-[3px] rounded-full transition-all",
+              colorClass,
               opacity,
               isHigh && "animate-pulse",
             )}
