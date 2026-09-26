@@ -22,7 +22,8 @@ import { MiniNodeCard } from "@/components/monitor/mini-node-card";
 import { NodeListView } from "@/components/monitor/node-list-view";
 import { NodeDetailModal } from "@/components/monitor/node-detail-modal";
 import { AddNodeDialog } from "@/components/monitor/add-node-dialog";
-import { MonitorSettingsDialog } from "@/components/monitor/monitor-settings-dialog";
+import { ExpireReminderDialog } from "@/components/monitor/expire-reminder-dialog";
+import { ShareDialog } from "@/components/monitor/share-dialog";
 import {
   MonitorApiResponse,
   MonitorNode,
@@ -73,6 +74,7 @@ export default function MonitorPage() {
   const [detailNode, setDetailNode] = useState<MonitorNode | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingNode, setEditingNode] = useState<MonitorNode | null>(null);
+  const [isExpireReminderOpen, setIsExpireReminderOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const initialLoadRef = useRef(true);
 
@@ -401,6 +403,7 @@ export default function MonitorPage() {
           onClearDemo={handleClearDemo}
           hasDemoNodes={hasDemoNodes}
           isOwner={userInfo.is_owner}
+          onOpenExpireReminder={() => setIsExpireReminderOpen(true)}
           onShare={() => setIsShareModalOpen(true)}
           shareEnabled={userInfo.public_enabled}
         />
@@ -532,8 +535,15 @@ export default function MonitorPage() {
         editingNode={editingNode}
       />
 
-      {/* 监控与通知设置弹窗 (包含到期提醒、通知渠道、公开分享) */}
-      <MonitorSettingsDialog
+      {/* 续费到期提醒设置弹窗 */}
+      <ExpireReminderDialog
+        isOpen={isExpireReminderOpen}
+        onClose={() => setIsExpireReminderOpen(false)}
+        onSettingsSaved={() => fetchData(true)}
+      />
+
+      {/* 探针公开分享设置弹窗 */}
+      <ShareDialog
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         nodes={nodes}

@@ -3,13 +3,14 @@
 import React from "react";
 import {
   ArrowUpDown,
+  Bell,
   Check,
   Grid2X2,
   LayoutGrid,
   List,
   Plus,
   RefreshCw,
-  Settings,
+  Share2,
   SlidersHorizontal,
   Sparkles,
   Trash2,
@@ -45,6 +46,7 @@ interface FilterToolbarProps {
   onClearDemo: () => void;
   hasDemoNodes: boolean;
   isOwner: boolean;
+  onOpenExpireReminder?: () => void;
   onShare: () => void;
   shareEnabled?: boolean;
 }
@@ -67,6 +69,7 @@ export function FilterToolbar({
   onClearDemo,
   hasDemoNodes,
   isOwner,
+  onOpenExpireReminder,
   onShare,
   shareEnabled = false,
 }: FilterToolbarProps) {
@@ -203,21 +206,36 @@ export function FilterToolbar({
           {/* 仅所有者显示的分享与管理操作 */}
           {isOwner && (
             <>
+              {/* 续费到期提醒设置 */}
+              {onOpenExpireReminder && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenExpireReminder}
+                  title="续费到期提醒设置"
+                  className="h-8 gap-1.5 text-xs px-2.5 rounded-xl border-slate-200/80 dark:border-slate-800 font-medium bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                >
+                  <Bell className="w-3.5 h-3.5 text-amber-500" />
+                  <span className="hidden md:inline">续费提醒</span>
+                  <span className="md:hidden">提醒</span>
+                </Button>
+              )}
+
+              {/* 公开分享设置 */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onShare}
-                title="监控与通知设置"
+                title="公开分享设置"
                 className={cn(
                   "h-8 gap-1.5 text-xs px-2.5 rounded-xl border-slate-200/80 dark:border-slate-800 font-medium",
                   shareEnabled
-                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
+                    ? "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border-blue-300 dark:border-blue-800"
                     : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300",
                 )}
               >
-                <Settings className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">设置与分享</span>
-                <span className="md:hidden">设置</span>
+                <Share2 className="w-3.5 h-3.5" />
+                <span>分享</span>
               </Button>
 
               {/* 演示节点快捷入口 */}
