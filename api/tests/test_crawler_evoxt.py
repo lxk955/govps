@@ -127,7 +127,8 @@ def test_evoxt_crawler_fallback_to_dvps():
     with patch("app.crawler.dvps_source.DvpsSource.fetch_products", return_value=fake_dvps_prods):
         products = crawler.fetch(client)
         assert len(products) == 9
-        assert products[0].in_stock is True
+        # 库存跟聚合源走，缺货不能被兜底写成有货
+        assert products[0].in_stock is False
         assert products[0].port_mbps == 1000
         assert products[0].bandwidth_gb == 500
 
@@ -144,3 +145,4 @@ def test_evoxt_crawler_fallback_to_presets():
         products = crawler.fetch(client)
         assert len(products) == len(PRESET_EVOXT_PRODUCTS)
         assert all(p.from_preset for p in products)
+        assert all(not p.stock_verified and not p.in_stock for p in products)
