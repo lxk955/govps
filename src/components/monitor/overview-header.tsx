@@ -1,12 +1,15 @@
 "use client";
 
 import React from "react";
-import { DollarSign, TrendingUp, Wifi } from "lucide-react";
+import { CircleDollarSign, RotateCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MonitorSummary } from "./types";
+import { getOverviewRating, speedRateColor } from "./overview-ratings";
 
 interface OverviewHeaderProps {
   summary: MonitorSummary;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 export function formatRate(bytesPerSec: number): { value: string; unit: string; full: string } {
@@ -32,11 +35,11 @@ export function formatBytes(bytes: number): { value: string; unit: string; full:
   if (bytes < k * k) return { value: (bytes / k).toFixed(1), unit: "KB", full: `${(bytes / k).toFixed(1)} KB` };
   if (bytes < k * k * k) return { value: (bytes / (k * k)).toFixed(1), unit: "MB", full: `${(bytes / (k * k)).toFixed(1)} MB` };
   if (bytes < k * k * k * k) return { value: (bytes / (k * k * k)).toFixed(1), unit: "GB", full: `${(bytes / (k * k * k)).toFixed(1)} GB` };
-  const val = (bytes / (k * k * k * k)).toFixed(1);
+  const val = (bytes / (k * k * k * k)).toFixed(2);
   return { value: val, unit: "TB", full: `${val} TB` };
 }
 
-export function OverviewHeader({ summary }: OverviewHeaderProps) {
+export function OverviewHeader({ summary, onRefresh, isRefreshing }: OverviewHeaderProps) {
   const { online_count, total_count, online_segments, bandwidth, traffic, asset } = summary;
 
   const totalRate = formatRate(bandwidth.total_rate);
@@ -47,138 +50,158 @@ export function OverviewHeader({ summary }: OverviewHeaderProps) {
   const rxTraffic = formatBytes(traffic.rx_total);
   const txTraffic = formatBytes(traffic.tx_total);
 
-  // 带宽爆发状态判定
-  const isHighTraffic = bandwidth.total_rate > 1024 * 1024 * 5; // > 5MB/s
+  // 动态评级徽章
+  const bandwidthRating = getOverviewRating({ kind: "bandwidth", value: bandwidth.total_rate });
+  const trafficRating = getOverviewRating({ kind: "traffic", value: traffic.total });
+  const assetRating = getOverviewRating({ kind: "asset", value: asset.total_cost_cny });
+
+  const onlinePct = total_count > 0 ? (online_count / total_count) * 100 : 0;
+  const offlineCount = Math.max(0, total_count - online_count);
+  const offlinePct = total_count > 0 ? (offlineCount / total_count) * 100 : 0;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 select-none">
-      {/* 1. 在线节点 */}
-      <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-4 shadow-xs flex flex-col justify-between min-h-[110px]">
-        <div className="flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
-          <span>在线节点</span>
-          <div className="flex items-center gap-1.5 text-slate-400 dark:text-slate-500">
-            <span
-              className={cn(
-                "inline-block w-2 h-2 rounded-full",
-                online_count > 0 ? "bg-emerald-500 animate-pulse" : "bg-slate-400",
-              )}
-            />
+    <div className="select-none mb-4">
+      {/* 顶部主标题与操作栏 */}
+      <div className="flex items-center justify-between gap-4 mb-4 pt-1">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-[26px] font-extrabold tracking-tight text-[var(--text-primary)] leading-tight">
+            GoVPS 探针监控
+          </h1>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className="w-9 h-9 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--hover-bg)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center transition-colors shadow-2xs cursor-pointer disabled:opacity-60"
+              title="刷新实时数据"
+              aria-label="刷新数据"
+            >
+              <RotateCw className={cn("w-4 h-4", isRefreshing && "animate-spin text-[var(--accent-500)]")} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 4 张概览卡片 */}
+      <section className="home-overview" aria-label="监控总览">
+        {/* 1. 在线节点 */}
+        <article className="overview-card" data-metric="online">
+          <div className="overview-card-head">
+            <span className="overview-card-label">在线节点</span>
           </div>
-        </div>
-
-        <div className="flex items-baseline gap-1.5 my-1.5">
-          <span className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 font-mono">
-            {online_count}
-          </span>
-          <span className="text-sm font-semibold text-slate-400 dark:text-slate-500">
-            / {total_count}
-          </span>
-        </div>
-
-        {/* 分段状态方块条 */}
-        <div className="flex items-center gap-1.5 w-full h-[7px] mt-1">
-          {online_segments.length > 0 ? (
-            online_segments.map((isOnline, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "flex-1 h-full rounded-xs transition-colors",
-                  isOnline
-                    ? "bg-emerald-500 dark:bg-emerald-400"
-                    : "bg-rose-500 dark:bg-rose-500",
-                )}
-                title={isOnline ? "节点正常在线" : "节点掉线/离线"}
-              />
-            ))
+          <div className="overview-card-main">
+            <p className="overview-card-value">
+              {online_count}
+              <span className="overview-card-unit">/ {total_count}</span>
+            </p>
+          </div>
+          {total_count >= 5 && total_count <= 12 ? (
+            <div className="overview-blocks" role="presentation">
+              {Array.from({ length: total_count }, (_, i) => {
+                const isOnline =
+                  online_segments.length > i
+                    ? online_segments[i]
+                    : i < online_count;
+                return (
+                  <span
+                    key={i}
+                    className={cn(
+                      "overview-block",
+                      isOnline ? "is-online" : "is-offline",
+                    )}
+                  />
+                );
+              })}
+            </div>
           ) : (
-            <div className="w-full h-full bg-slate-100 dark:bg-slate-800 rounded-xs" />
+            <div className="overview-bar" role="presentation">
+              <span className="overview-bar-online" style={{ width: `${onlinePct}%` }} />
+              <span className="overview-bar-offline" style={{ width: `${offlinePct}%` }} />
+            </div>
           )}
-        </div>
-      </div>
+        </article>
 
-      {/* 2. 实时带宽 */}
-      <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-4 shadow-xs flex flex-col justify-between min-h-[110px]">
-        <div className="flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
-          <span>实时带宽</span>
-          <Wifi className="w-3.5 h-3.5 text-amber-500/80" />
-        </div>
-
-        <div className="flex items-baseline gap-1 my-1.5">
-          <span className="text-3xl font-extrabold tracking-tight text-amber-600 dark:text-amber-500 font-mono">
-            {totalRate.value}
-          </span>
-          <span className="text-sm font-bold text-amber-600/80 dark:text-amber-500/80">
-            {totalRate.unit}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-          <div className="font-mono flex items-center gap-1">
-            <span>↑ {txRate.full}</span>
-            <span className="text-slate-300 dark:text-slate-600">·</span>
-            <span>↓ {rxRate.full}</span>
+        {/* 2. 实时带宽 */}
+        <article className="overview-card" data-metric="bandwidth">
+          <div className="overview-card-head">
+            <span className="overview-card-label">实时带宽</span>
           </div>
-          {isHighTraffic && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-              爆发
+          <div className="overview-card-main">
+            <p
+              className="overview-card-value font-mono"
+              style={{ color: speedRateColor(totalRate.unit) }}
+            >
+              {totalRate.value}
+              <span className="overview-card-unit font-sans">{totalRate.unit}</span>
+            </p>
+          </div>
+          <div className="overview-card-footer">
+            <p className="overview-card-sub" title={`↑ ${txRate.full} · ↓ ${rxRate.full}`}>
+              ↑ {txRate.full} · ↓ {rxRate.full}
+            </p>
+            <span
+              className="overview-card-rating"
+              data-rating-level={bandwidthRating.level}
+              title={bandwidthRating.label}
+            >
+              {bandwidthRating.label}
             </span>
-          )}
-        </div>
-      </div>
-
-      {/* 3. 累计流量 */}
-      <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-4 shadow-xs flex flex-col justify-between min-h-[110px]">
-        <div className="flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
-          <span>累计流量</span>
-          <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
-        </div>
-
-        <div className="flex items-baseline gap-1 my-1.5">
-          <span className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 font-mono">
-            {totalTraffic.value}
-          </span>
-          <span className="text-sm font-bold text-slate-500 dark:text-slate-400">
-            {totalTraffic.unit}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-          <div className="font-mono flex items-center gap-1">
-            <span>↑ {txTraffic.full}</span>
-            <span className="text-slate-300 dark:text-slate-600">·</span>
-            <span>↓ {rxTraffic.full}</span>
           </div>
-          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-            海量
-          </span>
-        </div>
-      </div>
+        </article>
 
-      {/* 4. 资产概览 */}
-      <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 p-4 shadow-xs flex flex-col justify-between min-h-[110px]">
-        <div className="flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400">
-          <span>资产概览</span>
-          <div className="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-            <DollarSign className="w-2.5 h-2.5" />
+        {/* 3. 累计流量 */}
+        <article className="overview-card" data-metric="traffic">
+          <div className="overview-card-head">
+            <span className="overview-card-label">累计流量</span>
           </div>
-        </div>
+          <div className="overview-card-main">
+            <p className="overview-card-value font-mono">
+              {totalTraffic.value}
+              <span className="overview-card-unit font-sans">{totalTraffic.unit}</span>
+            </p>
+          </div>
+          <div className="overview-card-footer">
+            <p className="overview-card-sub" title={`↑ ${txTraffic.full} · ↓ ${rxTraffic.full}`}>
+              ↑ {txTraffic.full} · ↓ {rxTraffic.full}
+            </p>
+            <span
+              className="overview-card-rating"
+              data-rating-level={trafficRating.level}
+              title={trafficRating.label}
+            >
+              {trafficRating.label}
+            </span>
+          </div>
+        </article>
 
-        <div className="flex items-baseline gap-1 my-1.5">
-          <span className="text-xl font-bold text-slate-600 dark:text-slate-300 font-mono">
-            ¥
-          </span>
-          <span className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 font-mono">
-            {asset.total_cost_cny.toFixed(2)}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-          <span>实时汇率计算</span>
-          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-            月度均摊
-          </span>
-        </div>
-      </div>
+        {/* 4. 资产概览 */}
+        <article className="overview-card" data-metric="asset">
+          <div className="overview-card-head">
+            <span className="overview-card-label">资产概览</span>
+            <CircleDollarSign className="w-4 h-4 text-[var(--text-tertiary)]" />
+          </div>
+          <div className="overview-card-main">
+            <p className="overview-card-value font-mono">
+              ¥ {asset.total_cost_cny > 0 ? Math.round(asset.total_cost_cny).toLocaleString() : "0.00"}
+            </p>
+          </div>
+          <div className="overview-card-footer">
+            <p className="overview-card-caption">
+              实时汇率计算
+            </p>
+            <span
+              className="overview-card-rating"
+              data-rating-level={assetRating.level}
+              title={assetRating.label}
+            >
+              {assetRating.label}
+            </span>
+          </div>
+        </article>
+      </section>
     </div>
   );
 }

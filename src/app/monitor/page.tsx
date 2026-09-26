@@ -362,35 +362,21 @@ export default function MonitorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950/40 pb-20 pt-4 sm:pt-6">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        {/* 页面顶栏：标题与状态 */}
-        <div className="flex items-center justify-between gap-3 mb-5">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-600 text-white shadow-xs">
-              <Activity className="w-4 h-4 stroke-[2.5]" />
-            </div>
-            <div>
-              <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
-                {shareToken ? "节点监控" : "我的探针"}
-              </h1>
-              <p className="text-[11px] text-slate-400 font-mono hidden sm:block">
-                {shareToken ? "GoVPS 公开探针监控看板" : "GoVPS 节点监控看板 · 4秒自适应刷新"}
-              </p>
-            </div>
+    <div className="min-h-screen pb-20 pt-3 sm:pt-5">
+      <div className="mx-auto max-w-7xl px-3 sm:px-6">
+        {shareToken && (
+          <div className="mb-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>公开只读面板</span>
           </div>
+        )}
 
-          {/* 公开模式徽标 */}
-          {shareToken && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>公开只读面板</span>
-            </div>
-          )}
-        </div>
-
-        {/* 1. 顶部 4 大概览卡片 */}
-        <OverviewHeader summary={summary} />
+        {/* 1. 顶部大标题、刷新与 4 张概览卡片 */}
+        <OverviewHeader
+          summary={summary}
+          onRefresh={() => fetchData(true)}
+          isRefreshing={isRefreshing}
+        />
 
         {/* 2. 分组、国旗筛选与视图切换工具栏 */}
         <FilterToolbar
@@ -480,7 +466,7 @@ export default function MonitorPage() {
           /* 根据 4 种视图模式渲染 */
           <div>
             {viewMode === "large" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
                 {filteredNodes.map((node) => (
                   <LargeNodeCard
                     key={node.id}

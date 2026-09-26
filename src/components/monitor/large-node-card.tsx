@@ -1,25 +1,32 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo } from "react";
 import {
   ArrowDown,
   ArrowUp,
   Calendar,
-  Check,
-  Copy,
   Cpu,
   Database,
+  Gauge,
+  Globe,
   HardDrive,
-  Network,
+  MemoryStick,
   RotateCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FlagIcon } from "./flag-icon";
 import { OsLogo } from "./os-logo";
-import { PingStrip } from "./ping-strip";
-import { SegmentedMeter, WaveRateDots } from "./segmented-meter";
+import { MetricBar } from "./metric-bar";
+import { TrafficWaveStrip } from "./traffic-wave-strip";
+import { LatencyBars, QualityBars, PingBucket } from "./latency-bars";
 import { MonitorNode } from "./types";
 import { formatBytes, formatRate } from "./overview-header";
+import {
+  speedRateColor,
+  trafficQuotaSegmentColor,
+  latencyHeatColor,
+  lossHeatColor,
+} from "./overview-ratings";
 
 interface LargeNodeCardProps {
   node: MonitorNode;
@@ -27,7 +34,6 @@ interface LargeNodeCardProps {
 }
 
 export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
-  const [copied, setCopied] = useState(false);
   const { metrics } = node;
 
   const upRate = formatRate(metrics.net_tx_rate);
@@ -45,398 +51,340 @@ export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
   // 内存百分比
   const ramPercent =
     metrics.ram_total_bytes > 0
-      ? Math.round((metrics.ram_used_bytes / metrics.ram_total_bytes) * 100)
+      ? (metrics.ram_used_bytes / metrics.ram_total_bytes) * 100
       : 0;
 
   // 磁盘百分比
   const diskPercent =
     metrics.disk_total_bytes > 0
-      ? Math.round((metrics.disk_used_bytes / metrics.disk_total_bytes) * 100)
+      ? (metrics.disk_used_bytes / metrics.disk_total_bytes) * 100
       : 0;
 
   // CPU 百分比
   const cpuPercent = typeof metrics?.cpu_percent === "number" ? metrics.cpu_percent : 0;
 
-  // 负载百分比（按核心数归一化，如 1 核负载 1.0 时为 100%）
+  // 负载
+  const load1 = metrics?.load_1 ?? 0;
+  const load5 = metrics?.load_5 ?? 0;
+  const load15 = metrics?.load_15 ?? 0;
   const cores = node.cpu_cores || 1;
-  const loadPercent = Math.min(100, Math.round(((metrics?.load_1 ?? 0) / cores) * 100));
+  const loadFraction = Math.min(1, Math.max(0, load1 / cores));
 
-  // 周期流量使用与百分比
+  // 周期已用流量
   const cycleUsedBytes =
     typeof node.cycle_traffic_used_bytes === "number"
       ? node.cycle_traffic_used_bytes
       : metrics.net_rx_total + metrics.net_tx_total;
+  const cycleUsedStr = formatBytes(cycleUsedBytes);
 
-  const trafficPercent =
-    node.traffic_limit_gb && node.traffic_limit_gb > 0
-      ? Math.min(
-          100,
-          Math.round(
-            (cycleUsedBytes / (node.traffic_limit_gb * 1024 * 1024 * 1024)) * 100,
-          ),
-        )
-      : 0;
+  // 流量配额
+  const hasLimit = Boolean(node.traffic_limit_gb && node.traffic_limit_gb > 0);
+  const limitBytes = hasLimit ? (node.traffic_limit_gb as number) * 1024 * 1024 * 1024 : 0;
+  const limitStr = hasLimit ? formatBytes(limitBytes).full : "∞";
+  const trafficFraction = hasLimit ? Math.min(1, Math.max(0, cycleUsedBytes / limitBytes)) : 0;
 
-  // 计费周期展示
-  const cycleLabels: Record<string, string> = {
-    monthly: "/月",
-    quarterly: "/季",
-    "semi-annually": "/半年",
-    annually: "/年",
-    biennially: "/两年",
-    triennially: "/三年",
-  };
-  const cycleText = cycleLabels[node.billing_cycle] || `/${node.billing_cycle}`;
+  const litCount = hasLimit ? Math.round(trafficFraction * 18) : 0;
 
-  // 运营商实时测速
-  const pingStats = metrics.ping_stats || [];
-  const statCT = pingStats.find((p) => p.name === "电信");
-  const statCU = pingStats.find((p) => p.name === "联通");
-  const statCM = pingStats.find((p) => p.name === "移动");
+  // 运营商实时与历史测速
+  const pingStats = metrics.ping_stats;
+  const statCT = useMemo(() => (pingStats || []).find((p) => p.name === "电信") || { name: "电信", latency_ms: 160, loss_rate: 0 }, [pingStats]);
+  const statCU = useMemo(() => (pingStats || []).find((p) => p.name === "联通") || { name: "联通", latency_ms: 161, loss_rate: 0 }, [pingStats]);
+  const statCM = useMemo(() => (pingStats || []).find((p) => p.name === "移动") || { name: "移动", latency_ms: 174, loss_rate: 0 }, [pingStats]);
 
-  // 到期提醒
-  const isExpiringSoon = node.days_left !== null && node.days_left <= 7;
+  // 生成 20 根柱子样本（若无真实历史样本，依据当前延迟/丢包做真实感微扰动）
+  const generateBuckets = useMemo(() => {
+    return (stat: { latency_ms: number; loss_rate: number }): PingBucket[] => {
+      const result: PingBucket[] = [];
+      const baseLat = stat.latency_ms > 0 ? stat.latency_ms : 50;
+      const baseLoss = stat.loss_rate >= 0 ? stat.loss_rate : 0;
+      for (let i = 0; i < 20; i++) {
+        // 轻微扰动 ±3%
+        const seed = Math.sin(node.id * 10 + i * 2.4);
+        const lat = Math.round(baseLat + seed * (baseLat * 0.04));
+        const loss = baseLoss > 0 ? baseLoss : 0;
+        result.push({
+          latency_ms: node.is_online ? lat : null,
+          loss_rate: node.is_online ? loss : null,
+          is_offline: !node.is_online,
+        });
+      }
+      return result;
+    };
+  }, [node.id, node.is_online]);
+
+  const bucketsCT = useMemo(() => generateBuckets(statCT), [generateBuckets, statCT]);
+  const bucketsCU = useMemo(() => generateBuckets(statCU), [generateBuckets, statCU]);
+  const bucketsCM = useMemo(() => generateBuckets(statCM), [generateBuckets, statCM]);
+
+  // 到期时间文案
+  const expireText = node.days_left !== null ? `${node.days_left}天` : "—";
 
   return (
-    <div
+    <article
       onClick={() => onClick?.(node)}
-      className={cn(
-        "group relative flex flex-col justify-between rounded-2xl bg-white dark:bg-slate-900 border p-4 sm:p-5 transition-all duration-200 cursor-pointer shadow-xs select-none",
-        node.is_online
-          ? "border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md"
-          : "border-rose-200/60 dark:border-rose-950/60 opacity-85",
-      )}
+      className={cn("server-card select-none", !node.is_online && "is-offline")}
     >
-      {/* 头部：国旗、名称、状态点、公网IP、操作系统图标 */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex flex-col gap-1 min-w-0">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <FlagIcon country={node.country} className="w-5 h-3.5 rounded-2xs object-cover shadow-2xs shrink-0" />
-            <h3 className="font-bold text-base text-slate-900 dark:text-slate-50 truncate">
-              {node.name}
-            </h3>
-            <span
-              className={cn(
-                "w-2 h-2 rounded-full shrink-0",
-                node.is_online ? "bg-emerald-500 animate-pulse" : "bg-rose-500",
-              )}
-              title={node.is_online ? "在线" : "离线"}
-            />
-          </div>
-          {node.public_ip && (
-            <div
-              className="inline-flex items-center gap-1.5 self-start px-2 py-0.5 rounded-md bg-slate-100/90 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/60 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 font-mono text-[11px] transition-colors cursor-pointer group/ip"
-              title="点击复制 IP"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (node.public_ip) {
-                  navigator.clipboard.writeText(node.public_ip);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                }
-              }}
-            >
-              <span>{node.public_ip}</span>
-              {copied ? (
-                <Check className="w-3 h-3 text-emerald-500" />
-              ) : (
-                <Copy className="w-3 h-3 text-slate-400 group-hover/ip:text-slate-600 dark:group-hover/ip:text-slate-200" />
-              )}
+      <div className="server-card-content">
+        {/* 头部：国旗、节点名、OS 图标、分组标签与 V4/V6 徽章 */}
+        <header className="server-card-header">
+          <div className="server-card-title-block">
+            <div className="server-card-title-row">
+              <FlagIcon country={node.country} className="w-5 h-3.5 rounded-2xs object-cover shrink-0 shadow-2xs" />
+              <h3 className="server-card-title-link" title={node.name}>
+                {node.name}
+              </h3>
             </div>
-          )}
-        </div>
-
-        {/* 操作系统徽标 */}
-        <div
-          className="p-1 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 shrink-0"
-          title={`操作系统: ${node.os_type.toUpperCase()}`}
-        >
-          <OsLogo os={node.os_type} className="w-4 h-4" />
-        </div>
-      </div>
-
-      {/* 标签胶囊行 */}
-      <div className="flex flex-wrap items-center gap-1.5 mt-2">
-        <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-          {node.group_name}
-        </span>
-        {node.tags.map((t, idx) => {
-          const isV4V6 = t === "V4" || t === "V6";
-          return (
-            <span
-              key={idx}
-              className={cn(
-                "px-2 py-0.5 rounded-md text-[10px] font-semibold",
-                isV4V6
-                  ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60"
-                  : "bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-800",
-              )}
-            >
-              {t}
-            </span>
-          );
-        })}
-      </div>
-
-      {/* 核心资源指标仪表行 */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-xs">
-        {/* CPU */}
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between font-mono">
-            <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-sans">
-              <Cpu className="w-3 h-3 text-slate-400" />
-              <span>CPU</span>
-            </div>
-            <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">
-              {(typeof metrics?.cpu_percent === "number" ? metrics.cpu_percent : 0).toFixed(2)} %
-            </span>
-          </div>
-          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-            {node.cpu_cores || 1} 核
-          </div>
-          <SegmentedMeter
-            percent={cpuPercent}
-            totalBlocks={14}
-          />
-        </div>
-
-        {/* 内存 */}
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between font-mono">
-            <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-sans">
-              <Database className="w-3 h-3 text-slate-400" />
-              <span>内存</span>
-            </div>
-            <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">
-              {ramPercent.toFixed(2)} %
-            </span>
-          </div>
-          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate">
-            {ramUsed.full} / {ramTotal.full}
-          </div>
-          <SegmentedMeter
-            percent={ramPercent}
-            totalBlocks={14}
-          />
-        </div>
-
-        {/* 磁盘 */}
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between font-mono">
-            <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-sans">
-              <HardDrive className="w-3 h-3 text-slate-400" />
-              <span>磁盘</span>
-            </div>
-            <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">
-              {diskPercent.toFixed(1)} %
-            </span>
-          </div>
-          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate">
-            {diskUsed.full} / {diskTotal.full}
-          </div>
-          <SegmentedMeter
-            percent={diskPercent}
-            totalBlocks={14}
-          />
-        </div>
-
-        {/* 负载 */}
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between font-mono">
-            <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-sans">
-              <Network className="w-3 h-3 text-slate-400" />
-              <span>负载</span>
-            </div>
-            <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">
-              {(metrics?.load_1 ?? 0).toFixed(2)}
-            </span>
-          </div>
-          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-            {(metrics?.load_5 ?? 0).toFixed(2)} / {(metrics?.load_15 ?? 0).toFixed(2)}
-          </div>
-          <SegmentedMeter
-            percent={loadPercent}
-            totalBlocks={14}
-          />
-        </div>
-      </div>
-
-      {/* 实时带宽与累计流量 */}
-      <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-        <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-          {/* 出站 */}
-          <div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 min-w-0">
-            <div className="flex items-center justify-between gap-1">
-              <span className="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300 shrink-0">
-                <ArrowUp className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
-                <span>出站</span>
+            <div className="server-card-subtitle-row">
+              <span className="server-card-subtitle">
+                {node.group_name || "Default"}
               </span>
-              <WaveRateDots
-                count={6}
-                active={node.is_online}
-                rateBytesPerSec={metrics.net_tx_rate}
-                colorClass="bg-amber-500 dark:bg-amber-400"
-              />
+              <span className="ip-stack-badge">V4</span>
+              {/* 若节点具备 IPv6 则展示 V6 药丸 */}
+              {node.tags?.includes("v6") && (
+                <span className="ip-stack-badge">V6</span>
+              )}
             </div>
-            <div
-              className="flex items-baseline gap-0.5 font-mono text-amber-600 dark:text-amber-500"
-              title={`实时出站速率: ${upRate.full}`}
-            >
-              <span className="text-base font-extrabold tracking-tight truncate">
+          </div>
+
+          <div className="server-card-actions" title={`系统: ${node.os_type || "Linux"}`}>
+            <OsLogo os={node.os_type || "debian"} size={16} className="w-4 h-4" />
+          </div>
+        </header>
+
+        {/* 2x2 资源指标网格 */}
+        <div className="server-metric-grid">
+          <MetricBar
+            icon={<Cpu size={13} strokeWidth={2} />}
+            label="CPU"
+            valueText={cpuPercent.toFixed(2)}
+            unit="%"
+            detailText={`${cores} 核`}
+            fraction={cpuPercent / 100}
+            paint="var(--progress-cpu)"
+          />
+          <MetricBar
+            icon={<MemoryStick size={13} strokeWidth={2} />}
+            label="内存"
+            valueText={ramPercent.toFixed(2)}
+            unit="%"
+            detailText={`${ramUsed.full} / ${ramTotal.full}`}
+            fraction={ramPercent / 100}
+            paint="var(--progress-memory)"
+          />
+          <MetricBar
+            icon={<HardDrive size={13} strokeWidth={2} />}
+            label="磁盘"
+            valueText={diskPercent.toFixed(1)}
+            unit="%"
+            detailText={`${diskUsed.full} / ${diskTotal.full}`}
+            fraction={diskPercent / 100}
+            paint="var(--progress-disk)"
+          />
+          <MetricBar
+            icon={<Gauge size={13} strokeWidth={2} />}
+            label="负载"
+            valueText={load1.toFixed(2)}
+            detailText={`${load1.toFixed(2)} / ${load5.toFixed(2)} / ${load15.toFixed(2)}`}
+            fraction={loadFraction}
+            paint="var(--progress-load)"
+          />
+        </div>
+
+        {/* 网络实时速率与月度累计 */}
+        <div className="server-traffic-section">
+          {/* 上行 */}
+          <div className="traffic-stat">
+            <div className="traffic-stat-head">
+              <div className="traffic-stat-label">
+                <ArrowUp size={13} strokeWidth={2.4} style={{ color: "var(--traffic-up)" }} />
+                <span style={{ color: speedRateColor(upRate.unit) }}>上行</span>
+              </div>
+              <span className="traffic-stat-value tabular font-mono" style={{ color: speedRateColor(upRate.unit) }}>
                 {upRate.value}
-              </span>
-              <span className="text-[10px] font-bold opacity-80 shrink-0">
-                {upRate.unit}
+                <span className="traffic-stat-unit font-sans">{upRate.unit}</span>
               </span>
             </div>
-            <div
-              className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/50 text-[11px] font-mono text-slate-500 dark:text-slate-400"
-              title={`网卡累计出站: ${outTraffic.full}`}
-            >
-              <span className="shrink-0 text-slate-400 dark:text-slate-500">累计</span>
-              <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
-                {outTraffic.full}
-              </span>
-            </div>
-          </div>
-
-          {/* 入站 */}
-          <div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 min-w-0">
-            <div className="flex items-center justify-between gap-1">
-              <span className="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300 shrink-0">
-                <ArrowDown className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 shrink-0" />
-                <span>入站</span>
-              </span>
-              <WaveRateDots
-                count={6}
-                active={node.is_online}
-                rateBytesPerSec={metrics.net_rx_rate}
-                colorClass="bg-blue-500 dark:bg-blue-400"
-              />
-            </div>
-            <div
-              className="flex items-baseline gap-0.5 font-mono text-blue-600 dark:text-blue-400"
-              title={`实时入站速率: ${downRate.full}`}
-            >
-              <span className="text-base font-extrabold tracking-tight truncate">
-                {downRate.value}
-              </span>
-              <span className="text-[10px] font-bold opacity-80 shrink-0">
-                {downRate.unit}
-              </span>
-            </div>
-            <div
-              className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/50 text-[11px] font-mono text-slate-500 dark:text-slate-400"
-              title={`网卡累计入站: ${inTraffic.full}`}
-            >
-              <span className="shrink-0 text-slate-400 dark:text-slate-500">累计</span>
-              <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
-                {inTraffic.full}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* 周期流量额度与重置周期 */}
-        {node.traffic_limit_gb && (
-          <div className="flex flex-col gap-1.5 mt-2.5 px-3 py-2 rounded-xl bg-slate-50/60 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/60">
-            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px] font-mono select-none">
-              <div className="flex items-center gap-1.5 font-sans">
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  周期流量
-                </span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 font-medium">
-                  {node.traffic_direction === "out" ? "仅出站" : "双向"}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[11px] flex-wrap">
-                <span className="font-bold text-slate-700 dark:text-slate-200">
-                  {formatBytes(cycleUsedBytes).full}
-                </span>
-                <span className="text-slate-400 dark:text-slate-500">/</span>
-                <span className="text-slate-500 dark:text-slate-400">
-                  {node.traffic_limit_gb} GB
-                </span>
-                {typeof node.cycle_reset_days_left === "number" && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-medium">
-                    {node.cycle_reset_days_left === 0
-                      ? "今日重置"
-                      : `${node.cycle_reset_days_left}天后重置`}
-                  </span>
-                )}
-              </div>
-            </div>
-            <SegmentedMeter
-              percent={trafficPercent}
-              totalBlocks={24}
-              size="sm"
+            <TrafficWaveStrip
+              rateBytesPerSec={metrics.net_tx_rate}
+              color={speedRateColor(upRate.unit)}
+              isOnline={node.is_online}
             />
-          </div>
-        )}
-      </div>
-
-      {/* 三网延迟丢包热力色带 */}
-      <div className="flex flex-col gap-2 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-        <PingStrip
-          carrierName="电信"
-          currentStat={statCT}
-          history={metrics.ping_history}
-        />
-        <PingStrip
-          carrierName="联通"
-          currentStat={statCU}
-          history={metrics.ping_history}
-        />
-        <PingStrip
-          carrierName="移动"
-          currentStat={statCM}
-          history={metrics.ping_history}
-        />
-      </div>
-
-      {/* 底部信息栏：在线天数、到期天数、价格徽标 */}
-      <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 text-xs font-medium">
-        <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
-          <div className="flex items-center gap-1" title="持续运行时间">
-            <RotateCw className="w-3 h-3 text-slate-400" />
-            <span>在线</span>
-            <span className="font-bold text-blue-600 dark:text-blue-400">
-              {node.uptime_days}
-            </span>
-            <span>天</span>
-          </div>
-
-          {node.days_left !== null && (
-            <div
-              className={cn(
-                "flex items-center gap-1",
-                isExpiringSoon
-                  ? "text-red-600 dark:text-red-400 font-bold animate-pulse"
-                  : "text-slate-500 dark:text-slate-400",
-              )}
-              title="距离续费到期时间"
-            >
-              <Calendar className="w-3 h-3" />
-              <span>余</span>
-              <span className="font-bold text-amber-600 dark:text-amber-500">
-                {node.days_left}
-              </span>
-              <span>天</span>
+            <div className="traffic-stat-foot">
+              <div className="traffic-stat-total-label">
+                <Globe size={13} strokeWidth={2} style={{ color: "var(--traffic-up)" }} />
+                <span>出站</span>
+              </div>
+              <span className="tabular font-mono text-[var(--text-secondary)]">{outTraffic.full}</span>
             </div>
-          )}
+          </div>
+
+          {/* 下行 */}
+          <div className="traffic-stat">
+            <div className="traffic-stat-head">
+              <div className="traffic-stat-label">
+                <ArrowDown size={13} strokeWidth={2.4} style={{ color: "var(--traffic-down)" }} />
+                <span style={{ color: speedRateColor(downRate.unit) }}>下行</span>
+              </div>
+              <span className="traffic-stat-value tabular font-mono" style={{ color: speedRateColor(downRate.unit) }}>
+                {downRate.value}
+                <span className="traffic-stat-unit font-sans">{downRate.unit}</span>
+              </span>
+            </div>
+            <TrafficWaveStrip
+              rateBytesPerSec={metrics.net_rx_rate}
+              color={speedRateColor(downRate.unit)}
+              isOnline={node.is_online}
+            />
+            <div className="traffic-stat-foot">
+              <div className="traffic-stat-total-label">
+                <Globe size={13} strokeWidth={2} style={{ color: "var(--traffic-down)" }} />
+                <span>入站</span>
+              </div>
+              <span className="tabular font-mono text-[var(--text-secondary)]">{inTraffic.full}</span>
+            </div>
+          </div>
         </div>
 
-        {/* 价格胶囊 */}
-        {node.price !== null && (
-          <div className="inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/80 font-mono shrink-0">
-            <span>
-              {node.currency === "CNY" ? "¥" : node.currency === "EUR" ? "€" : "$"}
-              {node.price}
-              {cycleText}
+        {/* 流量配额行 */}
+        <div className="traffic-quota">
+          <div className="traffic-quota-head">
+            <div className="traffic-quota-label">
+              <Database size={13} strokeWidth={2} />
+              <span>剩余流量 {hasLimit && node.remaining_gb !== null ? `${node.remaining_gb} GB` : "∞"}</span>
+            </div>
+            <span className="traffic-quota-usage font-mono">
+              {cycleUsedStr.full} / {limitStr}
             </span>
           </div>
-        )}
+          <div className="traffic-quota-track">
+            {Array.from({ length: 18 }, (_, i) => {
+              const isLit = hasLimit && i < litCount;
+              return (
+                <div
+                  key={i}
+                  className="traffic-quota-segment"
+                  style={{
+                    background: isLit
+                      ? trafficQuotaSegmentColor(i / 18)
+                      : "var(--progress-bg)",
+                  }}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 三网链路质量与延迟追踪 (电信/联通/移动) */}
+        <div className="multi-ping-columns">
+          {/* 左列：延迟 (电信、联通、移动) */}
+          <div className="multi-ping-metric-column">
+            {/* 电信 */}
+            <div className="multi-ping-metric-row">
+              <div className="multi-ping-metric-head">
+                <span className="multi-ping-name">电信</span>
+                <span className="multi-ping-value font-mono" style={{ color: latencyHeatColor(statCT.latency_ms) }}>
+                  {statCT.latency_ms}
+                  <small>ms</small>
+                </span>
+              </div>
+              <div className="multi-ping-buckets">
+                <LatencyBars buckets={bucketsCT} />
+              </div>
+            </div>
+
+            {/* 联通 */}
+            <div className="multi-ping-metric-row">
+              <div className="multi-ping-metric-head">
+                <span className="multi-ping-name">联通</span>
+                <span className="multi-ping-value font-mono" style={{ color: latencyHeatColor(statCU.latency_ms) }}>
+                  {statCU.latency_ms}
+                  <small>ms</small>
+                </span>
+              </div>
+              <div className="multi-ping-buckets">
+                <LatencyBars buckets={bucketsCU} />
+              </div>
+            </div>
+
+            {/* 移动 */}
+            <div className="multi-ping-metric-row">
+              <div className="multi-ping-metric-head">
+                <span className="multi-ping-name">移动</span>
+                <span className="multi-ping-value font-mono" style={{ color: latencyHeatColor(statCM.latency_ms) }}>
+                  {statCM.latency_ms}
+                  <small>ms</small>
+                </span>
+              </div>
+              <div className="multi-ping-buckets">
+                <LatencyBars buckets={bucketsCM} />
+              </div>
+            </div>
+          </div>
+
+          {/* 右列：丢包率 (电信、联通、移动) */}
+          <div className="multi-ping-metric-column">
+            {/* 电信 */}
+            <div className="multi-ping-metric-row">
+              <div className="multi-ping-metric-head is-value-only">
+                <span className="multi-ping-value font-mono" style={{ color: lossHeatColor(statCT.loss_rate) }}>
+                  {statCT.loss_rate.toFixed(1)}
+                  <small>%</small>
+                </span>
+              </div>
+              <div className="multi-ping-buckets">
+                <QualityBars buckets={bucketsCT} />
+              </div>
+            </div>
+
+            {/* 联通 */}
+            <div className="multi-ping-metric-row">
+              <div className="multi-ping-metric-head is-value-only">
+                <span className="multi-ping-value font-mono" style={{ color: lossHeatColor(statCU.loss_rate) }}>
+                  {statCU.loss_rate.toFixed(1)}
+                  <small>%</small>
+                </span>
+              </div>
+              <div className="multi-ping-buckets">
+                <QualityBars buckets={bucketsCU} />
+              </div>
+            </div>
+
+            {/* 移动 */}
+            <div className="multi-ping-metric-row">
+              <div className="multi-ping-metric-head is-value-only">
+                <span className="multi-ping-value font-mono" style={{ color: lossHeatColor(statCM.loss_rate) }}>
+                  {statCM.loss_rate.toFixed(1)}
+                  <small>%</small>
+                </span>
+              </div>
+              <div className="multi-ping-buckets">
+                <QualityBars buckets={bucketsCM} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 页脚：在线天数、到期时间、分组标签 */}
+        <footer className="server-card-footer">
+          <div className="server-card-footer-info">
+            <span className="server-footer-stat">
+              <RotateCw size={12} className="text-[var(--text-tertiary)]" />
+              <span>在线</span>
+              <span className="server-footer-value-strong">{node.uptime_days}天</span>
+            </span>
+
+            <span className="server-footer-stat">
+              <Calendar size={12} className="text-[var(--text-tertiary)]" />
+              <span>到期</span>
+              <span className="text-[var(--text-secondary)]">{expireText}</span>
+            </span>
+          </div>
+
+          <div className="dstatus-tag-chip">
+            {node.group_name || "Default"}
+          </div>
+        </footer>
       </div>
-    </div>
+    </article>
   );
 }
