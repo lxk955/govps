@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -105,6 +106,7 @@ class NodeCreate(BaseModel):
     expire_notify_enabled: bool | None = None
     expire_notify_stages: list[int] | None = None
     traffic_limit_gb: float | None = None
+    traffic_direction: Literal["both", "out"] = "both"
     is_public: bool = False
 
 
@@ -122,6 +124,13 @@ class NodeUpdate(BaseModel):
     expire_notify_enabled: bool | None = None
     expire_notify_stages: list[int] | None = None
     traffic_limit_gb: float | None = None
+    traffic_direction: Literal["both", "out"] | None = None
+    cycle_traffic_calibrate_gb: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1_000_000.0,
+        description="手动校准当前周期已用流量（GB），必须是非负数",
+    )
     is_public: bool | None = None
     expire_muted: bool | None = None
 

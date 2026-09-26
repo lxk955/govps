@@ -49,18 +49,28 @@ export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
       ? Math.round((metrics.disk_used_bytes / metrics.disk_total_bytes) * 100)
       : 0;
 
-  // 流量限额百分比
+  // 周期流量使用与百分比
+  const cycleUsedBytes =
+    typeof node.cycle_traffic_used_bytes === "number"
+      ? node.cycle_traffic_used_bytes
+      : metrics.net_rx_total + metrics.net_tx_total;
+
   const trafficPercent =
     node.traffic_limit_gb && node.traffic_limit_gb > 0
       ? Math.min(
           100,
           Math.round(
-            ((metrics.net_rx_total + metrics.net_tx_total) /
-              (node.traffic_limit_gb * 1024 * 1024 * 1024)) *
-              100,
+            (cycleUsedBytes / (node.traffic_limit_gb * 1024 * 1024 * 1024)) * 100,
           ),
         )
       : 0;
+
+  const trafficMeterColor =
+    trafficPercent >= 90
+      ? "bg-rose-500 dark:bg-rose-400"
+      : trafficPercent >= 75
+        ? "bg-amber-500 dark:bg-amber-400"
+        : "bg-emerald-500 dark:bg-emerald-400";
 
   // 计费周期展示
   const cycleLabels: Record<string, string> = {
@@ -275,30 +285,38 @@ export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
       {/* 累计出入站流量 */}
       <div className="grid grid-cols-2 gap-3 mt-2.5 text-[11px] text-slate-500 dark:text-slate-400 font-mono">
         <div className="flex items-center justify-between">
-          <span className="font-sans">出站</span>
+          <span className="font-sans">网卡累计出站</span>
           <span className="font-semibold text-slate-700 dark:text-slate-300">{outTraffic.full}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="font-sans">入站</span>
+          <span className="font-sans">网卡累计入站</span>
           <span className="font-semibold text-slate-700 dark:text-slate-300">{inTraffic.full}</span>
         </div>
       </div>
 
-      {/* 开机以来累计流量（网卡计数，不是账单月流量） */}
+      {/* 本周期流量额度与重置周期 */}
       {node.traffic_limit_gb && (
         <div className="flex flex-col gap-1 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
           <div className="flex items-center justify-between text-[11px] font-mono select-none">
-            <span className="text-slate-600 dark:text-slate-300 font-sans">
-              开机累计流量
-            </span>
+            <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-sans">
+              <span>本周期已用流量</span>
+              <span className="text-[10px] px-1 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                {node.traffic_direction === "out" ? "仅出站" : "双向"}
+              </span>
+            </div>
             <span className="text-slate-400 text-[10px]">
-              {formatBytes(metrics.net_rx_total + metrics.net_tx_total).full} / {node.traffic_limit_gb} GB 额度
+              {formatBytes(cycleUsedBytes).full} / {node.traffic_limit_gb} GB
+              {typeof node.cycle_reset_days_left === "number" && (
+                <span className="ml-1 text-slate-500 dark:text-slate-400 font-medium">
+                  · {node.cycle_reset_days_left === 0 ? "今天重置" : `${node.cycle_reset_days_left}天后重置`}
+                </span>
+              )}
             </span>
           </div>
           <SegmentedMeter
             percent={trafficPercent}
             totalBlocks={24}
-            colorClass="bg-emerald-500 dark:bg-emerald-400"
+            colorClass={trafficMeterColor}
             size="sm"
           />
         </div>

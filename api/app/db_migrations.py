@@ -85,6 +85,20 @@ def detect_current_revision(inspector) -> str | None:
             "0016_monitor_expire_muted",
             lambda i: "expire_muted" in _column_names(i, "user_nodes"),
         ),
+        (
+            "0017_traffic_cycle_fields",
+            lambda i: all(
+                c in _column_names(i, "user_nodes")
+                for c in [
+                    "traffic_direction",
+                    "cycle_traffic_rx",
+                    "cycle_traffic_tx",
+                    "cycle_traffic_reset_at",
+                    "last_reported_rx",
+                    "last_reported_tx",
+                ]
+            ),
+        ),
     ]
     reached: str | None = None
     for revision_id, present in stages:

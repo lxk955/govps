@@ -9,6 +9,7 @@
 - 一键安装脚本动态分发
 """
 
+import calendar
 import datetime
 import math
 import random
@@ -82,6 +83,53 @@ def _calculate_cost_cny(price: float | None, currency: str, billing_cycle: str, 
     return monthly_val * units_cny
 
 
+def calculate_traffic_cycle(expires_at: datetime | None, now: datetime) -> tuple[datetime, datetime, int]:
+    """计算节点的当前流量周期起始时间、结束时间、以及距离重置的剩余天数。
+
+    规则（根据 /grill-me 规范）：
+    - 若有 expires_at：无论年付/季付/月付，均以 expires_at 的到期日（Day of month）作为每月重置日；
+      支持大小月与平闰年截断（如 31 日遇 2 月截断为 28/29 日）；
+    - 若无 expires_at：兜底以自然月 1 日 00:00:00 UTC 作为每月重置日。
+    """
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+
+    if not expires_at:
+        # 无到期时间，按自然月 1 日 00:00:00 UTC
+        y, m = now.year, now.month
+        cycle_start = datetime(y, m, 1, 0, 0, 0, tzinfo=timezone.utc)
+        next_y = y + (m // 12)
+        next_m = (m % 12) + 1
+        cycle_end = datetime(next_y, next_m, 1, 0, 0, 0, tzinfo=timezone.utc)
+    else:
+        exp = expires_at
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=timezone.utc)
+        anchor_d = exp.day
+        y, m = now.year, now.month
+        max_days_this = calendar.monthrange(y, m)[1]
+        d_this = min(anchor_d, max_days_this)
+        reset_dt_this = datetime(y, m, d_this, 0, 0, 0, tzinfo=timezone.utc)
+
+        if now >= reset_dt_this:
+            cycle_start = reset_dt_this
+            next_y = y + (m // 12)
+            next_m = (m % 12) + 1
+            max_days_next = calendar.monthrange(next_y, next_m)[1]
+            d_next = min(anchor_d, max_days_next)
+            cycle_end = datetime(next_y, next_m, d_next, 0, 0, 0, tzinfo=timezone.utc)
+        else:
+            prev_y = y if m > 1 else y - 1
+            prev_m = m - 1 if m > 1 else 12
+            max_days_prev = calendar.monthrange(prev_y, prev_m)[1]
+            d_prev = min(anchor_d, max_days_prev)
+            cycle_start = datetime(prev_y, prev_m, d_prev, 0, 0, 0, tzinfo=timezone.utc)
+            cycle_end = reset_dt_this
+
+    days_until_reset = max(0, (cycle_end.date() - now.date()).days)
+    return cycle_start, cycle_end, days_until_reset
+
+
 def _node_to_dict(node: UserNode, now: datetime, read_only: bool = False) -> dict:
     """格式化节点详情给前端展示。"""
     status = node.cached_status or {}
@@ -109,16 +157,26 @@ def _node_to_dict(node: UserNode, now: datetime, read_only: bool = False) -> dic
     uptime_sec = status.get("uptime_seconds", 0)
     uptime_days = uptime_sec // 86400
 
-    # 流量配额
+    # 流量配额与周期计算
     quota_gb = node.traffic_limit_gb
-    rx_bytes = status.get("net_rx_total", 0)
-    tx_bytes = status.get("net_tx_total", 0)
-    total_used_bytes = rx_bytes + tx_bytes
+    traffic_dir = getattr(node, "traffic_direction", "both") or "both"
+    cycle_rx = int(getattr(node, "cycle_traffic_rx", 0) or 0)
+    cycle_tx = int(getattr(node, "cycle_traffic_tx", 0) or 0)
+    rx_bytes = int(status.get("net_rx_total", 0) or 0)
+    tx_bytes = int(status.get("net_tx_total", 0) or 0)
+
+    if traffic_dir == "out":
+        cycle_used_bytes = cycle_tx
+    else:
+        cycle_used_bytes = cycle_rx + cycle_tx
 
     remaining_gb = None
     if quota_gb and quota_gb > 0:
         quota_bytes = quota_gb * (1024 ** 3)
-        remaining_gb = max(0.0, round((quota_bytes - total_used_bytes) / (1024 ** 3), 1))
+        remaining_gb = max(0.0, round((quota_bytes - cycle_used_bytes) / (1024 ** 3), 1))
+
+    # 计算重置周期与倒计时天数
+    cycle_start, cycle_end, days_until_reset = calculate_traffic_cycle(node.expires_at, now)
 
     # 内核版本提取（兼容旧探针将内核存入 os_version 的情况）
     kernel_ver = status.get("kernel_version")
@@ -146,6 +204,12 @@ def _node_to_dict(node: UserNode, now: datetime, read_only: bool = False) -> dic
         "notified_expire_stages": node.notified_expire_stages or [],
         "expire_muted": bool(getattr(node, "expire_muted", False)),
         "traffic_limit_gb": node.traffic_limit_gb,
+        "traffic_direction": traffic_dir,
+        "cycle_traffic_rx": cycle_rx,
+        "cycle_traffic_tx": cycle_tx,
+        "cycle_traffic_used_bytes": cycle_used_bytes,
+        "cycle_reset_days_left": days_until_reset,
+        "cycle_reset_at": to_iso_utc(cycle_end),
         "remaining_gb": remaining_gb,
         "is_online": is_online,
         "is_demo": node.is_demo,
@@ -309,6 +373,12 @@ def create_node(
         expire_notify_stages=payload.expire_notify_stages,
         notified_expire_stages=[],
         traffic_limit_gb=payload.traffic_limit_gb,
+        traffic_direction=payload.traffic_direction or "both",
+        cycle_traffic_rx=0,
+        cycle_traffic_tx=0,
+        cycle_traffic_reset_at=calculate_traffic_cycle(payload.expires_at, utcnow())[1],
+        last_reported_rx=None,
+        last_reported_tx=None,
         is_online=False,
         is_demo=False,
         is_public=payload.is_public if payload.is_public is not None else False,
@@ -376,11 +446,17 @@ def update_node(
     if "billing_cycle" in data:
         node.billing_cycle = data["billing_cycle"]
     if "expires_at" in data:
-        if node.expires_at != data["expires_at"]:
-            # 到期日更新时重置已通知阶段与静音标记，进入下一轮提醒周期
+        new_exp = data["expires_at"]
+        old_iso = to_iso_utc(node.expires_at)
+        new_iso = to_iso_utc(new_exp)
+        if old_iso != new_iso:
+            # 到期日确实更新时重置已通知阶段与静音标记，进入下一轮提醒周期
             node.notified_expire_stages = []
             node.expire_muted = False
-        node.expires_at = data["expires_at"]
+            # 对齐重置时间点到新周期的结束点，不清除当前已累加流量
+            _, cycle_end, _ = calculate_traffic_cycle(new_exp, utcnow())
+            node.cycle_traffic_reset_at = cycle_end
+        node.expires_at = new_exp
     if "expire_muted" in data and data["expire_muted"] is not None:
         node.expire_muted = bool(data["expire_muted"])
     if "expire_notify_enabled" in data:
@@ -389,6 +465,25 @@ def update_node(
         node.expire_notify_stages = data["expire_notify_stages"]
     if "traffic_limit_gb" in data:
         node.traffic_limit_gb = data["traffic_limit_gb"]
+    if "traffic_direction" in data and data["traffic_direction"] is not None:
+        node.traffic_direction = data["traffic_direction"]
+    if "cycle_traffic_calibrate_gb" in data and data["cycle_traffic_calibrate_gb"] is not None:
+        calib_val = float(data["cycle_traffic_calibrate_gb"])
+        if calib_val < 0 or math.isnan(calib_val) or math.isinf(calib_val):
+            raise HTTPException(status_code=400, detail="校准流量必须是非负正常数值")
+        calib_bytes = int(calib_val * (1024 ** 3))
+        if node.traffic_direction == "out":
+            node.cycle_traffic_tx = max(0, calib_bytes)
+            node.cycle_traffic_rx = 0
+        else:
+            curr_sum = (node.cycle_traffic_rx or 0) + (node.cycle_traffic_tx or 0)
+            if curr_sum > 0:
+                ratio_tx = (node.cycle_traffic_tx or 0) / curr_sum
+                node.cycle_traffic_tx = int(calib_bytes * ratio_tx)
+                node.cycle_traffic_rx = max(0, calib_bytes - node.cycle_traffic_tx)
+            else:
+                node.cycle_traffic_tx = calib_bytes
+                node.cycle_traffic_rx = 0
     if "is_public" in data:
         node.is_public = data["is_public"]
 
@@ -649,6 +744,9 @@ def update_date_renew_action(
     node.expires_at = new_date
     node.expire_muted = False
     node.notified_expire_stages = []  # 重置已通知阶段，进入新周期
+    # 对齐流量重置点到新周期的结束点，不清除当前已累加流量
+    _, cycle_end, _ = calculate_traffic_cycle(new_date, utcnow())
+    node.cycle_traffic_reset_at = cycle_end
     db.commit()
 
     return {
@@ -869,6 +967,12 @@ def load_demo_nodes(
             expire_notify_stages=[15, 7, 3, 1],
             notified_expire_stages=[],
             traffic_limit_gb=cfg["traffic_limit_gb"],
+            traffic_direction="both",
+            cycle_traffic_rx=int(cfg["net_rx_total"] * 0.15) if cfg.get("net_rx_total") else 0,
+            cycle_traffic_tx=int(cfg["net_tx_total"] * 0.15) if cfg.get("net_tx_total") else 0,
+            cycle_traffic_reset_at=calculate_traffic_cycle(cfg.get("expires_at"), now)[1],
+            last_reported_rx=cfg.get("net_rx_total", 0),
+            last_reported_tx=cfg.get("net_tx_total", 0),
             is_online=True,
             is_demo=True,
             is_public=True,
@@ -1041,6 +1145,84 @@ def report_metrics(
         node.os_version = payload.os_version
     if payload.arch:
         node.arch = payload.arch
+
+    # ── 流量周期增量累加与自动重置 ──
+    cycle_start, cycle_end, _ = calculate_traffic_cycle(node.expires_at, now)
+    reset_at = node.cycle_traffic_reset_at
+    if reset_at and reset_at.tzinfo is None:
+        reset_at = reset_at.replace(tzinfo=timezone.utc)
+
+    cached = node.cached_status or {}
+    prev_uptime = cached.get("uptime_seconds", 0)
+    curr_uptime = payload.uptime_seconds or 0
+    # 机器真重启判定：先前有较长运行时间，当前在线时间有效(>0)且显著小于上次记录
+    is_reboot = (prev_uptime > 30 and curr_uptime > 0 and curr_uptime < max(1, prev_uptime - 15))
+
+    curr_rx = payload.net_rx_total
+    curr_tx = payload.net_tx_total
+
+    # 1. 初始首次收到心跳时（尚未建立基线），以当前读数作为基线
+    if node.last_reported_rx is None or node.last_reported_tx is None:
+        node.last_reported_rx = curr_rx
+        node.last_reported_tx = curr_tx
+        if not node.cycle_traffic_reset_at:
+            node.cycle_traffic_reset_at = cycle_end
+    else:
+        prev_rx = node.last_reported_rx
+        prev_tx = node.last_reported_tx
+
+        # 2. 检查是否到达重置日（跨入新周期）
+        if reset_at and now >= reset_at:
+            # 计算重置点前后本轮心跳的增量，作为新周期的起始流量
+            if curr_rx >= prev_rx:
+                delta_rx = curr_rx - prev_rx
+                node.last_reported_rx = curr_rx
+            elif is_reboot:
+                delta_rx = curr_rx
+                node.last_reported_rx = curr_rx
+            else:
+                delta_rx = 0
+
+            if curr_tx >= prev_tx:
+                delta_tx = curr_tx - prev_tx
+                node.last_reported_tx = curr_tx
+            elif is_reboot:
+                delta_tx = curr_tx
+                node.last_reported_tx = curr_tx
+            else:
+                delta_tx = 0
+
+            node.cycle_traffic_rx = max(0, delta_rx)
+            node.cycle_traffic_tx = max(0, delta_tx)
+            node.cycle_traffic_reset_at = cycle_end
+        else:
+            # 3. 周期内常规心跳累加
+            # 容错：若机器未重启但两路读数突变为 0（如 /proc/net/dev 读取偶发异常），忽略本次读数，不破坏基线
+            if curr_rx == 0 and curr_tx == 0 and not is_reboot and (prev_rx > 0 or prev_tx > 0):
+                pass
+            else:
+                if curr_rx >= prev_rx:
+                    delta_rx = curr_rx - prev_rx
+                    node.last_reported_rx = curr_rx
+                elif is_reboot:
+                    # 机器真重启，网卡计数重新从 0 开始增长
+                    delta_rx = curr_rx
+                    node.last_reported_rx = curr_rx
+                else:
+                    # 容器销毁或网卡抖动导致计数变小但机器未重启，不虚增流量，且保留高水位基线，防止弹回原水位时重复累计缺口
+                    delta_rx = 0
+
+                if curr_tx >= prev_tx:
+                    delta_tx = curr_tx - prev_tx
+                    node.last_reported_tx = curr_tx
+                elif is_reboot:
+                    delta_tx = curr_tx
+                    node.last_reported_tx = curr_tx
+                else:
+                    delta_tx = 0
+
+                node.cycle_traffic_rx = (node.cycle_traffic_rx or 0) + max(0, delta_rx)
+                node.cycle_traffic_tx = (node.cycle_traffic_tx or 0) + max(0, delta_tx)
 
     # 保留最近 30 条 ping 历史色带
     cached = node.cached_status or {}

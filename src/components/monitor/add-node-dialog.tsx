@@ -61,6 +61,8 @@ export function AddNodeDialog({
   const [expireNotifyEnabled, setExpireNotifyEnabled] = useState(true);
   const [expireNotifyStages, setExpireNotifyStages] = useState<number[]>([15, 7, 3, 1]);
   const [trafficLimitGb, setTrafficLimitGb] = useState("");
+  const [trafficDirection, setTrafficDirection] = useState<"both" | "out">("both");
+  const [calibrateGb, setCalibrateGb] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -83,6 +85,8 @@ export function AddNodeDialog({
       setTrafficLimitGb(
         editingNode.traffic_limit_gb !== null ? String(editingNode.traffic_limit_gb) : "",
       );
+      setTrafficDirection(editingNode.traffic_direction || "both");
+      setCalibrateGb("");
     } else if (isOpen) {
       setName("");
       setCountry("hk");
@@ -95,6 +99,8 @@ export function AddNodeDialog({
       setExpireNotifyEnabled(true);
       setExpireNotifyStages([15, 7, 3, 1]);
       setTrafficLimitGb("");
+      setTrafficDirection("both");
+      setCalibrateGb("");
     }
     setInstallCommand(null);
     setErrorMsg(null);
@@ -156,6 +162,8 @@ export function AddNodeDialog({
       expire_notify_enabled: expireNotifyEnabled,
       expire_notify_stages: expireNotifyStages,
       traffic_limit_gb: trafficLimitGb ? parseFloat(trafficLimitGb) : null,
+      traffic_direction: trafficDirection,
+      ...(calibrateGb.trim() ? { cycle_traffic_calibrate_gb: parseFloat(calibrateGb) } : {}),
     };
 
     const headers = {
@@ -413,16 +421,55 @@ export function AddNodeDialog({
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1">
-                <Label className="text-[11px] text-slate-500">月度流量额度 (GB)</Label>
-                <Input
-                  type="number"
-                  placeholder="留空为不限，如: 1024"
-                  value={trafficLimitGb}
-                  onChange={(e) => setTrafficLimitGb(e.target.value)}
-                  className="h-8 text-xs rounded-lg font-mono"
-                />
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[11px] text-slate-500">月度流量额度 (GB)</Label>
+                  <Input
+                    type="number"
+                    placeholder="留空为不限，如: 1024"
+                    value={trafficLimitGb}
+                    onChange={(e) => setTrafficLimitGb(e.target.value)}
+                    className="h-8 text-xs rounded-lg font-mono"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <Label className="text-[11px] text-slate-500">计费方向</Label>
+                  <select
+                    value={trafficDirection}
+                    onChange={(e) => setTrafficDirection(e.target.value as "both" | "out")}
+                    className="h-8 px-2 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                  >
+                    <option value="both">双向计费 (入+出)</option>
+                    <option value="out">仅计出站 (单向)</option>
+                  </select>
+                </div>
               </div>
+
+              {editingNode && (
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[11px] text-slate-500">
+                      校准本周期已用流量 (GB)
+                    </Label>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      当前: {trafficDirection === "out" ? (((editingNode.cycle_traffic_tx || 0) / (1024 ** 3)).toFixed(2)) : ((((editingNode.cycle_traffic_rx || 0) + (editingNode.cycle_traffic_tx || 0)) / (1024 ** 3)).toFixed(2))} GB
+                    </span>
+                  </div>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="留空不修改，输入如: 50.5"
+                    value={calibrateGb}
+                    onChange={(e) => setCalibrateGb(e.target.value)}
+                    className="h-8 text-xs rounded-lg font-mono"
+                  />
+                </div>
+              )}
+              <span className="text-[10px] text-slate-400">
+                流量重置日按到期日对应日重置（如15号到期则每月15号重置；无到期日则每月1号重置）
+              </span>
 
               {/* 到期时间与快捷推算 */}
               <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">

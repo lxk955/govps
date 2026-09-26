@@ -49,6 +49,12 @@ export interface MonitorNode {
   notified_expire_stages?: number[];
   expire_muted?: boolean;
   traffic_limit_gb: number | null;
+  traffic_direction?: "both" | "out";
+  cycle_traffic_rx?: number;
+  cycle_traffic_tx?: number;
+  cycle_traffic_used_bytes?: number;
+  cycle_reset_days_left?: number | null;
+  cycle_reset_at?: string | null;
   remaining_gb: number | null;
   is_online: boolean;
   is_demo: boolean;

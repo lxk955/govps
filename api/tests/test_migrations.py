@@ -16,7 +16,7 @@ from sqlalchemy import create_engine, inspect, text
 from app.database import Base
 from app.db_migrations import alembic_config, detect_current_revision, run_migrations
 
-HEAD = "0016_monitor_expire_muted"
+HEAD = "0017_traffic_cycle_fields"
 EXPECTED_TABLES = set(Base.metadata.tables.keys())  # 全部业务模型表
 
 

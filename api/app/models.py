@@ -408,6 +408,12 @@ class UserNode(Base):
     notified_expire_stages: Mapped[list] = mapped_column(JSON, default=list)
     expire_muted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     traffic_limit_gb: Mapped[float | None] = mapped_column(Float, nullable=True)
+    traffic_direction: Mapped[str] = mapped_column(String(10), default="both", server_default="both")
+    cycle_traffic_rx: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    cycle_traffic_tx: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    cycle_traffic_reset_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_reported_rx: Mapped[int | None] = mapped_column(BigInteger, nullable=True, default=None)
+    last_reported_tx: Mapped[int | None] = mapped_column(BigInteger, nullable=True, default=None)
 
     is_online: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
