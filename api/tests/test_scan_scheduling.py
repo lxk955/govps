@@ -229,8 +229,8 @@ def test_single_merchant_failure_does_not_block_others(db, patched_crawlers):
     assert ids == {"ok-1", "ok-2", "ok-3"}
 
 
-def test_dmit_complete_crawl_deletes_stale_skus(db, patched_crawlers):
-    """pid 已换代的旧 DMIT 行不在本次名单里时直接下架，不再留在缺货列表。"""
+def test_complete_crawl_deletes_stale_skus(db, patched_crawlers):
+    """抓全之后，不在本次名单里的旧 SKU（错误 pid / 旧链接）直接下架。"""
     from app.models import PageView, StockSnapshot, User, Watchlist
 
     def fetch(client):

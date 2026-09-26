@@ -474,43 +474,24 @@ def _run_scan_internal(db: Session, force: bool = False) -> dict:
 
                 # 本次有效抓取中消失的存量商品：商家已下架、停售或换过外部 ID。
                 # 完整性门槛只看官方实时源，预置目录条数再多也不能当作「抓全了」。
-                # DMIT 旧目录用过错误 pid，缺货标记会永远留在列表里，抓全后直接删除。
+                # 达到门槛后直接删除，避免错误 pid / 旧链接一直以缺货留在列表里。
                 existing_count = db.scalar(
                     select(func.count(Product.id)).where(Product.merchant_id == merchant.id)
                 ) or 0
-                missing_products: list[Product] = []
                 retired = 0
                 crawl_complete = bool(official_ids) and len(official_ids) >= max(3, existing_count * 0.5)
-                if crawl_complete and crawler.slug == "dmit":
+                if crawl_complete:
                     retired = retire_missing_products(db, merchant.id, keep_ids)
-                elif crawl_complete:
-                    missing_products = list(
-                        db.scalars(
-                            select(Product).where(
-                                Product.merchant_id == merchant.id,
-                                Product.external_id.not_in(official_ids),
-                                Product.in_stock.is_(True),
-                            )
-                        ).all()
-                    )
-                    for mp in missing_products:
-                        mp.in_stock = False
-                        db.add(StockSnapshot(product_id=mp.id, in_stock=False))
                 else:
                     summary[crawler.slug] = (
-                        f"incomplete crawl ({len(official_ids)}/{existing_count} official), missing-mark skipped"
+                        f"incomplete crawl ({len(official_ids)}/{existing_count} official), retire skipped"
                     )
 
                 db.commit()
                 if crawler.slug not in summary:
-                    if retired:
-                        summary[crawler.slug] = (
-                            f"{len(raws)} products ({retired} retired), {event_count} events"
-                        )
-                    else:
-                        summary[crawler.slug] = (
-                            f"{len(raws)} products ({len(missing_products)} marked OOS), {event_count} events"
-                        )
+                    summary[crawler.slug] = (
+                        f"{len(raws)} products ({retired} retired), {event_count} events"
+                    )
 
     # 扫描收尾：按既有公式全量刷新评分/理由等物化列（refactor-plan §2 #1）。
     # 关注数/点击数等时变信号每扫描周期刷新一次，列表请求不再逐条实时计算。
