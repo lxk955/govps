@@ -196,3 +196,95 @@ def test_send_test_expiration_email(client, test_user):
         call_kwargs = mock_send.call_args[1]
         assert "测试" in call_kwargs["subject"]
         assert call_kwargs["to"] == test_user.email
+
+
+def test_renewal_token_and_actions(client, test_user):
+    from app.services.notifications.expiration_checker import (
+        generate_renewal_token,
+        verify_renewal_token,
+    )
+
+    now = datetime.now(timezone.utc)
+    with Session(engine) as db:
+        node = UserNode(
+            user_id=test_user.id,
+            token="test_renew_action_node_token",
+            name="续费测试服务器",
+            country="hk",
+            billing_cycle="annually",
+            expires_at=now + timedelta(days=5),
+            expire_notify_enabled=True,
+            expire_notify_stages=[15, 7, 3, 1],
+            notified_expire_stages=[15],
+            expire_muted=False,
+            is_demo=False,
+            is_online=True,
+        )
+        db.add(node)
+        db.commit()
+        db.refresh(node)
+        node_id = node.id
+
+    # 1. 验证 Token 生成与校验
+    with Session(engine) as db:
+        db_node = db.get(UserNode, node_id)
+        token = generate_renewal_token(db_node)
+        assert token and "." in token
+
+        payload = verify_renewal_token(token)
+        assert payload is not None
+        assert payload["nid"] == node_id
+        assert payload["uid"] == test_user.id
+        assert payload["act"] == "renew"
+
+        # 篡改 token 应当失败
+        assert verify_renewal_token(token + "tampered") is None
+
+    # 2. 测试 GET /api/monitor/renew-action 免密访问并自动静音本周期
+    res = client.get(f"/api/monitor/renew-action?token={token}")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["id"] == node_id
+    assert data["name"] == "续费测试服务器"
+    assert data["billing_cycle"] == "annually"
+    assert data["is_muted"] is True
+    assert data["suggested_next_expires_at"] is not None
+
+    # 验证数据库中确实被静音
+    with Session(engine) as db:
+        db_node = db.get(UserNode, node_id)
+        assert db_node.expire_muted is True
+
+        # 巡检时由于已静音，不会发送邮件
+        with patch("app.services.notifications.email_channel.send_email") as mock_send:
+            check_res = check_expiring_nodes(db)
+            mock_send.assert_not_called()
+
+    # 3. 测试 POST /api/monitor/renew-action/unmute 撤销静音
+    unmute_res = client.post(f"/api/monitor/renew-action/unmute?token={token}")
+    assert unmute_res.status_code == 200
+    assert unmute_res.json()["is_muted"] is False
+
+    with Session(engine) as db:
+        db_node = db.get(UserNode, node_id)
+        assert db_node.expire_muted is False
+
+    # 4. 测试 POST /api/monitor/renew-action/update-date 更新下次到期日
+    new_expiry_str = (now + timedelta(days=365)).strftime("%Y-%m-%d")
+    update_res = client.post(
+        f"/api/monitor/renew-action/update-date?token={token}",
+        json={"expires_at": new_expiry_str},
+    )
+    assert update_res.status_code == 200
+    up_data = update_res.json()
+    assert up_data["ok"] is True
+    assert up_data["is_muted"] is False
+    assert new_expiry_str in up_data["expires_at"]
+
+    # 验证数据库中到期时间已更新，静音已解开，且已通知阶段已重置为 []
+    with Session(engine) as db:
+        db_node = db.get(UserNode, node_id)
+        assert db_node.expire_muted is False
+        assert db_node.notified_expire_stages == []
+        db.delete(db_node)
+        db.commit()

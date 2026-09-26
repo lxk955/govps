@@ -406,6 +406,7 @@ class UserNode(Base):
     expire_notify_enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=None)
     expire_notify_stages: Mapped[list | None] = mapped_column(JSON, nullable=True, default=None)
     notified_expire_stages: Mapped[list] = mapped_column(JSON, default=list)
+    expire_muted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     traffic_limit_gb: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     is_online: Mapped[bool] = mapped_column(Boolean, default=False, index=True)

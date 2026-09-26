@@ -29,6 +29,7 @@ from ..schemas import (
     NodeCreate,
     NodeReport,
     NodeUpdate,
+    RenewUpdateDateRequest,
     ShareUpdate,
 )
 
@@ -143,6 +144,7 @@ def _node_to_dict(node: UserNode, now: datetime, read_only: bool = False) -> dic
         "expire_notify_enabled": node.expire_notify_enabled,
         "expire_notify_stages": node.expire_notify_stages,
         "notified_expire_stages": node.notified_expire_stages or [],
+        "expire_muted": bool(getattr(node, "expire_muted", False)),
         "traffic_limit_gb": node.traffic_limit_gb,
         "remaining_gb": remaining_gb,
         "is_online": is_online,
@@ -375,9 +377,12 @@ def update_node(
         node.billing_cycle = data["billing_cycle"]
     if "expires_at" in data:
         if node.expires_at != data["expires_at"]:
-            # 到期日更新时重置已通知阶段，以便进入下一轮提醒周期
+            # 到期日更新时重置已通知阶段与静音标记，进入下一轮提醒周期
             node.notified_expire_stages = []
+            node.expire_muted = False
         node.expires_at = data["expires_at"]
+    if "expire_muted" in data and data["expire_muted"] is not None:
+        node.expire_muted = bool(data["expire_muted"])
     if "expire_notify_enabled" in data:
         node.expire_notify_enabled = data["expire_notify_enabled"]
     if "expire_notify_stages" in data:
@@ -510,6 +515,134 @@ def test_expire_notification(
     if not ok:
         raise HTTPException(status_code=400, detail=f"测试邮件发送失败: {err}")
     return {"ok": True, "message": f"测试邮件已成功发送至 {user.email}"}
+
+
+def _calculate_next_expiry(exp: datetime, billing_cycle: str | None) -> str:
+    import calendar
+
+    cycle = (billing_cycle or "monthly").lower()
+    month_offsets = {
+        "monthly": 1,
+        "quarterly": 3,
+        "semi-annually": 6,
+        "semi_annually": 6,
+        "annually": 12,
+        "biennially": 24,
+        "triennially": 36,
+    }
+    months = month_offsets.get(cycle, 1)
+    new_year = exp.year + (exp.month + months - 1) // 12
+    new_month = (exp.month + months - 1) % 12 + 1
+    max_days = calendar.monthrange(new_year, new_month)[1]
+    new_day = min(exp.day, max_days)
+    next_dt = exp.replace(year=new_year, month=new_month, day=new_day)
+    return next_dt.strftime("%Y-%m-%d")
+
+
+@router.get("/renew-action")
+def get_renew_action_node(
+    token: str = Query(..., description="安全续费 Action Token"),
+    db: Session = Depends(get_db),
+):
+    """免登录查看续费节点详情并自动执行本周期静音。"""
+    from ..services.notifications.expiration_checker import verify_renewal_token
+
+    payload = verify_renewal_token(token)
+    if not payload:
+        raise HTTPException(status_code=400, detail="续费操作链接无效或已过期，请重新登录探针面板操作。")
+
+    node_id = payload.get("nid")
+    user_id = payload.get("uid")
+    node = db.scalar(select(UserNode).where(UserNode.id == node_id))
+    if not node or node.user_id != user_id:
+        raise HTTPException(status_code=404, detail="未找到对应的探针节点。")
+
+    # 点击通知链接即静音本周期提醒
+    if not node.expire_muted:
+        node.expire_muted = True
+        db.commit()
+        db.refresh(node)
+
+    suggested_next = None
+    if node.expires_at:
+        suggested_next = _calculate_next_expiry(node.expires_at, node.billing_cycle)
+
+    return {
+        "id": node.id,
+        "name": node.name,
+        "country": (node.country or "hk").lower(),
+        "group_name": node.group_name or "主力",
+        "billing_cycle": node.billing_cycle or "monthly",
+        "price": float(node.price) if node.price is not None else None,
+        "currency": node.currency or "USD",
+        "current_expires_at": to_iso_utc(node.expires_at),
+        "suggested_next_expires_at": suggested_next,
+        "is_muted": bool(node.expire_muted),
+    }
+
+
+@router.post("/renew-action/unmute")
+def unmute_renew_action(
+    token: str = Query(..., description="安全续费 Action Token"),
+    db: Session = Depends(get_db),
+):
+    """撤销静音：恢复本周期的到期阶段提醒。"""
+    from ..services.notifications.expiration_checker import verify_renewal_token
+
+    payload = verify_renewal_token(token)
+    if not payload:
+        raise HTTPException(status_code=400, detail="操作链接无效或已过期。")
+
+    node = db.scalar(select(UserNode).where(UserNode.id == payload.get("nid")))
+    if not node or node.user_id != payload.get("uid"):
+        raise HTTPException(status_code=404, detail="未找到对应的探针节点。")
+
+    node.expire_muted = False
+    db.commit()
+    return {"ok": True, "is_muted": False}
+
+
+@router.post("/renew-action/update-date")
+def update_date_renew_action(
+    body: RenewUpdateDateRequest,
+    token: str = Query(..., description="安全续费 Action Token"),
+    db: Session = Depends(get_db),
+):
+    """通过 Action Token 快速更新下次到期日，自动解除静音并开启新周期。"""
+    from ..services.notifications.expiration_checker import verify_renewal_token
+
+    payload = verify_renewal_token(token)
+    if not payload:
+        raise HTTPException(status_code=400, detail="操作链接无效或已过期。")
+
+    node = db.scalar(select(UserNode).where(UserNode.id == payload.get("nid")))
+    if not node or node.user_id != payload.get("uid"):
+        raise HTTPException(status_code=404, detail="未找到对应的探针节点。")
+
+    date_str = body.expires_at.strip()
+    if not date_str:
+        raise HTTPException(status_code=400, detail="到期时间不能为空。")
+
+    try:
+        if len(date_str) == 10:
+            new_date = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        else:
+            new_date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+            if new_date.tzinfo is None:
+                new_date = new_date.replace(tzinfo=timezone.utc)
+    except Exception:
+        raise HTTPException(status_code=400, detail="无效的日期格式，请使用 YYYY-MM-DD。")
+
+    node.expires_at = new_date
+    node.expire_muted = False
+    node.notified_expire_stages = []  # 重置已通知阶段，进入新周期
+    db.commit()
+
+    return {
+        "ok": True,
+        "expires_at": to_iso_utc(node.expires_at),
+        "is_muted": False,
+    }
 
 
 def _make_demo_ping_history(base_telecom: float, base_unicom: float, base_mobile: float, count: int = 30) -> list:

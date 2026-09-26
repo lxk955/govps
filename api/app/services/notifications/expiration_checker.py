@@ -1,7 +1,12 @@
 """VPS 到期自动化巡检、提醒阶段判定与邮件模板渲染。"""
 
+import base64
+import hashlib
+import hmac
+import json
 import logging
 import math
+import time
 from datetime import datetime, timezone
 from html import escape
 
@@ -13,6 +18,63 @@ from ...models import User, UserNode
 from .dispatcher import dispatcher
 
 logger = logging.getLogger(__name__)
+
+
+def _get_signing_key() -> bytes:
+    key_str = (settings.TASK_TOKEN or "govps-secret-task-token").strip()
+    return hashlib.sha256(key_str.encode("utf-8")).digest()
+
+
+def generate_renewal_token(node: UserNode, valid_days: int = 30) -> str:
+    """生成 30 天有效的免密安全续费 Token，绑定 node.id 与 node.expires_at。"""
+    exp_ts = int(time.time()) + valid_days * 86400
+    node_exp_str = node.expires_at.isoformat() if node.expires_at else ""
+    payload = {
+        "nid": node.id,
+        "uid": node.user_id,
+        "exp": exp_ts,
+        "nexp": node_exp_str,
+        "act": "renew",
+    }
+    payload_bytes = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    payload_b64 = base64.urlsafe_b64encode(payload_bytes).decode("ascii").rstrip("=")
+
+    key = _get_signing_key()
+    sig = hmac.new(key, payload_b64.encode("ascii"), hashlib.sha256).digest()
+    sig_b64 = base64.urlsafe_b64encode(sig).decode("ascii").rstrip("=")
+    return f"{payload_b64}.{sig_b64}"
+
+
+def verify_renewal_token(token: str) -> dict | None:
+    """验证续费 Token，校验签名与过期时间。若合法返回 payload，否则返回 None。"""
+    if not token or "." not in token:
+        return None
+    try:
+        parts = token.strip().split(".")
+        if len(parts) != 2:
+            return None
+        payload_b64, sig_b64 = parts[0], parts[1]
+
+        pad_p = "=" * ((4 - len(payload_b64) % 4) % 4)
+        pad_s = "=" * ((4 - len(sig_b64) % 4) % 4)
+
+        key = _get_signing_key()
+        expected_sig = hmac.new(key, payload_b64.encode("ascii"), hashlib.sha256).digest()
+        actual_sig = base64.urlsafe_b64decode(sig_b64 + pad_s)
+
+        if not hmac.compare_digest(expected_sig, actual_sig):
+            return None
+
+        payload_bytes = base64.urlsafe_b64decode(payload_b64 + pad_p)
+        payload = json.loads(payload_bytes.decode("utf-8"))
+
+        if payload.get("act") != "renew":
+            return None
+        if payload.get("exp", 0) < int(time.time()):
+            return None
+        return payload
+    except Exception:
+        return None
 
 # 国家简码到常见 Emoji 国旗映射
 COUNTRY_FLAGS: dict[str, str] = {
@@ -54,6 +116,12 @@ def render_expiration_email(
         exp_date_str = exp.strftime("%Y-%m-%d %H:%M UTC")
 
     monitor_url = f"{settings.PUBLIC_API_URL.rstrip('/')}/monitor"
+    renewal_token = generate_renewal_token(node) if (node and getattr(node, "id", None)) else ""
+    renew_url = (
+        f"{settings.PUBLIC_API_URL.rstrip('/')}/monitor/renew?token={renewal_token}"
+        if renewal_token
+        else monitor_url
+    )
 
     if is_test:
         subject = f"【测试】GoVPS 探针 · VPS 到期提醒连通性测试"
@@ -133,13 +201,19 @@ def render_expiration_email(
 
           <!-- 操作按钮 -->
           <div style="text-align: center; margin: 28px 0 16px 0;">
-            <a href="{monitor_url}"
-               style="display: inline-block; padding: 12px 32px; background-color: #2563eb; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px; border-radius: 10px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);">
-              前往探针面板管理
+            <a href="{renew_url}"
+               style="display: inline-block; padding: 13px 36px; background-color: #16a34a; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(22, 163, 74, 0.25);">
+              ✅ 我已续费 / 静音本期提醒
             </a>
+            <div style="margin-top: 14px;">
+              <a href="{monitor_url}"
+                 style="font-size: 13px; color: #64748b; text-decoration: underline;">
+                前往探针面板管理 &rarr;
+              </a>
+            </div>
           </div>
           <p style="text-align: center; font-size: 12px; color: #94a3b8; margin: 0;">
-            续费成功后，请在探针面板中更新该 VPS 的「到期时间」，系统将自动重置并开启下一轮提醒。
+            点击「我已续费」将停止本到期周期的后续催促邮件，并可在打开的页面中设置下次续费到期日。
           </p>
         </div>
 
@@ -176,6 +250,8 @@ def check_expiring_nodes(db: Session) -> dict:
             continue
 
         # 1. 检查是否开启提醒：单节点优先，否则继承用户全局设置
+        if node.expire_muted:
+            continue
         if node.expire_notify_enabled is False:
             continue
         if node.expire_notify_enabled is None and not user.monitor_expire_notify_enabled:

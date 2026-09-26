@@ -123,6 +123,11 @@ class NodeUpdate(BaseModel):
     expire_notify_stages: list[int] | None = None
     traffic_limit_gb: float | None = None
     is_public: bool | None = None
+    expire_muted: bool | None = None
+
+
+class RenewUpdateDateRequest(BaseModel):
+    expires_at: str = Field(..., description="新的到期日期字符串 (ISO 8601 或 YYYY-MM-DD)")
 
 
 class MonitorSettingsOut(BaseModel):

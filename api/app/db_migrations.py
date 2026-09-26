@@ -81,6 +81,10 @@ def detect_current_revision(inspector) -> str | None:
             "0015_monitor_expiration_reminder",
             lambda i: "monitor_expire_notify_enabled" in _column_names(i, "users"),
         ),
+        (
+            "0016_monitor_expire_muted",
+            lambda i: "expire_muted" in _column_names(i, "user_nodes"),
+        ),
     ]
     reached: str | None = None
     for revision_id, present in stages:
