@@ -284,6 +284,7 @@ Do not claim that a change is verified unless the relevant checks were actually 
 - For major architectural decisions, explain important trade-offs before making the change.
 - After implementation, review the changed code.
 - Run appropriate checks for the affected functionality.
-- Before pushing to remote, always invoke `grok` in the current environment to review the changes (e.g. `grok -p "..."`). Carefully evaluate its feedback, address any valid concerns or bugs, reach consensus, and re-verify before committing/pushing.
+- Before pushing to remote, run a separate read-only `grok` review in this repository and wait for it to finish (e.g. `grok -p "..."`). Specify the exact git range in the prompt (uncommitted changes or `origin/main...HEAD`). The review process must be read-only: do not edit files, commit, push, or start recursive grok instances. Fix confirmed correctness/security bugs, record rationales for any declined suggestions, and limit review to at most two rounds.
+- If `grok` is unavailable or the review fails to complete, stop, report the blocker to the user, and keep commits unpushed.
 - After pushing commits to `main`, track the GitHub Actions deployment workflow until it finishes. If deployment fails, inspect the failure logs immediately, resolve the issue, and ensure production deployment is successful and health checks pass.
 - Report what was changed, what was actually verified, and any remaining issues.
