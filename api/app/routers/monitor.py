@@ -23,7 +23,14 @@ from ..config import settings
 from ..database import get_db
 from ..deps import get_current_user, get_optional_user
 from ..models import ExchangeRate, NodeSnapshot, User, UserNode, to_iso_utc, utcnow
-from ..schemas import NodeCreate, NodeReport, NodeUpdate, ShareUpdate
+from ..schemas import (
+    MonitorSettingsOut,
+    MonitorSettingsUpdate,
+    NodeCreate,
+    NodeReport,
+    NodeUpdate,
+    ShareUpdate,
+)
 
 router = APIRouter(prefix="/api/monitor", tags=["monitor"])
 
@@ -133,6 +140,9 @@ def _node_to_dict(node: UserNode, now: datetime, read_only: bool = False) -> dic
         "billing_cycle": node.billing_cycle or "monthly",
         "expires_at": to_iso_utc(node.expires_at),
         "days_left": days_left,
+        "expire_notify_enabled": node.expire_notify_enabled,
+        "expire_notify_stages": node.expire_notify_stages,
+        "notified_expire_stages": node.notified_expire_stages or [],
         "traffic_limit_gb": node.traffic_limit_gb,
         "remaining_gb": remaining_gb,
         "is_online": is_online,
@@ -293,6 +303,9 @@ def create_node(
         currency=payload.currency or "USD",
         billing_cycle=payload.billing_cycle or "monthly",
         expires_at=payload.expires_at,
+        expire_notify_enabled=payload.expire_notify_enabled,
+        expire_notify_stages=payload.expire_notify_stages,
+        notified_expire_stages=[],
         traffic_limit_gb=payload.traffic_limit_gb,
         is_online=False,
         is_demo=False,
@@ -361,7 +374,14 @@ def update_node(
     if "billing_cycle" in data:
         node.billing_cycle = data["billing_cycle"]
     if "expires_at" in data:
+        if node.expires_at != data["expires_at"]:
+            # 到期日更新时重置已通知阶段，以便进入下一轮提醒周期
+            node.notified_expire_stages = []
         node.expires_at = data["expires_at"]
+    if "expire_notify_enabled" in data:
+        node.expire_notify_enabled = data["expire_notify_enabled"]
+    if "expire_notify_stages" in data:
+        node.expire_notify_stages = data["expire_notify_stages"]
     if "traffic_limit_gb" in data:
         node.traffic_limit_gb = data["traffic_limit_gb"]
     if "is_public" in data:
@@ -418,6 +438,78 @@ def toggle_share(
         "public_enabled": user.monitor_public_enabled,
         "share_token": user.monitor_share_token,
     }
+
+
+@router.get("/settings", response_model=MonitorSettingsOut)
+def get_monitor_settings(
+    user: User = Depends(get_current_user),
+):
+    """获取当前用户的探针全局提醒配置及通知渠道。"""
+    stages = user.monitor_expire_stages or [15, 7, 3, 1]
+    return {
+        "expire_notify_enabled": user.monitor_expire_notify_enabled,
+        "expire_notify_stages": stages,
+        "email": user.email,
+        "channels": [
+            {
+                "id": "email",
+                "name": "电子邮箱 (Resend)",
+                "target": user.email,
+                "enabled": True,
+                "status": "active",
+                "is_primary": True,
+            },
+            {
+                "id": "webhook",
+                "name": "Custom Webhook",
+                "target": None,
+                "enabled": False,
+                "status": "coming_soon",
+                "is_primary": False,
+            },
+            {
+                "id": "telegram",
+                "name": "Telegram Bot",
+                "target": None,
+                "enabled": False,
+                "status": "coming_soon",
+                "is_primary": False,
+            },
+        ],
+    }
+
+
+@router.put("/settings", response_model=MonitorSettingsOut)
+def update_monitor_settings(
+    payload: MonitorSettingsUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """更新当前用户的探针全局提醒配置。"""
+    if payload.expire_notify_enabled is not None:
+        user.monitor_expire_notify_enabled = payload.expire_notify_enabled
+    if payload.expire_notify_stages is not None:
+        user.monitor_expire_stages = sorted(
+            [int(s) for s in payload.expire_notify_stages if int(s) >= 0], reverse=True
+        )
+
+    db.commit()
+    db.refresh(user)
+    return get_monitor_settings(user=user)
+
+
+@router.post("/notify/test")
+def test_expire_notification(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """向当前登录用户的邮箱发送一封测试到期提醒邮件，验证通知连通性。"""
+    from ..services.notifications.expiration_checker import send_test_expiration_email
+
+    ok, err = send_test_expiration_email(db, user)
+    if not ok:
+        raise HTTPException(status_code=400, detail=f"测试邮件发送失败: {err}")
+    return {"ok": True, "message": f"测试邮件已成功发送至 {user.email}"}
 
 
 def _make_demo_ping_history(base_telecom: float, base_unicom: float, base_mobile: float, count: int = 30) -> list:
@@ -627,6 +719,9 @@ def load_demo_nodes(
             currency=cfg["currency"],
             billing_cycle=cfg["billing_cycle"],
             expires_at=cfg["expires_at"],
+            expire_notify_enabled=True,
+            expire_notify_stages=[15, 7, 3, 1],
+            notified_expire_stages=[],
             traffic_limit_gb=cfg["traffic_limit_gb"],
             is_online=True,
             is_demo=True,

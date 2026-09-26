@@ -44,6 +44,9 @@ export interface MonitorNode {
   billing_cycle: string;
   expires_at: string | null;
   days_left: number | null;
+  expire_notify_enabled?: boolean | null;
+  expire_notify_stages?: number[] | null;
+  notified_expire_stages?: number[];
   traffic_limit_gb: number | null;
   remaining_gb: number | null;
   is_online: boolean;
@@ -53,6 +56,22 @@ export interface MonitorNode {
   last_seen_at: string | null;
   created_at: string;
   metrics: NodeMetrics;
+}
+
+export interface NotificationChannel {
+  id: string;
+  name: string;
+  target?: string | null;
+  enabled: boolean;
+  status: "active" | "coming_soon" | "disabled";
+  is_primary: boolean;
+}
+
+export interface MonitorSettings {
+  expire_notify_enabled: boolean;
+  expire_notify_stages: number[];
+  email: string;
+  channels: NotificationChannel[];
 }
 
 export interface MonitorSummary {

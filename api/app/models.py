@@ -153,6 +153,8 @@ class User(Base):
     currency_mode: Mapped[str] = mapped_column(String(20), default="original")
     monitor_public_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     monitor_share_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, index=True)
+    monitor_expire_notify_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    monitor_expire_stages: Mapped[list] = mapped_column(JSON, default=lambda: [15, 7, 3, 1])
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     nodes: Mapped[list["UserNode"]] = relationship(back_populates="user", cascade="all, delete-orphan")
@@ -401,6 +403,9 @@ class UserNode(Base):
     currency: Mapped[str] = mapped_column(String(10), default="USD")
     billing_cycle: Mapped[str] = mapped_column(String(20), default="monthly")  # monthly, annually, quarterly, triennially
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expire_notify_enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True, default=None)
+    expire_notify_stages: Mapped[list | None] = mapped_column(JSON, nullable=True, default=None)
+    notified_expire_stages: Mapped[list] = mapped_column(JSON, default=list)
     traffic_limit_gb: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     is_online: Mapped[bool] = mapped_column(Boolean, default=False, index=True)

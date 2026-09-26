@@ -102,6 +102,8 @@ class NodeCreate(BaseModel):
     currency: str = Field(default="USD", max_length=10)
     billing_cycle: str = Field(default="monthly", max_length=20)
     expires_at: datetime | None = None
+    expire_notify_enabled: bool | None = None
+    expire_notify_stages: list[int] | None = None
     traffic_limit_gb: float | None = None
     is_public: bool = False
 
@@ -117,8 +119,22 @@ class NodeUpdate(BaseModel):
     currency: str | None = Field(default=None, max_length=10)
     billing_cycle: str | None = Field(default=None, max_length=20)
     expires_at: datetime | None = None
+    expire_notify_enabled: bool | None = None
+    expire_notify_stages: list[int] | None = None
     traffic_limit_gb: float | None = None
     is_public: bool | None = None
+
+
+class MonitorSettingsOut(BaseModel):
+    expire_notify_enabled: bool = True
+    expire_notify_stages: list[int] = Field(default_factory=lambda: [15, 7, 3, 1])
+    email: str
+    channels: list[dict] = Field(default_factory=list)
+
+
+class MonitorSettingsUpdate(BaseModel):
+    expire_notify_enabled: bool | None = None
+    expire_notify_stages: list[int] | None = None
 
 
 class ShareUpdate(BaseModel):

@@ -92,3 +92,15 @@ def trigger_indexnow(
 
     return submit_to_indexnow(urls)
 
+
+@router.post("/check-expirations")
+def trigger_check_expirations(
+    _token: str = Depends(verify_task_token),
+    db: Session = Depends(get_db),
+):
+    """手动或 cron 触发：巡检所有设置到期日的节点并执行阶段提醒。"""
+    from ..services.notifications.expiration_checker import check_expiring_nodes
+
+    return check_expiring_nodes(db)
+
+

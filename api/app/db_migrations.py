@@ -77,6 +77,10 @@ def detect_current_revision(inspector) -> str | None:
             "0014_user_nodes_is_public",
             lambda i: "is_public" in _column_names(i, "user_nodes"),
         ),
+        (
+            "0015_monitor_expiration_reminder",
+            lambda i: "monitor_expire_notify_enabled" in _column_names(i, "users"),
+        ),
     ]
     reached: str | None = None
     for revision_id, present in stages:

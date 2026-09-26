@@ -9,7 +9,7 @@ import {
   List,
   Plus,
   RefreshCw,
-  Share2,
+  Settings,
   SlidersHorizontal,
   Sparkles,
   Trash2,
@@ -207,16 +207,17 @@ export function FilterToolbar({
                 variant="outline"
                 size="sm"
                 onClick={onShare}
-                title="公开只读分享"
+                title="监控与通知设置"
                 className={cn(
-                  "h-8 gap-1 text-xs px-2.5 rounded-xl border-slate-200/80 dark:border-slate-800 font-medium",
+                  "h-8 gap-1.5 text-xs px-2.5 rounded-xl border-slate-200/80 dark:border-slate-800 font-medium",
                   shareEnabled
                     ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800"
                     : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300",
                 )}
               >
-                <Share2 className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">{shareEnabled ? "已公开" : "公开分享"}</span>
+                <Settings className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">设置与分享</span>
+                <span className="md:hidden">设置</span>
               </Button>
 
               {/* 演示节点快捷入口 */}

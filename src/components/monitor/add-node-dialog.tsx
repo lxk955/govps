@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Check, Copy, Server, Terminal, Trash2 } from "lucide-react";
+import { Bell, Calendar, Check, Copy, Server, Sparkles, Terminal, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -56,8 +56,10 @@ export function AddNodeDialog({
   const [price, setPrice] = useState("");
   const [currency, setCurrency] = useState("USD");
   const [billingCycle, setBillingCycle] = useState("monthly");
-  const [trafficLimitGb, setTrafficLimitGb] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
+  const [expireNotifyEnabled, setExpireNotifyEnabled] = useState(true);
+  const [expireNotifyStages, setExpireNotifyStages] = useState<number[]>([15, 7, 3, 1]);
+  const [trafficLimitGb, setTrafficLimitGb] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -74,10 +76,12 @@ export function AddNodeDialog({
       setPrice(editingNode.price !== null ? String(editingNode.price) : "");
       setCurrency(editingNode.currency);
       setBillingCycle(editingNode.billing_cycle);
+      setExpiresAt(editingNode.expires_at ? editingNode.expires_at.slice(0, 10) : "");
+      setExpireNotifyEnabled(editingNode.expire_notify_enabled !== false);
+      setExpireNotifyStages(editingNode.expire_notify_stages || [15, 7, 3, 1]);
       setTrafficLimitGb(
         editingNode.traffic_limit_gb !== null ? String(editingNode.traffic_limit_gb) : "",
       );
-      setExpiresAt(editingNode.expires_at ? editingNode.expires_at.slice(0, 10) : "");
     } else if (isOpen) {
       setName("");
       setCountry("hk");
@@ -86,13 +90,42 @@ export function AddNodeDialog({
       setPrice("");
       setCurrency("USD");
       setBillingCycle("monthly");
-      setTrafficLimitGb("");
       setExpiresAt("");
+      setExpireNotifyEnabled(true);
+      setExpireNotifyStages([15, 7, 3, 1]);
+      setTrafficLimitGb("");
     }
     setInstallCommand(null);
     setErrorMsg(null);
     setCopied(false);
   }, [isOpen, editingNode]);
+
+  const handleQuickExpire = (months: number) => {
+    const base = expiresAt ? new Date(expiresAt) : new Date();
+    const d = isNaN(base.getTime()) ? new Date() : base;
+    d.setMonth(d.getMonth() + months);
+    setExpiresAt(d.toISOString().split("T")[0]);
+  };
+
+  const handleCycleCalc = () => {
+    const monthsMap: Record<string, number> = {
+      monthly: 1,
+      quarterly: 3,
+      "semi-annually": 6,
+      annually: 12,
+      triennially: 36,
+    };
+    const m = monthsMap[billingCycle] || 1;
+    const d = new Date();
+    d.setMonth(d.getMonth() + m);
+    setExpiresAt(d.toISOString().split("T")[0]);
+  };
+
+  const toggleStage = (stage: number) => {
+    setExpireNotifyStages((prev) =>
+      prev.includes(stage) ? prev.filter((s) => s !== stage) : [...prev, stage].sort((a, b) => b - a),
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,8 +156,10 @@ export function AddNodeDialog({
       price: price ? parseFloat(price) : null,
       currency: currency.toUpperCase(),
       billing_cycle: billingCycle,
+      expires_at: expiresAt ? new Date(expiresAt + "T23:59:59Z").toISOString() : null,
+      expire_notify_enabled: expireNotifyEnabled,
+      expire_notify_stages: expireNotifyStages,
       traffic_limit_gb: trafficLimitGb ? parseFloat(trafficLimitGb) : null,
-      expires_at: expiresAt ? `${expiresAt}T00:00:00.000Z` : null,
     };
 
     const headers = {
@@ -382,27 +417,135 @@ export function AddNodeDialog({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="flex flex-col gap-1">
-                  <Label className="text-[11px] text-slate-500">月度流量额度 (GB)</Label>
-                  <Input
-                    type="number"
-                    placeholder="留空为不限，如: 1024"
-                    value={trafficLimitGb}
-                    onChange={(e) => setTrafficLimitGb(e.target.value)}
-                    className="h-8 text-xs rounded-lg font-mono"
-                  />
+              <div className="flex flex-col gap-1">
+                <Label className="text-[11px] text-slate-500">月度流量额度 (GB)</Label>
+                <Input
+                  type="number"
+                  placeholder="留空为不限，如: 1024"
+                  value={trafficLimitGb}
+                  onChange={(e) => setTrafficLimitGb(e.target.value)}
+                  className="h-8 text-xs rounded-lg font-mono"
+                />
+              </div>
+
+              {/* 到期时间与快捷推算 */}
+              <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                    到期时间 (可选)
+                  </Label>
+                  {expiresAt && (
+                    <button
+                      type="button"
+                      onClick={() => setExpiresAt("")}
+                      className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center gap-0.5"
+                    >
+                      <X className="w-3 h-3" /> 清空
+                    </button>
+                  )}
                 </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-[11px] text-slate-500">到期日期</Label>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <Input
                     type="date"
                     value={expiresAt}
                     onChange={(e) => setExpiresAt(e.target.value)}
-                    className="h-8 text-xs rounded-lg font-mono"
+                    className="h-8 text-xs rounded-lg font-mono flex-1"
                   />
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickExpire(1)}
+                      className="h-7 px-2 text-[11px] rounded-md font-medium"
+                    >
+                      +1月
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickExpire(3)}
+                      className="h-7 px-2 text-[11px] rounded-md font-medium"
+                    >
+                      +3月
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickExpire(12)}
+                      className="h-7 px-2 text-[11px] rounded-md font-medium"
+                    >
+                      +1年
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCycleCalc}
+                      className="h-7 px-2 text-[11px] rounded-md font-medium text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900"
+                      title="根据当前所选计费周期自动推算到期日"
+                    >
+                      <Sparkles className="w-3 h-3 mr-0.5" />
+                      按周期推算
+                    </Button>
+                  </div>
                 </div>
               </div>
+
+              {/* 到期提醒阶段设置 */}
+              {expiresAt && (
+                <div className="p-2.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/60 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={expireNotifyEnabled}
+                        onChange={(e) => setExpireNotifyEnabled(e.target.checked)}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+                      />
+                      <Bell className="w-3.5 h-3.5 text-blue-500" />
+                      开启到期邮件提醒
+                    </label>
+                    <span className="text-[10px] text-slate-400">推送到账号邮箱</span>
+                  </div>
+
+                  {expireNotifyEnabled && (
+                    <div className="flex flex-col gap-1.5 pt-1 pl-5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] text-slate-500">提醒节点:</span>
+                        {[15, 7, 3, 1].map((stage) => {
+                          const isChecked = expireNotifyStages.includes(stage);
+                          return (
+                            <button
+                              key={stage}
+                              type="button"
+                              onClick={() => toggleStage(stage)}
+                              className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors border ${
+                                isChecked
+                                  ? "bg-blue-600 text-white border-blue-600"
+                                  : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800"
+                              }`}
+                            >
+                              提前 {stage} 天
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[10px] text-slate-400 leading-tight">
+                        到达选中的时间节点时将各发送一封邮件，周期内不重复发送。
+                      </p>
+                      {editingNode?.notified_expire_stages && editingNode.notified_expire_stages.length > 0 && (
+                        <div className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-50/80 dark:bg-amber-950/40 px-2 py-1 rounded">
+                          本周期已提醒: 提前 {editingNode.notified_expire_stages.join("天、")}天（修改到期日将自动重置）
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {editingNode?.token ? (

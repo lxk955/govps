@@ -120,10 +120,13 @@ async def api_cache_control(request, call_next):
 
 
 def _notify_worker_loop() -> None:
-    """P7 邮件异步 worker：周期消费 pending NotifyLog。
+    """P7 邮件异步 worker 与探针 VPS 到期巡检线程。
     DB-backed outbox——进程重启后 pending 行自然被重新拾取，不丢不重。"""
     from .database import SessionLocal
     from .services.notify import process_pending_emails
+    from .services.notifications.expiration_checker import check_expiring_nodes
+
+    _last_expire_check = 0.0
 
     while True:
         try:
@@ -131,6 +134,14 @@ def _notify_worker_loop() -> None:
                 result = process_pending_emails(db)
                 if result["processed"]:
                     print(f"[notify-worker] {result}")
+
+                now_ts = time.time()
+                # 每 30 分钟 (1800 秒) 自动巡检一次到期节点
+                if now_ts - _last_expire_check >= 1800:
+                    _last_expire_check = now_ts
+                    expire_res = check_expiring_nodes(db)
+                    if expire_res.get("notified", 0) > 0:
+                        print(f"[expire-worker] {expire_res}")
         except Exception as err:
             print(f"[notify-worker] error: {err}")
         time.sleep(settings.NOTIFY_WORKER_INTERVAL_SECONDS)

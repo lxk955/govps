@@ -6,27 +6,14 @@ import { useSearchParams } from "next/navigation";
 import {
   Activity,
   AlertCircle,
-  Check,
-  Copy,
   LogIn,
   Plus,
   Server,
-  Share2,
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
 import { notifyAuthExpired } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
-import { FlagIcon } from "@/components/monitor/flag-icon";
 import { OverviewHeader } from "@/components/monitor/overview-header";
 import { FilterToolbar } from "@/components/monitor/filter-toolbar";
 import { LargeNodeCard } from "@/components/monitor/large-node-card";
@@ -35,6 +22,7 @@ import { MiniNodeCard } from "@/components/monitor/mini-node-card";
 import { NodeListView } from "@/components/monitor/node-list-view";
 import { NodeDetailModal } from "@/components/monitor/node-detail-modal";
 import { AddNodeDialog } from "@/components/monitor/add-node-dialog";
+import { MonitorSettingsDialog } from "@/components/monitor/monitor-settings-dialog";
 import {
   MonitorApiResponse,
   MonitorNode,
@@ -86,7 +74,6 @@ export default function MonitorPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingNode, setEditingNode] = useState<MonitorNode | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [shareCopied, setShareCopied] = useState(false);
   const initialLoadRef = useRef(true);
 
   // 持久化用户偏好的视图模式
@@ -261,39 +248,9 @@ export default function MonitorPage() {
     }
   };
 
-  // 公开节点范围：打开弹窗时按当前 is_public 勾选，新节点默认不公开
-  const [selectedPublicNodeIds, setSelectedPublicNodeIds] = useState<number[]>([]);
-  const [isSavingShare, setIsSavingShare] = useState(false);
-  const [shareSavedSuccess, setShareSavedSuccess] = useState(false);
-
-  useEffect(() => {
-    if (!isShareModalOpen) return;
-    setSelectedPublicNodeIds(nodes.filter((n) => n.is_public !== false).map((n) => n.id));
-    setShareSavedSuccess(false);
-    // 只在打开弹窗时同步，避免 4 秒轮询冲掉未保存的勾选
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isShareModalOpen]);
-
-  const handleToggleNodePublic = (nodeId: number) => {
-    setSelectedPublicNodeIds((prev) =>
-      prev.includes(nodeId) ? prev.filter((id) => id !== nodeId) : [...prev, nodeId],
-    );
-    setShareSavedSuccess(false);
-  };
-
-  const handleSelectAllNodes = () => {
-    setSelectedPublicNodeIds(nodes.map((n) => n.id));
-    setShareSavedSuccess(false);
-  };
-
-  const handleDeselectAllNodes = () => {
-    setSelectedPublicNodeIds([]);
-    setShareSavedSuccess(false);
-  };
-
-  const handleSavePublicNodes = async () => {
+  // 切换公开分享设置（由 MonitorSettingsDialog 统一处理）
+  const handleUpdateShare = async (enabled: boolean, publicNodeIds?: number[]) => {
     try {
-      setIsSavingShare(true);
       const token = localStorage.getItem("govps_token");
       const res = await fetch("/api/monitor/share", {
         method: "POST",
@@ -302,42 +259,8 @@ export default function MonitorPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          enabled: userInfo.public_enabled,
-          public_node_ids: selectedPublicNodeIds,
-        }),
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setUserInfo((prev) => ({
-          ...prev,
-          public_enabled: json.public_enabled,
-          share_token: json.share_token,
-        }));
-        setShareSavedSuccess(true);
-        setTimeout(() => setShareSavedSuccess(false), 2500);
-        await fetchData(true);
-      }
-    } catch {
-      // 忽略
-    } finally {
-      setIsSavingShare(false);
-    }
-  };
-
-  // 切换公开分享主开关
-  const handleToggleShare = async () => {
-    try {
-      const token = localStorage.getItem("govps_token");
-      const nextState = !userInfo.public_enabled;
-      const res = await fetch("/api/monitor/share", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          enabled: nextState,
-          public_node_ids: selectedPublicNodeIds,
+          enabled,
+          public_node_ids: publicNodeIds,
         }),
       });
       if (res.ok) {
@@ -352,16 +275,6 @@ export default function MonitorPage() {
     } catch {
       // 忽略
     }
-  };
-
-  // 复制分享链接
-  const copyShareLink = () => {
-    if (!userInfo.share_token) return;
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://govps.xyz";
-    const shareUrl = `${origin}/monitor?share=${encodeURIComponent(userInfo.share_token)}`;
-    navigator.clipboard.writeText(shareUrl);
-    setShareCopied(true);
-    setTimeout(() => setShareCopied(false), 2000);
   };
 
   // 节点过滤与排序
@@ -619,158 +532,15 @@ export default function MonitorPage() {
         editingNode={editingNode}
       />
 
-      {/* 公开分享设置弹窗 */}
-      <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
-        <DialogContent className="max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xl">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <Share2 className="w-4 h-4 text-blue-600" />
-              <span>公开监控主页设置</span>
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              开启后，任何人可通过您的专属链接访问只读探针面板，您可灵活勾选允许对外公开的节点。
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex flex-col gap-4 py-2">
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  公开监控面板
-                </span>
-                <span className="text-[11px] text-slate-400">
-                  {userInfo.public_enabled ? "当前处于公开状态" : "当前为私有状态"}
-                </span>
-              </div>
-              <Button
-                size="sm"
-                variant={userInfo.public_enabled ? "destructive" : "default"}
-                onClick={handleToggleShare}
-                className="h-8 text-xs rounded-xl font-semibold"
-              >
-                {userInfo.public_enabled ? "关闭公开" : "开启公开"}
-              </Button>
-            </div>
-
-            {/* 选择公开哪些节点（勾选框，默认全选） */}
-            {userInfo.public_enabled && (
-              <div className="flex flex-col gap-2 p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-slate-700 dark:text-slate-300">
-                    公开节点范围 ({selectedPublicNodeIds.length} / {nodes.length} 已选)
-                  </span>
-                  <div className="flex items-center gap-2 text-xs">
-                    <button
-                      type="button"
-                      onClick={handleSelectAllNodes}
-                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer font-semibold"
-                    >
-                      全选
-                    </button>
-                    <span className="text-slate-300 dark:text-slate-600">·</span>
-                    <button
-                      type="button"
-                      onClick={handleDeselectAllNodes}
-                      className="text-slate-500 hover:text-slate-700 dark:text-slate-400 cursor-pointer font-medium"
-                    >
-                      清空
-                    </button>
-                  </div>
-                </div>
-
-                <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200/70 dark:border-slate-700/60 bg-white dark:bg-slate-900 p-1.5 flex flex-col gap-1 no-scrollbar">
-                  {nodes.length > 0 ? (
-                    nodes.map((node) => {
-                      const isChecked = selectedPublicNodeIds.includes(node.id);
-                      return (
-                        <label
-                          key={node.id}
-                          className={cn(
-                            "flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer select-none transition-all",
-                            isChecked
-                              ? "bg-blue-50/60 dark:bg-blue-950/30 text-slate-900 dark:text-slate-100 font-medium"
-                              : "hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 opacity-60",
-                          )}
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => handleToggleNodePublic(node.id)}
-                              className="w-3.5 h-3.5 rounded text-blue-600 border-slate-300 dark:border-slate-600 focus:ring-0 cursor-pointer"
-                            />
-                            <FlagIcon country={node.country} className="w-4 h-3 rounded-2xs object-cover shrink-0 shadow-2xs" />
-                            <span className="truncate">{node.name}</span>
-                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-400 font-sans">
-                              {node.group_name}
-                            </span>
-                          </div>
-                          <span
-                            className={cn(
-                              "w-1.5 h-1.5 rounded-full shrink-0",
-                              node.is_online ? "bg-emerald-500" : "bg-rose-500",
-                            )}
-                          />
-                        </label>
-                      );
-                    })
-                  ) : (
-                    <div className="text-center py-3 text-xs text-slate-400">暂无节点</div>
-                  )}
-                </div>
-
-                <Button
-                  size="sm"
-                  onClick={handleSavePublicNodes}
-                  disabled={isSavingShare}
-                  className="mt-0.5 h-8 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  {shareSavedSuccess ? "✓ 公开范围已保存" : isSavingShare ? "正在保存..." : "保存公开范围"}
-                </Button>
-              </div>
-            )}
-
-            {userInfo.public_enabled && userInfo.share_token && (
-              <div className="flex flex-col gap-1.5 pt-1">
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  专属公开链接
-                </span>
-                <div className="flex items-center gap-2">
-                  <input
-                    readOnly
-                    value={`${typeof window !== "undefined" ? window.location.origin : "https://govps.xyz"}/monitor?share=${encodeURIComponent(userInfo.share_token)}`}
-                    className="flex-1 font-mono text-xs px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 select-all"
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={copyShareLink}
-                    className="h-9 px-3 rounded-xl gap-1 text-xs"
-                  >
-                    {shareCopied ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-500" />
-                        <span className="text-emerald-500">已复制</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>复制</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button onClick={() => setIsShareModalOpen(false)} className="rounded-xl text-xs">
-              完成
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* 监控与通知设置弹窗 (包含到期提醒、通知渠道、公开分享) */}
+      <MonitorSettingsDialog
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        nodes={nodes}
+        userInfo={userInfo}
+        onUpdateShare={handleUpdateShare}
+        onRefreshNodes={() => fetchData(true)}
+      />
     </div>
   );
 }
