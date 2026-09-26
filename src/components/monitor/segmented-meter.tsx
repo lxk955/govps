@@ -10,6 +10,7 @@ interface SegmentedMeterProps {
   bgClass?: string; // 底色
   className?: string;
   size?: "sm" | "md";
+  minBlocks?: number; // 接近 0% 时的最少显示格数，默认为 1（避免看起来像数据异常）
 }
 
 export function SegmentedMeter({
@@ -19,9 +20,15 @@ export function SegmentedMeter({
   bgClass = "bg-slate-100 dark:bg-slate-800",
   className,
   size = "md",
+  minBlocks = 1,
 }: SegmentedMeterProps) {
   const safePercent = Math.max(0, Math.min(100, isNaN(percent) ? 0 : percent));
-  const filledBlocks = Math.round((safePercent / 100) * totalBlocks);
+  const calculatedBlocks = Math.round((safePercent / 100) * totalBlocks);
+  // 当接近或等于 0% 时，至少保证显示 minBlocks 格（避免完全空白看起来像未加载或异常）
+  const filledBlocks = Math.min(
+    totalBlocks,
+    Math.max(minBlocks, calculatedBlocks),
+  );
 
   return (
     <div
