@@ -137,7 +137,12 @@ export default function MonitorPage() {
         }
 
         const data: MonitorApiResponse = await res.json();
-        setNodes(data.nodes || []);
+        const freshNodes = data.nodes || [];
+        setNodes(freshNodes);
+        setDetailNode((prev) => {
+          if (!prev) return null;
+          return freshNodes.find((n) => n.id === prev.id) || prev;
+        });
         setSummary(data.summary || DEFAULT_SUMMARY);
         setUserInfo(data.user_info);
         setError(null);
@@ -250,8 +255,12 @@ export default function MonitorPage() {
     }
   };
 
-  // 切换公开分享设置（由 MonitorSettingsDialog 统一处理）
-  const handleUpdateShare = async (enabled: boolean, publicNodeIds?: number[]) => {
+  // 切换公开分享设置（由 ShareDialog 统一处理）
+  const handleUpdateShare = async (
+    enabled: boolean,
+    publicNodeIds?: number[],
+    shareIpMode?: "mask" | "hide" | "show",
+  ) => {
     try {
       const token = localStorage.getItem("govps_token");
       const res = await fetch("/api/monitor/share", {
@@ -263,6 +272,7 @@ export default function MonitorPage() {
         body: JSON.stringify({
           enabled,
           public_node_ids: publicNodeIds,
+          share_ip_mode: shareIpMode,
         }),
       });
       if (res.ok) {
@@ -271,6 +281,7 @@ export default function MonitorPage() {
           ...prev,
           public_enabled: json.public_enabled,
           share_token: json.share_token,
+          share_ip_mode: json.share_ip_mode ?? prev.share_ip_mode,
         }));
         await fetchData(true);
       }

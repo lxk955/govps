@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Check,
   Copy,
@@ -29,8 +29,9 @@ interface ShareDialogProps {
     public_enabled: boolean;
     share_token: string | null;
     is_owner: boolean;
+    share_ip_mode?: "mask" | "hide" | "show";
   };
-  onUpdateShare: (enabled: boolean, publicNodeIds?: number[]) => Promise<void>;
+  onUpdateShare: (enabled: boolean, publicNodeIds?: number[], shareIpMode?: "mask" | "hide" | "show") => Promise<void>;
   onRefreshNodes: () => Promise<void>;
 }
 
@@ -43,20 +44,27 @@ export function ShareDialog({
   onRefreshNodes,
 }: ShareDialogProps) {
   const [selectedPublicNodeIds, setSelectedPublicNodeIds] = useState<number[]>([]);
+  const [shareIpMode, setShareIpMode] = useState<"mask" | "hide" | "show">("mask");
   const [isSavingShare, setIsSavingShare] = useState(false);
   const [shareSavedSuccess, setShareSavedSuccess] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [isResettingToken, setIsResettingToken] = useState(false);
+  const prevOpenRef = useRef(false);
 
   useEffect(() => {
-    if (!isOpen) return;
-    setShareSavedSuccess(false);
-    setShareCopied(false);
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = isOpen;
 
-    // 初始化选中的公开节点（默认为 is_public !== false 的节点）
-    const publicIds = nodes.filter((n) => n.is_public !== false).map((n) => n.id);
-    setSelectedPublicNodeIds(publicIds);
-  }, [isOpen, nodes]);
+    if (isOpen && !wasOpen) {
+      setShareSavedSuccess(false);
+      setShareCopied(false);
+      setShareIpMode(userInfo.share_ip_mode || "mask");
+
+      // 初始化选中的公开节点（默认为 is_public !== false 的节点）
+      const publicIds = nodes.filter((n) => n.is_public !== false).map((n) => n.id);
+      setSelectedPublicNodeIds(publicIds);
+    }
+  }, [isOpen, nodes, userInfo.share_ip_mode]);
 
   const handleToggleNodePublic = (nodeId: number) => {
     setSelectedPublicNodeIds((prev) =>
@@ -76,7 +84,7 @@ export function ShareDialog({
     setIsSavingShare(true);
     setShareSavedSuccess(false);
     try {
-      await onUpdateShare(userInfo.public_enabled, selectedPublicNodeIds);
+      await onUpdateShare(userInfo.public_enabled, selectedPublicNodeIds, shareIpMode);
       setShareSavedSuccess(true);
       await onRefreshNodes();
       setTimeout(() => setShareSavedSuccess(false), 2000);
@@ -152,7 +160,7 @@ export function ShareDialog({
             </div>
             <button
               type="button"
-              onClick={() => onUpdateShare(!userInfo.public_enabled, selectedPublicNodeIds)}
+              onClick={() => onUpdateShare(!userInfo.public_enabled, selectedPublicNodeIds, shareIpMode)}
               className={cn(
                 "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden",
                 userInfo.public_enabled ? "bg-blue-600" : "bg-slate-200 dark:bg-slate-700",
@@ -212,6 +220,60 @@ export function ShareDialog({
               </div>
             </div>
           )}
+
+          {/* 公开分享 IP 策略 */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              公开分享 IP 策略
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setShareIpMode("mask")}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer",
+                  shareIpMode === "mask"
+                    ? "bg-blue-50/80 dark:bg-blue-950/40 border-blue-500 text-blue-600 dark:text-blue-400 font-medium shadow-xs"
+                    : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-400",
+                )}
+              >
+                <span className="text-xs">掩码脱敏</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">
+                  123.45.*.* (推荐)
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShareIpMode("hide")}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer",
+                  shareIpMode === "hide"
+                    ? "bg-blue-50/80 dark:bg-blue-950/40 border-blue-500 text-blue-600 dark:text-blue-400 font-medium shadow-xs"
+                    : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-400",
+                )}
+              >
+                <span className="text-xs">完全隐藏</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                  不公开 IP 地址
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShareIpMode("show")}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all cursor-pointer",
+                  shareIpMode === "show"
+                    ? "bg-blue-50/80 dark:bg-blue-950/40 border-blue-500 text-blue-600 dark:text-blue-400 font-medium shadow-xs"
+                    : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-400",
+                )}
+              >
+                <span className="text-xs">完整公开</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">
+                  显示真实 IP
+                </span>
+              </button>
+            </div>
+          </div>
 
           {/* 节点选择过滤 */}
           <div className="space-y-2">

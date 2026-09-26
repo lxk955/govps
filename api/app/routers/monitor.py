@@ -11,12 +11,13 @@
 
 import calendar
 import datetime
+import ipaddress
 import math
 import random
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from sqlalchemy import delete, desc, func, select, update
 from sqlalchemy.orm import Session, joinedload
 
@@ -33,11 +34,60 @@ from ..schemas import (
     RenewUpdateDateRequest,
     ShareUpdate,
 )
+from ..services.client_ip import client_ip
 
 router = APIRouter(prefix="/api/monitor", tags=["monitor"])
 
-CURRENT_AGENT_VERSION = "1.2.0"
+CURRENT_AGENT_VERSION = "1.3.0"
 SNAPSHOT_TTL = timedelta(hours=48)
+
+
+def is_valid_public_ip(val: str | None) -> str | None:
+    """严格校验是否为合法的公网 IP（排除私网、CGNAT、回环、链路本地、站点本地、组播及保留地址）。"""
+    if not val or not isinstance(val, str):
+        return None
+    cleaned = val.strip()
+    if len(cleaned) > 64:
+        return None
+    try:
+        addr = ipaddress.ip_address(cleaned)
+        if (
+            addr.is_global
+            and not addr.is_multicast
+            and not addr.is_reserved
+            and not addr.is_loopback
+            and not addr.is_link_local
+            and not getattr(addr, "is_site_local", False)
+        ):
+            return str(addr)
+    except Exception:
+        pass
+    return None
+
+
+def mask_ip(ip: str | None) -> str | None:
+    """对公网 IP 进行脱敏处理。
+
+    IPv4: 123.45.67.89 -> 123.45.*.*
+    IPv6: 2400:cb00:2048:1::c629:d7a2 -> 2400:cb00:****
+    IPv6 压缩格式: 2400::c629:d7a2 -> 2400:0:**** (展开后脱敏，绝不泄露主机位)
+    """
+    if not ip or not ip.strip():
+        return None
+    cleaned = ip.strip()
+    try:
+        addr = ipaddress.ip_address(cleaned)
+    except ValueError:
+        return "****"
+
+    if addr.version == 4:
+        parts = str(addr).split(".")
+        return f"{parts[0]}.{parts[1]}.*.*"
+    else:
+        exploded_parts = addr.exploded.split(":")
+        p0 = f"{int(exploded_parts[0], 16):x}"
+        p1 = f"{int(exploded_parts[1], 16):x}"
+        return f"{p0}:{p1}:****"
 
 
 def _calculate_cost_cny(price: float | None, currency: str, billing_cycle: str, rates: dict[str, float]) -> float:
@@ -130,7 +180,12 @@ def calculate_traffic_cycle(expires_at: datetime | None, now: datetime) -> tuple
     return cycle_start, cycle_end, days_until_reset
 
 
-def _node_to_dict(node: UserNode, now: datetime, read_only: bool = False) -> dict:
+def _node_to_dict(
+    node: UserNode,
+    now: datetime,
+    read_only: bool = False,
+    share_ip_mode: str = "mask",
+) -> dict:
     """格式化节点详情给前端展示。"""
     status = node.cached_status or {}
 
@@ -183,10 +238,26 @@ def _node_to_dict(node: UserNode, now: datetime, read_only: bool = False) -> dic
     if not kernel_ver and node.os_type == "linux" and node.os_version and ("-" in node.os_version or node.os_version.count(".") >= 2):
         kernel_ver = node.os_version
 
+    # 公网 IP 脱敏策略：拥有者始终见真实 IP；访客根据 share_ip_mode 脱敏或隐藏
+    raw_ip = node.public_ip
+    if read_only:
+        mode = (share_ip_mode or "mask").lower()
+        if mode == "hide":
+            display_ip = None
+        elif mode == "mask":
+            display_ip = mask_ip(raw_ip)
+        elif mode == "show":
+            display_ip = raw_ip
+        else:
+            display_ip = mask_ip(raw_ip)
+    else:
+        display_ip = raw_ip
+
     return {
         "id": node.id,
         "token": None if read_only else node.token,
         "name": node.name,
+        "public_ip": display_ip,
         "country": (node.country or "hk").lower(),
         "group_name": node.group_name or "主力",
         "tags": node.tags or [],
@@ -289,8 +360,10 @@ def get_nodes(
     groups_map: dict[str, int] = {}
     countries_map: dict[str, int] = {}
 
+    share_ip_mode = getattr(target_user, "monitor_share_ip_mode", "mask") or "mask"
+
     for n in nodes:
-        d = _node_to_dict(n, now, read_only=read_only)
+        d = _node_to_dict(n, now, read_only=read_only, share_ip_mode=share_ip_mode)
         node_list.append(d)
 
         # 统计
@@ -344,6 +417,7 @@ def get_nodes(
             "is_owner": not read_only,
             "public_enabled": target_user.monitor_public_enabled if not read_only else True,
             "share_token": None if read_only else target_user.monitor_share_token,
+            "share_ip_mode": share_ip_mode,
         },
     }
 
@@ -356,10 +430,17 @@ def create_node(
 ):
     """添加 VPS 监控节点。"""
     token = f"node_{secrets.token_urlsafe(32)}"
+    node_ip = None
+    if payload.public_ip and payload.public_ip.strip():
+        node_ip = is_valid_public_ip(payload.public_ip)
+        if not node_ip:
+            raise HTTPException(status_code=400, detail="公网 IP 地址格式不正确或属于保留/私网地址")
+
     node = UserNode(
         user_id=user.id,
         token=token,
         name=payload.name,
+        public_ip=node_ip,
         country=payload.country.lower(),
         group_name=payload.group_name or "主力",
         tags=payload.tags or [],
@@ -486,6 +567,15 @@ def update_node(
                 node.cycle_traffic_rx = 0
     if "is_public" in data:
         node.is_public = data["is_public"]
+    if "public_ip" in data:
+        raw_ip = data["public_ip"]
+        if raw_ip is None or (isinstance(raw_ip, str) and not raw_ip.strip()):
+            node.public_ip = None
+        elif isinstance(raw_ip, str):
+            validated_ip = is_valid_public_ip(raw_ip)
+            if not validated_ip:
+                raise HTTPException(status_code=400, detail="公网 IP 地址格式不正确或属于保留/私网地址")
+            node.public_ip = validated_ip
 
     db.commit()
     db.refresh(node)
@@ -516,7 +606,7 @@ def toggle_share(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """开启或关闭公开监控分享页面，并支持设置公开展示的节点。"""
+    """开启或关闭公开监控分享页面，并支持设置公开展示的节点及 IP 脱敏策略。"""
     target_enabled = True
     if payload is not None and payload.enabled is not None:
         target_enabled = payload.enabled
@@ -526,6 +616,9 @@ def toggle_share(
     if not user.monitor_share_token:
         user.monitor_share_token = secrets.token_urlsafe(16)
     user.monitor_public_enabled = target_enabled
+
+    if payload and payload.share_ip_mode is not None:
+        user.monitor_share_ip_mode = payload.share_ip_mode
 
     if payload and payload.public_node_ids is not None:
         target_ids = set(payload.public_node_ids)
@@ -537,6 +630,7 @@ def toggle_share(
     return {
         "public_enabled": user.monitor_public_enabled,
         "share_token": user.monitor_share_token,
+        "share_ip_mode": user.monitor_share_ip_mode or "mask",
     }
 
 
@@ -783,6 +877,7 @@ def load_demo_nodes(
         {
             "name": "香港 CMI",
             "country": "hk",
+            "public_ip": "103.152.220.18",
             "group_name": "主力",
             "tags": ["主力", "V4", "V6", "CMI", "三网优化"],
             "os_type": "debian",
@@ -810,6 +905,7 @@ def load_demo_nodes(
         {
             "name": "东京 软银",
             "country": "jp",
+            "public_ip": "118.238.203.45",
             "group_name": "主力",
             "tags": ["主力", "V4", "V6", "原生IP"],
             "os_type": "ubuntu",
@@ -837,6 +933,7 @@ def load_demo_nodes(
         {
             "name": "洛杉矶 CN2 GIA",
             "country": "us",
+            "public_ip": "23.94.102.88",
             "group_name": "主力",
             "tags": ["主力", "V4", "CN2 GIA"],
             "os_type": "debian",
@@ -864,6 +961,7 @@ def load_demo_nodes(
         {
             "name": "新加坡 9929",
             "country": "sg",
+            "public_ip": "194.36.172.55",
             "group_name": "主力",
             "tags": ["主力", "V4", "V6", "9929"],
             "os_type": "debian",
@@ -891,6 +989,7 @@ def load_demo_nodes(
         {
             "name": "法兰克福 大盘鸡",
             "country": "de",
+            "public_ip": "159.69.88.112",
             "group_name": "吃灰",
             "tags": ["吃灰", "V4", "V6", "存储"],
             "os_type": "alpine",
@@ -918,6 +1017,7 @@ def load_demo_nodes(
         {
             "name": "圣何塞 年付鸡",
             "country": "us",
+            "public_ip": "142.171.130.67",
             "group_name": "吃灰",
             "tags": ["吃灰", "V4", "4837"],
             "os_type": "ubuntu",
@@ -954,6 +1054,7 @@ def load_demo_nodes(
             user_id=user.id,
             token=token,
             name=cfg["name"],
+            public_ip=cfg.get("public_ip"),
             country=cfg["country"],
             group_name=cfg["group_name"],
             tags=cfg["tags"],
@@ -1121,6 +1222,7 @@ def get_node_history(
 
 @router.post("/report")
 def report_metrics(
+    request: Request,
     payload: NodeReport,
     x_node_token: str | None = Header(default=None),
     db: Session = Depends(get_db),
@@ -1136,6 +1238,16 @@ def report_metrics(
     now = utcnow()
     node.is_online = True
     node.last_seen_at = now
+
+    # ── 公网 IP 解析与记录（仅信任 Agent 端主动探测上报的公网 IP，保护用户手动设定的 IP 不被覆盖） ──
+    candidate_ip = is_valid_public_ip(payload.public_ip)
+    cached = node.cached_status or {}
+    last_agent_ip = cached.get("agent_public_ip")
+
+    if candidate_ip:
+        if not node.public_ip or node.public_ip == last_agent_ip:
+            node.public_ip = candidate_ip
+
     if payload.cpu_cores:
         node.cpu_cores = payload.cpu_cores
     if payload.os_type:
@@ -1260,6 +1372,7 @@ def report_metrics(
         "auto_update": payload.auto_update,
         "ping_stats": [p.model_dump() for p in payload.ping_stats],
         "ping_history": ping_history,
+        "agent_public_ip": candidate_ip or last_agent_ip,
     }
 
     # 写入快照表（节流：至少间隔 10 秒写入一条快照）
@@ -1327,7 +1440,7 @@ def get_agent_python_code() -> str:
     TODO: 针对 64MB/128MB 等极限小内存/NAT 机器，后续规划推出 Go 编写的单文件静态二进制 Agent，
           将常驻内存 (RSS) 压缩至 2-4MB 以内（详见 docs/TODO.md）。
     """
-    return f"""import os, sys, time, json, platform, subprocess, urllib.request, urllib.error, concurrent.futures, collections, py_compile
+    return f"""import os, sys, time, json, platform, subprocess, urllib.request, urllib.error, concurrent.futures, collections, py_compile, socket, ipaddress, threading
 
 AGENT_VERSION = "{CURRENT_AGENT_VERSION}"
 AUTO_UPDATE_ENABLED = os.environ.get("GOVPS_AUTO_UPDATE", "1").strip().lower() not in ("0", "false", "no", "off")
@@ -1430,6 +1543,99 @@ def check_and_apply_update(target_version=None):
                 os.remove(tmp_path)
             except Exception:
                 pass
+
+_cached_public_ip = None
+_ip_cache_time = 0.0
+_ip_fetching = False
+
+def is_valid_ip(val):
+    if not val or not isinstance(val, str):
+        return False
+    v = val.strip()
+    if len(v) > 64:
+        return False
+    try:
+        addr = ipaddress.ip_address(v)
+        return addr.is_global and not addr.is_multicast and not addr.is_reserved and not addr.is_loopback and not addr.is_link_local and not getattr(addr, "is_site_local", False)
+    except Exception:
+        return False
+
+def _fetch_public_ip_worker():
+    global _cached_public_ip, _ip_cache_time, _ip_fetching
+    now = time.time()
+    ip = None
+    try:
+        # 1. 优先通过 UDP socket 获取本地直连公网 IPv4
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.settimeout(2.0)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            if is_valid_ip(local_ip):
+                ip = local_ip
+        except Exception:
+            pass
+        finally:
+            try:
+                s.close()
+            except Exception:
+                pass
+
+        # 2. 若处于 NAT / 内网环境，查询高可用公网 IPv4 服务（HTTPS，限制读取 64 字节）
+        if not ip:
+            old_timeout = socket.getdefaulttimeout()
+            try:
+                socket.setdefaulttimeout(3.0)
+                for v4_url in ["https://api4.ipify.org", "https://v4.ident.me", "https://ipv4.icanhazip.com"]:
+                    try:
+                        req = urllib.request.Request(v4_url, headers={{"User-Agent": "GoVPS-Agent/" + AGENT_VERSION}})
+                        with urllib.request.urlopen(req, timeout=3) as res:
+                            val = res.read(64).decode("utf-8", errors="ignore").strip()
+                            if is_valid_ip(val):
+                                ip = val
+                                break
+                    except Exception:
+                        continue
+            finally:
+                socket.setdefaulttimeout(old_timeout)
+
+        # 3. 若纯 IPv6 VPS 无公网 IPv4，查询公网 IPv6（HTTPS，限制读取 64 字节）
+        if not ip:
+            old_timeout = socket.getdefaulttimeout()
+            try:
+                socket.setdefaulttimeout(3.0)
+                for v6_url in ["https://api6.ipify.org", "https://v6.ident.me", "https://ipv6.icanhazip.com"]:
+                    try:
+                        req = urllib.request.Request(v6_url, headers={{"User-Agent": "GoVPS-Agent/" + AGENT_VERSION}})
+                        with urllib.request.urlopen(req, timeout=3) as res:
+                            val = res.read(64).decode("utf-8", errors="ignore").strip()
+                            if is_valid_ip(val):
+                                ip = val
+                                break
+                    except Exception:
+                        continue
+            finally:
+                socket.setdefaulttimeout(old_timeout)
+
+        if ip:
+            _cached_public_ip = ip
+    except Exception:
+        pass
+    finally:
+        _ip_cache_time = now
+        _ip_fetching = False
+
+def get_public_ip():
+    global _cached_public_ip, _ip_cache_time, _ip_fetching
+    now = time.time()
+    if _cached_public_ip and (now - _ip_cache_time < 3600.0):
+        return _cached_public_ip
+    # 异步触发后台探测，心跳循环 0 阻塞，失败后冷却 300 秒
+    if not _ip_fetching and (now - _ip_cache_time >= 300.0):
+        _ip_fetching = True
+        t = threading.Thread(target=_fetch_public_ip_worker, daemon=True)
+        t.start()
+    return _cached_public_ip or ""
 
 def get_uptime():
     try:
@@ -1763,6 +1969,7 @@ def main():
                 "agent_version": AGENT_VERSION,
                 "auto_update": AUTO_UPDATE_ENABLED,
                 "ping_stats": cached_ping_stats,
+                "public_ip": get_public_ip(),
             }}
 
             req = urllib.request.Request(

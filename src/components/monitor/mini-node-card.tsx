@@ -50,6 +50,11 @@ export function MiniNodeCard({ node, onClick }: MiniNodeCardProps) {
               )}
             />
           </div>
+          {node.public_ip && (
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono truncate leading-tight">
+              {node.public_ip}
+            </div>
+          )}
           <div className="text-[10px] text-slate-400 font-mono mt-0.5 flex items-center gap-1.5">
             <span>CPU: {Math.round(metrics?.cpu_percent ?? 0)}%</span>
             <span>·</span>

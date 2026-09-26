@@ -120,10 +120,10 @@ def test_crud_and_reporting(client, test_user):
     res_json = report_res.json()
     assert res_json["status"] == "ok"
     assert res_json["upgrade_available"] is True
-    assert res_json["latest_version"] == "1.2.0"
+    assert res_json["latest_version"] == "1.3.0"
 
     # 3.1 上报已是最新版本，应无升级提示
-    report_payload["agent_version"] = "1.2.0"
+    report_payload["agent_version"] = "1.3.0"
     report_res2 = client.post(
         "/api/monitor/report",
         json=report_payload,
@@ -138,7 +138,7 @@ def test_crud_and_reporting(client, test_user):
     assert target["is_online"] is True
     assert target["metrics"]["cpu_percent"] == 15.5
     assert target["metrics"]["uptime_days"] == 5
-    assert target["metrics"]["agent_version"] == "1.2.0"
+    assert target["metrics"]["agent_version"] == "1.3.0"
     assert target["metrics"]["auto_update"] is True
 
     # 5. 历史曲线查询
@@ -167,7 +167,7 @@ def test_demo_and_share(client, test_user):
     data = list_res.json()
     assert data["summary"]["online_count"] >= 4
     assert data["summary"]["bandwidth"]["total_rate"] > 0
-    demo_node = data["nodes"][0]
+    demo_node = next(n for n in data["nodes"] if n.get("is_demo"))
 
     # 3. 开启公开分享
     share_res = client.post("/api/monitor/share?enabled=true", headers=headers)
@@ -223,7 +223,7 @@ def test_agent_script_distribution(client):
 def test_agent_python_distribution(client):
     res = client.get("/api/monitor/agent.py")
     assert res.status_code == 200
-    assert res.headers.get("X-Agent-Version") == "1.2.0"
+    assert res.headers.get("X-Agent-Version") == "1.3.0"
     assert "check_and_apply_update" in res.text
     assert "os.execv" in res.text
     assert "py_compile" in res.text

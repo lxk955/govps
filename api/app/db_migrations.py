@@ -99,6 +99,11 @@ def detect_current_revision(inspector) -> str | None:
                 ]
             ),
         ),
+        (
+            "0018_node_public_ip_and_share_mode",
+            lambda i: "monitor_share_ip_mode" in _column_names(i, "users")
+            and "public_ip" in _column_names(i, "user_nodes"),
+        ),
     ]
     reached: str | None = None
     for revision_id, present in stages:

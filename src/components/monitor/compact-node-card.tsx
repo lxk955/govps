@@ -40,20 +40,27 @@ export function CompactNodeCard({ node, onClick }: CompactNodeCardProps) {
       )}
     >
       {/* 头部 */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <FlagIcon country={node.country} className="w-4 h-3 rounded-2xs shrink-0" />
-          <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
-            {node.name}
-          </h4>
-          <span
-            className={cn(
-              "w-1.5 h-1.5 rounded-full shrink-0",
-              node.is_online ? "bg-emerald-500 animate-pulse" : "bg-rose-500",
-            )}
-          />
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <FlagIcon country={node.country} className="w-4 h-3 rounded-2xs shrink-0" />
+            <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
+              {node.name}
+            </h4>
+            <span
+              className={cn(
+                "w-1.5 h-1.5 rounded-full shrink-0",
+                node.is_online ? "bg-emerald-500 animate-pulse" : "bg-rose-500",
+              )}
+            />
+          </div>
+          {node.public_ip && (
+            <span className="font-mono text-[10px] text-slate-400 dark:text-slate-500 truncate">
+              {node.public_ip}
+            </span>
+          )}
         </div>
-        <div title={`操作系统: ${node.os_type.toUpperCase()}`} className="shrink-0">
+        <div title={`操作系统: ${node.os_type.toUpperCase()}`} className="shrink-0 mt-0.5">
           <OsLogo os={node.os_type} className="w-3.5 h-3.5 text-slate-400" />
         </div>
       </div>

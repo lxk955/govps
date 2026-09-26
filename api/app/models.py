@@ -153,6 +153,7 @@ class User(Base):
     currency_mode: Mapped[str] = mapped_column(String(20), default="original")
     monitor_public_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     monitor_share_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True, index=True)
+    monitor_share_ip_mode: Mapped[str] = mapped_column(String(20), default="mask", server_default="mask")
     monitor_expire_notify_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     monitor_expire_stages: Mapped[list] = mapped_column(JSON, default=lambda: [15, 7, 3, 1])
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -414,7 +415,7 @@ class UserNode(Base):
     cycle_traffic_reset_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_reported_rx: Mapped[int | None] = mapped_column(BigInteger, nullable=True, default=None)
     last_reported_tx: Mapped[int | None] = mapped_column(BigInteger, nullable=True, default=None)
-
+    public_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
     is_online: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False, index=True)

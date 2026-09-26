@@ -62,17 +62,24 @@ export function NodeListView({ nodes, onSelectNode }: NodeListViewProps) {
               >
                 {/* 节点 */}
                 <td className="py-3 px-4">
-                  <div className="flex items-center gap-2">
-                    <FlagIcon country={node.country} className="w-4 h-3 rounded-2xs shrink-0" />
-                    <span className="font-bold text-slate-900 dark:text-slate-100 font-sans">
-                      {node.name}
-                    </span>
-                    <span
-                      className={cn(
-                        "w-1.5 h-1.5 rounded-full shrink-0",
-                        node.is_online ? "bg-emerald-500 animate-pulse" : "bg-rose-500",
-                      )}
-                    />
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-2">
+                      <FlagIcon country={node.country} className="w-4 h-3 rounded-2xs shrink-0" />
+                      <span className="font-bold text-slate-900 dark:text-slate-100 font-sans">
+                        {node.name}
+                      </span>
+                      <span
+                        className={cn(
+                          "w-1.5 h-1.5 rounded-full shrink-0",
+                          node.is_online ? "bg-emerald-500 animate-pulse" : "bg-rose-500",
+                        )}
+                      />
+                    </div>
+                    {node.public_ip && (
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                        {node.public_ip}
+                      </span>
+                    )}
                   </div>
                 </td>
 

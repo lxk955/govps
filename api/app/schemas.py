@@ -107,6 +107,7 @@ class NodeCreate(BaseModel):
     expire_notify_stages: list[int] | None = None
     traffic_limit_gb: float | None = None
     traffic_direction: Literal["both", "out"] = "both"
+    public_ip: str | None = Field(default=None, max_length=64, description="VPS 公网 IP")
     is_public: bool = False
 
 
@@ -125,6 +126,7 @@ class NodeUpdate(BaseModel):
     expire_notify_stages: list[int] | None = None
     traffic_limit_gb: float | None = None
     traffic_direction: Literal["both", "out"] | None = None
+    public_ip: str | None = Field(default=None, max_length=64, description="VPS 公网 IP")
     cycle_traffic_calibrate_gb: float | None = Field(
         default=None,
         ge=0.0,
@@ -154,6 +156,7 @@ class MonitorSettingsUpdate(BaseModel):
 class ShareUpdate(BaseModel):
     enabled: bool = True
     public_node_ids: list[int] | None = None
+    share_ip_mode: Literal["mask", "hide", "show"] | None = None
 
 
 class PingMetric(BaseModel):
@@ -179,6 +182,7 @@ class NodeReport(BaseModel):
     net_rx_total: int = 0
     net_tx_total: int = 0
     uptime_seconds: int = 0
+    public_ip: str | None = Field(default=None, max_length=64, description="VPS 公网 IP")
     os_type: str | None = None
     os_version: str | None = None
     kernel_version: str | None = None

@@ -63,6 +63,7 @@ export function AddNodeDialog({
   const [trafficLimitGb, setTrafficLimitGb] = useState("");
   const [trafficDirection, setTrafficDirection] = useState<"both" | "out">("both");
   const [calibrateGb, setCalibrateGb] = useState("");
+  const [publicIp, setPublicIp] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -87,6 +88,7 @@ export function AddNodeDialog({
       );
       setTrafficDirection(editingNode.traffic_direction || "both");
       setCalibrateGb("");
+      setPublicIp(editingNode.public_ip || "");
     } else if (isOpen) {
       setName("");
       setCountry("hk");
@@ -101,6 +103,7 @@ export function AddNodeDialog({
       setTrafficLimitGb("");
       setTrafficDirection("both");
       setCalibrateGb("");
+      setPublicIp("");
     }
     setInstallCommand(null);
     setErrorMsg(null);
@@ -163,6 +166,7 @@ export function AddNodeDialog({
       expire_notify_stages: expireNotifyStages,
       traffic_limit_gb: trafficLimitGb ? parseFloat(trafficLimitGb) : null,
       traffic_direction: trafficDirection,
+      public_ip: publicIp.trim() || null,
       ...(calibrateGb.trim() ? { cycle_traffic_calibrate_gb: parseFloat(calibrateGb) } : {}),
     };
 
@@ -369,6 +373,16 @@ export function AddNodeDialog({
                   className="h-9 text-xs rounded-xl"
                 />
               </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-semibold">公网 IP 地址 (可选)</Label>
+              <Input
+                placeholder="探针将自动侦测，也可手动指定，如: 123.45.67.89"
+                value={publicIp}
+                onChange={(e) => setPublicIp(e.target.value)}
+                className="h-9 text-xs rounded-xl font-mono"
+              />
             </div>
 
             {/* 资产费用与流量 */}

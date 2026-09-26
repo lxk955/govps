@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { RefreshCw, Settings } from "lucide-react";
+import { Check, Copy, RefreshCw, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FlagIcon } from "./flag-icon";
 import { HistoryPoint, MonitorNode, NodeHistoryResponse } from "./types";
@@ -30,6 +30,7 @@ export function NodeDetailModal({
   const [showLossStrip, setShowLossStrip] = useState(true);
   const [smoothCurve, setSmoothCurve] = useState(true);
   const [activeTab, setActiveTab] = useState<"ping" | "resources">("ping");
+  const [ipCopied, setIpCopied] = useState(false);
 
   const nodeId = node?.id;
 
@@ -172,6 +173,27 @@ export function NodeDetailModal({
                     node.is_online ? "bg-emerald-500 animate-pulse" : "bg-rose-500",
                   )}
                 />
+                {node.public_ip && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (node.public_ip) {
+                        navigator.clipboard.writeText(node.public_ip);
+                        setIpCopied(true);
+                        setTimeout(() => setIpCopied(false), 1500);
+                      }
+                    }}
+                    title="点击复制 IP"
+                    className="inline-flex items-center gap-1 font-mono text-xs px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                  >
+                    <span>{node.public_ip}</span>
+                    {ipCopied ? (
+                      <Check className="w-3 h-3 text-emerald-500" />
+                    ) : (
+                      <Copy className="w-3 h-3 text-slate-400" />
+                    )}
+                  </button>
+                )}
               </DialogTitle>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400 font-mono mt-0.5">
                 <span>{distroDisplay}</span>

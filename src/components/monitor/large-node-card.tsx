@@ -1,8 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Calendar,
+  Check,
+  Copy,
   Cpu,
   Database,
   HardDrive,
@@ -23,6 +25,7 @@ interface LargeNodeCardProps {
 }
 
 export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
+  const [copied, setCopied] = useState(false);
   const { metrics } = node;
 
   const upRate = formatRate(metrics.net_tx_rate);
@@ -102,20 +105,43 @@ export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
           : "border-rose-200/60 dark:border-rose-950/60 opacity-85",
       )}
     >
-      {/* 头部：国旗、名称、状态点、操作系统图标 */}
+      {/* 头部：国旗、名称、状态点、公网IP、操作系统图标 */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <FlagIcon country={node.country} className="w-5 h-3.5 rounded-2xs object-cover shadow-2xs shrink-0" />
-          <h3 className="font-bold text-base text-slate-900 dark:text-slate-50 truncate">
-            {node.name}
-          </h3>
-          <span
-            className={cn(
-              "w-2 h-2 rounded-full shrink-0",
-              node.is_online ? "bg-emerald-500 animate-pulse" : "bg-rose-500",
-            )}
-            title={node.is_online ? "在线" : "离线"}
-          />
+        <div className="flex flex-col gap-1 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <FlagIcon country={node.country} className="w-5 h-3.5 rounded-2xs object-cover shadow-2xs shrink-0" />
+            <h3 className="font-bold text-base text-slate-900 dark:text-slate-50 truncate">
+              {node.name}
+            </h3>
+            <span
+              className={cn(
+                "w-2 h-2 rounded-full shrink-0",
+                node.is_online ? "bg-emerald-500 animate-pulse" : "bg-rose-500",
+              )}
+              title={node.is_online ? "在线" : "离线"}
+            />
+          </div>
+          {node.public_ip && (
+            <div
+              className="inline-flex items-center gap-1.5 self-start px-2 py-0.5 rounded-md bg-slate-100/90 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 border border-slate-200/60 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 font-mono text-[11px] transition-colors cursor-pointer group/ip"
+              title="点击复制 IP"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (node.public_ip) {
+                  navigator.clipboard.writeText(node.public_ip);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }
+              }}
+            >
+              <span>{node.public_ip}</span>
+              {copied ? (
+                <Check className="w-3 h-3 text-emerald-500" />
+              ) : (
+                <Copy className="w-3 h-3 text-slate-400 group-hover/ip:text-slate-600 dark:group-hover/ip:text-slate-200" />
+              )}
+            </div>
+          )}
         </div>
 
         {/* 操作系统徽标 */}

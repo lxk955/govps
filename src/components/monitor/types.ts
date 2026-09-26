@@ -56,6 +56,7 @@ export interface MonitorNode {
   cycle_reset_days_left?: number | null;
   cycle_reset_at?: string | null;
   remaining_gb: number | null;
+  public_ip?: string | null;
   is_online: boolean;
   is_demo: boolean;
   is_public: boolean;
@@ -123,6 +124,7 @@ export interface MonitorUserInfo {
   is_owner: boolean;
   public_enabled: boolean;
   share_token: string | null;
+  share_ip_mode?: "mask" | "hide" | "show";
 }
 
 export interface MonitorApiResponse {
