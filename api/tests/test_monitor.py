@@ -120,10 +120,10 @@ def test_crud_and_reporting(client, test_user):
     res_json = report_res.json()
     assert res_json["status"] == "ok"
     assert res_json["upgrade_available"] is True
-    assert res_json["latest_version"] == "1.3.0"
+    assert res_json["latest_version"] == "1.3.1"
 
     # 3.1 上报已是最新版本，应无升级提示
-    report_payload["agent_version"] = "1.3.0"
+    report_payload["agent_version"] = "1.3.1"
     report_res2 = client.post(
         "/api/monitor/report",
         json=report_payload,
@@ -138,7 +138,7 @@ def test_crud_and_reporting(client, test_user):
     assert target["is_online"] is True
     assert target["metrics"]["cpu_percent"] == 15.5
     assert target["metrics"]["uptime_days"] == 5
-    assert target["metrics"]["agent_version"] == "1.3.0"
+    assert target["metrics"]["agent_version"] == "1.3.1"
     assert target["metrics"]["auto_update"] is True
 
     # 5. 历史曲线查询
@@ -213,6 +213,10 @@ def test_agent_script_distribution(client):
     assert res.status_code == 200
     assert "GoVPS Monitor Agent" in res.text
     assert "python3" in res.text
+    assert "iputils-ping" in res.text
+    assert "Environment=LC_ALL=C" in res.text
+    assert "Environment=LANG=C" in res.text
+    assert "Environment=LANGUAGE=" in res.text
     assert "--uninstall" in res.text
     assert "--update" in res.text
     assert "-fsSL" in res.text
@@ -223,10 +227,14 @@ def test_agent_script_distribution(client):
 def test_agent_python_distribution(client):
     res = client.get("/api/monitor/agent.py")
     assert res.status_code == 200
-    assert res.headers.get("X-Agent-Version") == "1.3.0"
+    assert res.headers.get("X-Agent-Version") == "1.3.1"
     assert "check_and_apply_update" in res.text
     assert "os.execv" in res.text
     assert "py_compile" in res.text
+    assert 'ping_env["LC_ALL"] = "C"' in res.text
+    assert 'ping_env["LANG"] = "C"' in res.text
+    assert 'ping_env.pop("LANGUAGE", None)' in res.text
+    assert "env=ping_env" in res.text
     # 确保返回的代码在语法上完全有效
     compiled = compile(res.text, "govps_agent.py", "exec")
     assert compiled is not None

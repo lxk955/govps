@@ -38,7 +38,7 @@ from ..services.client_ip import client_ip
 
 router = APIRouter(prefix="/api/monitor", tags=["monitor"])
 
-CURRENT_AGENT_VERSION = "1.3.0"
+CURRENT_AGENT_VERSION = "1.3.1"
 SNAPSHOT_TTL = timedelta(hours=48)
 
 
@@ -1437,8 +1437,7 @@ def report_metrics(
 def get_agent_python_code() -> str:
     """返回纯标准库实现的最新版 Python 探针核心程序代码。
 
-    TODO: 针对 64MB/128MB 等极限小内存/NAT 机器，后续规划推出 Go 编写的单文件静态二进制 Agent，
-          将常驻内存 (RSS) 压缩至 2-4MB 以内（详见 docs/TODO.md）。
+    TODO: 后续若需扩展支持 OpenWrt/嵌入式设备或大量缺少 Python3 的极小内存机器，可规划推出 Go 静态二进制 Agent（详见 docs/TODO.md）。
     """
     return f"""import os, sys, time, json, platform, subprocess, urllib.request, urllib.error, concurrent.futures, collections, py_compile, socket, ipaddress, threading
 
@@ -1826,12 +1825,16 @@ def get_os_info():
 
 def run_ping_target(target):
     cmd = ["ping", "-c", str(PING_COUNT), "-i", "0.2", "-W", "1", target]
+    ping_env = dict(os.environ)
+    ping_env["LC_ALL"] = "C"
+    ping_env["LANG"] = "C"
+    ping_env.pop("LANGUAGE", None)
     try:
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5, env=ping_env)
         if res.returncode != 0 and "invalid" in res.stderr.lower():
             # 兼容极少数精简环境不支持浮点间隔的情况
             cmd = ["ping", "-c", str(PING_COUNT), "-W", "1", target]
-            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=8)
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=8, env=ping_env)
         out = res.stdout
         sent, recv, loss, rtt = PING_COUNT, 0, 100.0, 0.0
         for line in out.splitlines():
@@ -2143,24 +2146,47 @@ fi
 
 print_info "开始部署 GoVPS 探针 Agent..."
 
-# 检查 Python3 与网络工具
+# 检查 Python3
 if ! command -v python3 &>/dev/null; then
   print_warn "未检测到 python3，尝试通过包管理器安装..."
   if command -v apt-get &>/dev/null; then
-    apt-get update -y && apt-get install -y python3 iputils-ping curl
+    apt-get update -y && apt-get install -y python3 curl
   elif command -v dnf &>/dev/null; then
-    dnf install -y python3 iputils curl
+    dnf install -y python3 curl
   elif command -v yum &>/dev/null; then
-    yum install -y python3 iputils curl
+    yum install -y python3 curl
   elif command -v apk &>/dev/null; then
-    apk add --no-cache python3 iputils curl
+    apk add --no-cache python3 curl
   elif command -v pacman &>/dev/null; then
-    pacman -Sy --noconfirm python iputils curl
+    pacman -Sy --noconfirm python curl
   elif command -v zypper &>/dev/null; then
-    zypper --non-interactive install python3 iputils curl
+    zypper --non-interactive install python3 curl
   else
     print_err "未检测到支持的包管理器，请手动安装 Python 3 之后重试。"
     exit 1
+  fi
+fi
+
+# 独立检测并安装 ICMP ping 工具（避免精简镜像已预装 python3 但缺少 ping，包管理器异常时不阻断主流程）
+if ! command -v ping &>/dev/null; then
+  print_info "未检测到 ping 工具，尝试自动安装 iputils..."
+  if command -v apt-get &>/dev/null; then
+    (apt-get update -y && apt-get install -y iputils-ping) || print_warn "自动安装 iputils-ping 失败，延迟测速可能受限"
+  elif command -v dnf &>/dev/null; then
+    dnf install -y iputils || print_warn "自动安装 iputils 失败，延迟测速可能受限"
+  elif command -v yum &>/dev/null; then
+    yum install -y iputils || print_warn "自动安装 iputils 失败，延迟测速可能受限"
+  elif command -v apk &>/dev/null; then
+    apk add --no-cache iputils || print_warn "自动安装 iputils 失败，延迟测速可能受限"
+  elif command -v pacman &>/dev/null; then
+    pacman -Sy --noconfirm iputils || print_warn "自动安装 iputils 失败，延迟测速可能受限"
+  elif command -v zypper &>/dev/null; then
+    zypper --non-interactive install iputils || print_warn "自动安装 iputils 失败，延迟测速可能受限"
+  else
+    print_warn "未检测到支持的包管理器，请按需手动安装 iputils-ping。"
+  fi
+  if command -v ping &>/dev/null; then
+    print_ok "ping 工具已就绪！"
   fi
 fi
 
@@ -2192,6 +2218,9 @@ After=network.target
 
 [Service]
 Type=simple
+Environment=LC_ALL=C
+Environment=LANG=C
+Environment=LANGUAGE=
 Environment=GOVPS_TOKEN=${TOKEN}
 Environment=GOVPS_SERVER_URL=${SERVER_URL}
 Environment=GOVPS_AUTO_UPDATE=${AUTO_UPDATE}
@@ -2218,7 +2247,7 @@ EOF
 else
   # 降级 nohup 后台运行
   pkill -f "govps_agent.py" || true
-  GOVPS_TOKEN="$TOKEN" GOVPS_SERVER_URL="$SERVER_URL" GOVPS_AUTO_UPDATE="$AUTO_UPDATE" nohup "$PYTHON_BIN" "$INSTALL_DIR/govps_agent.py" >/dev/null 2>&1 &
+  LC_ALL=C LANG=C LANGUAGE= GOVPS_TOKEN="$TOKEN" GOVPS_SERVER_URL="$SERVER_URL" GOVPS_AUTO_UPDATE="$AUTO_UPDATE" nohup "$PYTHON_BIN" "$INSTALL_DIR/govps_agent.py" >/dev/null 2>&1 &
   print_ok "GoVPS Agent 已在后台启动！"
 fi
 
