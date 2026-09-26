@@ -70,6 +70,8 @@ export interface RenewActionNode {
   current_expires_at: string | null;
   suggested_next_expires_at: string | null;
   is_muted: boolean;
+  cycle_stale?: boolean;
+  token_cycle_expires_at?: string;
 }
 
 export interface NotificationChannel {

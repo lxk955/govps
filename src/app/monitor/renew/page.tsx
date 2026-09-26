@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FlagIcon } from "@/components/monitor/flag-icon";
 import { RenewActionNode } from "@/components/monitor/types";
+import { addMonthsClamped } from "@/lib/date-utils";
 
 const CYCLE_MAP: Record<string, string> = {
   monthly: "按月付",
@@ -84,13 +85,10 @@ function RenewActionContent() {
     fetchNode();
   }, [token]);
 
-  // 快捷调整月份
+  // 快捷调整月份：永远以当前已有到期日（或今日）作为推算基点，避免在 newDate 上复合叠加导致如年付多出1个月
   const handleQuickAddMonths = (monthsToAdd: number) => {
-    const baseStr = newDate || node?.current_expires_at?.slice(0, 10) || new Date().toISOString().slice(0, 10);
-    const d = new Date(baseStr);
-    if (isNaN(d.getTime())) return;
-    d.setMonth(d.getMonth() + monthsToAdd);
-    setNewDate(d.toISOString().slice(0, 10));
+    const baseStr = node?.current_expires_at?.slice(0, 10) || new Date().toISOString().slice(0, 10);
+    setNewDate(addMonthsClamped(baseStr, monthsToAdd));
   };
 
   // 撤销 / 恢复静音
@@ -244,7 +242,29 @@ function RenewActionContent() {
 
           <div className="p-5 sm:p-6 space-y-6">
             {/* 状态板块：本周期静音反馈 */}
-            {isMuted ? (
+            {node.cycle_stale ? (
+              <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+                      该节点已更新至新周期
+                      <Badge className="bg-blue-600 text-white text-[10px] h-4.5 px-1.5 font-normal">
+                        正常监控中
+                      </Badge>
+                    </h3>
+                    <p className="text-xs text-blue-700/90 dark:text-blue-300/80 mt-1 leading-relaxed">
+                      节点当前到期日已更新为 <strong className="font-mono">{currentExpDateStr}</strong>。本次邮件链接针对的是上一周期（{node.token_cycle_expires_at ? node.token_cycle_expires_at.slice(0, 10) : "历史周期"}），新周期未被静音，将正常按期提醒。
+                    </p>
+                  </div>
+                </div>
+                <Button asChild size="sm" className="shrink-0 text-xs h-8 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">
+                  <Link href="/monitor">前往探针面板</Link>
+                </Button>
+              </div>
+            ) : isMuted ? (
               <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
@@ -312,7 +332,7 @@ function RenewActionContent() {
             )}
 
             {/* 设置下次到期日 */}
-            {saveSuccessDate ? (
+            {node.cycle_stale ? null : saveSuccessDate ? (
               <div className="p-5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/60 text-center space-y-3">
                 <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 mx-auto flex items-center justify-center">
                   <CheckCircle2 className="w-6 h-6" />

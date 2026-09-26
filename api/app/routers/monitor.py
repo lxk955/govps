@@ -544,24 +544,27 @@ def get_renew_action_node(
     token: str = Query(..., description="安全续费 Action Token"),
     db: Session = Depends(get_db),
 ):
-    """免登录查看续费节点详情并自动执行本周期静音。"""
+    """免登录查看续费节点详情并自动执行本周期静音。若节点已更新过到期日，旧链接不会误静音新周期。"""
     from ..services.notifications.expiration_checker import verify_renewal_token
 
-    payload = verify_renewal_token(token)
-    if not payload:
+    payload, node = verify_renewal_token(token, db=db)
+    if not payload or not node:
         raise HTTPException(status_code=400, detail="续费操作链接无效或已过期，请重新登录探针面板操作。")
 
-    node_id = payload.get("nid")
-    user_id = payload.get("uid")
-    node = db.scalar(select(UserNode).where(UserNode.id == node_id))
-    if not node or node.user_id != user_id:
+    if node.user_id != payload.get("uid"):
         raise HTTPException(status_code=404, detail="未找到对应的探针节点。")
 
-    # 点击通知链接即静音本周期提醒
-    if not node.expire_muted:
-        node.expire_muted = True
-        db.commit()
-        db.refresh(node)
+    node_current_exp = to_iso_utc(node.expires_at) or ""
+    token_cycle_exp = payload.get("nexp") or ""
+    # 判断当前链接是否属于已过期的旧周期（即用户已经更新过该节点的到期日）
+    is_stale_cycle = bool(node_current_exp and token_cycle_exp and token_cycle_exp != node_current_exp)
+
+    # 仅当 token 属于当前未续费周期时才执行静音；若节点已被更新，绝对不能误将新周期静音！
+    if not is_stale_cycle:
+        if not node.expire_muted:
+            node.expire_muted = True
+            db.commit()
+            db.refresh(node)
 
     suggested_next = None
     if node.expires_at:
@@ -578,6 +581,8 @@ def get_renew_action_node(
         "current_expires_at": to_iso_utc(node.expires_at),
         "suggested_next_expires_at": suggested_next,
         "is_muted": bool(node.expire_muted),
+        "cycle_stale": is_stale_cycle,
+        "token_cycle_expires_at": token_cycle_exp,
     }
 
 
@@ -589,13 +594,17 @@ def unmute_renew_action(
     """撤销静音：恢复本周期的到期阶段提醒。"""
     from ..services.notifications.expiration_checker import verify_renewal_token
 
-    payload = verify_renewal_token(token)
-    if not payload:
+    payload, node = verify_renewal_token(token, db=db)
+    if not payload or not node:
         raise HTTPException(status_code=400, detail="操作链接无效或已过期。")
 
-    node = db.scalar(select(UserNode).where(UserNode.id == payload.get("nid")))
-    if not node or node.user_id != payload.get("uid"):
+    if node.user_id != payload.get("uid"):
         raise HTTPException(status_code=404, detail="未找到对应的探针节点。")
+
+    node_current_exp = to_iso_utc(node.expires_at) or ""
+    token_cycle_exp = payload.get("nexp") or ""
+    if node_current_exp and token_cycle_exp and token_cycle_exp != node_current_exp:
+        raise HTTPException(status_code=400, detail="该节点已更新为新周期到期日，旧周期的链接已失效。")
 
     node.expire_muted = False
     db.commit()
@@ -611,13 +620,17 @@ def update_date_renew_action(
     """通过 Action Token 快速更新下次到期日，自动解除静音并开启新周期。"""
     from ..services.notifications.expiration_checker import verify_renewal_token
 
-    payload = verify_renewal_token(token)
-    if not payload:
+    payload, node = verify_renewal_token(token, db=db)
+    if not payload or not node:
         raise HTTPException(status_code=400, detail="操作链接无效或已过期。")
 
-    node = db.scalar(select(UserNode).where(UserNode.id == payload.get("nid")))
-    if not node or node.user_id != payload.get("uid"):
+    if node.user_id != payload.get("uid"):
         raise HTTPException(status_code=404, detail="未找到对应的探针节点。")
+
+    node_current_exp = to_iso_utc(node.expires_at) or ""
+    token_cycle_exp = payload.get("nexp") or ""
+    if node_current_exp and token_cycle_exp and token_cycle_exp != node_current_exp:
+        raise HTTPException(status_code=400, detail="该节点已更新为新周期到期日，如需再次修改请前往探针面板。")
 
     date_str = body.expires_at.strip()
     if not date_str:

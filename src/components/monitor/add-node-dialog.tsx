@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MonitorNode } from "./types";
+import { addMonthsClamped } from "@/lib/date-utils";
 
 const COUNTRIES: { value: string; label: string }[] = [
   { value: "hk", label: "🇭🇰 香港 (HK)" },
@@ -101,10 +102,7 @@ export function AddNodeDialog({
   }, [isOpen, editingNode]);
 
   const handleQuickExpire = (months: number) => {
-    const base = expiresAt ? new Date(expiresAt) : new Date();
-    const d = isNaN(base.getTime()) ? new Date() : base;
-    d.setMonth(d.getMonth() + months);
-    setExpiresAt(d.toISOString().split("T")[0]);
+    setExpiresAt(addMonthsClamped(expiresAt || "", months));
   };
 
   const handleCycleCalc = () => {
@@ -116,9 +114,7 @@ export function AddNodeDialog({
       triennially: 36,
     };
     const m = monthsMap[billingCycle] || 1;
-    const d = new Date();
-    d.setMonth(d.getMonth() + m);
-    setExpiresAt(d.toISOString().split("T")[0]);
+    setExpiresAt(addMonthsClamped("", m));
   };
 
   const toggleStage = (stage: number) => {

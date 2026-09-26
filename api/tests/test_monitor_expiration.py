@@ -196,6 +196,11 @@ def test_send_test_expiration_email(client, test_user):
         call_kwargs = mock_send.call_args[1]
         assert "测试" in call_kwargs["subject"]
         assert call_kwargs["to"] == test_user.email
+        html = call_kwargs["html"]
+        # 测试邮件安全保障：不带可写 token，不带「我已续费」Action 按钮
+        assert "/monitor/renew?token=" not in html
+        assert "我已续费" not in html
+        assert "/monitor" in html
 
 
 def test_renewal_token_and_actions(client, test_user):
@@ -225,20 +230,29 @@ def test_renewal_token_and_actions(client, test_user):
         db.refresh(node)
         node_id = node.id
 
-    # 1. 验证 Token 生成与校验
+    # 1. 验证 Token 生成与节点私钥 HMAC 签名校验
     with Session(engine) as db:
         db_node = db.get(UserNode, node_id)
         token = generate_renewal_token(db_node)
         assert token and "." in token
 
-        payload = verify_renewal_token(token)
+        payload, verified_node = verify_renewal_token(token, db=db)
         assert payload is not None
         assert payload["nid"] == node_id
         assert payload["uid"] == test_user.id
         assert payload["act"] == "renew"
+        assert verified_node is not None
+        assert verified_node.id == node_id
 
-        # 篡改 token 应当失败
-        assert verify_renewal_token(token + "tampered") is None
+        # 篡改 token 签名应当失败
+        assert verify_renewal_token(token + "tampered", db=db) == (None, None)
+
+        # 节点私钥不一致时也应当校验失败（防伪造攻击）
+        db_node.token = "changed_secret_node_token"
+        db.commit()
+        assert verify_renewal_token(token, db=db) == (None, None)
+        db_node.token = "test_renew_action_node_token"
+        db.commit()
 
     # 2. 测试 GET /api/monitor/renew-action 免密访问并自动静音本周期
     res = client.get(f"/api/monitor/renew-action?token={token}")
@@ -248,6 +262,7 @@ def test_renewal_token_and_actions(client, test_user):
     assert data["name"] == "续费测试服务器"
     assert data["billing_cycle"] == "annually"
     assert data["is_muted"] is True
+    assert data["cycle_stale"] is False
     assert data["suggested_next_expires_at"] is not None
 
     # 验证数据库中确实被静音
@@ -286,5 +301,31 @@ def test_renewal_token_and_actions(client, test_user):
         db_node = db.get(UserNode, node_id)
         assert db_node.expire_muted is False
         assert db_node.notified_expire_stages == []
+
+    # 5. 防误静音测试（重要漏洞修复）：再次打开旧邮件中的同一链接
+    # 此时节点已进入新周期，旧 token 访问绝对不能把新周期静音！
+    stale_get_res = client.get(f"/api/monitor/renew-action?token={token}")
+    assert stale_get_res.status_code == 200
+    stale_data = stale_get_res.json()
+    assert stale_data["cycle_stale"] is True
+    assert stale_data["is_muted"] is False  # 必须保持 False，新周期未静音
+
+    with Session(engine) as db:
+        db_node = db.get(UserNode, node_id)
+        assert db_node.expire_muted is False  # 数据库中保持未静音
+
+    # 尝试用旧周期的 token 执行静音/更新，应直接被拒绝（400）
+    stale_unmute = client.post(f"/api/monitor/renew-action/unmute?token={token}")
+    assert stale_unmute.status_code == 400
+
+    stale_update = client.post(
+        f"/api/monitor/renew-action/update-date?token={token}",
+        json={"expires_at": "2028-01-01"},
+    )
+    assert stale_update.status_code == 400
+
+    # 清理
+    with Session(engine) as db:
+        db_node = db.get(UserNode, node_id)
         db.delete(db_node)
         db.commit()

@@ -20,15 +20,19 @@ from .dispatcher import dispatcher
 logger = logging.getLogger(__name__)
 
 
-def _get_signing_key() -> bytes:
-    key_str = (settings.TASK_TOKEN or "govps-secret-task-token").strip()
-    return hashlib.sha256(key_str.encode("utf-8")).digest()
+def _get_signing_key(node_token: str = "") -> bytes:
+    server_secret = (settings.TASK_TOKEN or "govps-secret-task-token").strip()
+    # 结合服务器 TASK_TOKEN 与节点专属的 64 位私密 node.token，彻底防止默认 TASK_TOKEN (如 change-me) 被外部伪造签名
+    combined = f"{server_secret}:{node_token}"
+    return hashlib.sha256(combined.encode("utf-8")).digest()
 
 
 def generate_renewal_token(node: UserNode, valid_days: int = 30) -> str:
     """生成 30 天有效的免密安全续费 Token，绑定 node.id 与 node.expires_at。"""
+    from ...models import to_iso_utc
+
     exp_ts = int(time.time()) + valid_days * 86400
-    node_exp_str = node.expires_at.isoformat() if node.expires_at else ""
+    node_exp_str = to_iso_utc(node.expires_at) or ""
     payload = {
         "nid": node.id,
         "uid": node.user_id,
@@ -39,42 +43,56 @@ def generate_renewal_token(node: UserNode, valid_days: int = 30) -> str:
     payload_bytes = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     payload_b64 = base64.urlsafe_b64encode(payload_bytes).decode("ascii").rstrip("=")
 
-    key = _get_signing_key()
+    key = _get_signing_key(node.token)
     sig = hmac.new(key, payload_b64.encode("ascii"), hashlib.sha256).digest()
     sig_b64 = base64.urlsafe_b64encode(sig).decode("ascii").rstrip("=")
     return f"{payload_b64}.{sig_b64}"
 
 
-def verify_renewal_token(token: str) -> dict | None:
-    """验证续费 Token，校验签名与过期时间。若合法返回 payload，否则返回 None。"""
+def verify_renewal_token(token: str, db: Session | None = None) -> tuple[dict | None, UserNode | None]:
+    """验证续费 Token。
+    
+    校验签名与过期时间。若提供 db，则还会加载 node 并用 node.token 强校验签名防伪造。
+    若合法返回 (payload, node)，否则返回 (None, None)。
+    """
     if not token or "." not in token:
-        return None
+        return None, None
     try:
         parts = token.strip().split(".")
         if len(parts) != 2:
-            return None
+            return None, None
         payload_b64, sig_b64 = parts[0], parts[1]
 
         pad_p = "=" * ((4 - len(payload_b64) % 4) % 4)
         pad_s = "=" * ((4 - len(sig_b64) % 4) % 4)
 
-        key = _get_signing_key()
-        expected_sig = hmac.new(key, payload_b64.encode("ascii"), hashlib.sha256).digest()
-        actual_sig = base64.urlsafe_b64decode(sig_b64 + pad_s)
-
-        if not hmac.compare_digest(expected_sig, actual_sig):
-            return None
-
         payload_bytes = base64.urlsafe_b64decode(payload_b64 + pad_p)
         payload = json.loads(payload_bytes.decode("utf-8"))
 
         if payload.get("act") != "renew":
-            return None
+            return None, None
         if payload.get("exp", 0) < int(time.time()):
-            return None
-        return payload
+            return None, None
+
+        node = None
+        node_token = ""
+        if db is not None:
+            node_id = payload.get("nid")
+            node = db.get(UserNode, node_id)
+            if not node:
+                return None, None
+            node_token = node.token or ""
+
+        key = _get_signing_key(node_token)
+        expected_sig = hmac.new(key, payload_b64.encode("ascii"), hashlib.sha256).digest()
+        actual_sig = base64.urlsafe_b64decode(sig_b64 + pad_s)
+
+        if not hmac.compare_digest(expected_sig, actual_sig):
+            return None, None
+
+        return payload, node
     except Exception:
-        return None
+        return None, None
 
 # 国家简码到常见 Emoji 国旗映射
 COUNTRY_FLAGS: dict[str, str] = {
@@ -116,12 +134,20 @@ def render_expiration_email(
         exp_date_str = exp.strftime("%Y-%m-%d %H:%M UTC")
 
     monitor_url = f"{settings.PUBLIC_API_URL.rstrip('/')}/monitor"
-    renewal_token = generate_renewal_token(node) if (node and getattr(node, "id", None)) else ""
-    renew_url = (
-        f"{settings.PUBLIC_API_URL.rstrip('/')}/monitor/renew?token={renewal_token}"
-        if renewal_token
-        else monitor_url
-    )
+    if is_test:
+        renewal_token = ""
+        renew_url = ""
+    else:
+        renewal_token = (
+            generate_renewal_token(node)
+            if (node and getattr(node, "id", None) and getattr(node, "token", None))
+            else ""
+        )
+        renew_url = (
+            f"{settings.PUBLIC_API_URL.rstrip('/')}/monitor/renew?token={renewal_token}"
+            if renewal_token
+            else monitor_url
+        )
 
     if is_test:
         subject = f"【测试】GoVPS 探针 · VPS 到期提醒连通性测试"
@@ -147,6 +173,37 @@ def render_expiration_email(
         badge_bg = "#eab308"
         headline = f"📅 您的 VPS 节点将在 {days_left} 天后到期"
         subhead = f"检测到节点「{node_name}」设置了到期日，根据您的提醒配置特向您发送通知。"
+
+    if is_test:
+        action_buttons_html = f"""
+          <div style="text-align: center; margin: 28px 0 16px 0;">
+            <a href="{monitor_url}"
+               style="display: inline-block; padding: 12px 32px; background-color: #2563eb; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px; border-radius: 10px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);">
+              前往探针面板管理
+            </a>
+          </div>
+          <p style="text-align: center; font-size: 12px; color: #94a3b8; margin: 0;">
+            这是一封连通性测试邮件，未附带节点续费操作链接，不会修改任何节点状态。
+          </p>
+        """
+    else:
+        action_buttons_html = f"""
+          <div style="text-align: center; margin: 28px 0 16px 0;">
+            <a href="{renew_url}"
+               style="display: inline-block; padding: 13px 36px; background-color: #16a34a; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(22, 163, 74, 0.25);">
+              ✅ 我已续费 / 静音本期提醒
+            </a>
+            <div style="margin-top: 14px;">
+              <a href="{monitor_url}"
+                 style="font-size: 13px; color: #64748b; text-decoration: underline;">
+                前往探针面板管理 &rarr;
+              </a>
+            </div>
+          </div>
+          <p style="text-align: center; font-size: 12px; color: #94a3b8; margin: 0;">
+            点击「我已续费」将停止本到期周期的后续催促邮件，并可在打开的页面中设置下次续费到期日。
+          </p>
+        """
 
     html = f"""
     <!DOCTYPE html>
@@ -200,21 +257,7 @@ def render_expiration_email(
           </div>
 
           <!-- 操作按钮 -->
-          <div style="text-align: center; margin: 28px 0 16px 0;">
-            <a href="{renew_url}"
-               style="display: inline-block; padding: 13px 36px; background-color: #16a34a; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(22, 163, 74, 0.25);">
-              ✅ 我已续费 / 静音本期提醒
-            </a>
-            <div style="margin-top: 14px;">
-              <a href="{monitor_url}"
-                 style="font-size: 13px; color: #64748b; text-decoration: underline;">
-                前往探针面板管理 &rarr;
-              </a>
-            </div>
-          </div>
-          <p style="text-align: center; font-size: 12px; color: #94a3b8; margin: 0;">
-            点击「我已续费」将停止本到期周期的后续催促邮件，并可在打开的页面中设置下次续费到期日。
-          </p>
+          {action_buttons_html}
         </div>
 
         <!-- 页脚 -->
@@ -321,26 +364,21 @@ def check_expiring_nodes(db: Session) -> dict:
 
 
 def send_test_expiration_email(db: Session, user: User) -> tuple[bool, str | None]:
-    """向目标用户发送一封用于验证连通性的测试到期提醒邮件。"""
-    # 查找用户的某个真实节点作为样例，若没有则构造虚拟样例
-    sample_node = db.scalar(
-        select(UserNode).where(UserNode.user_id == user.id).order_by(UserNode.id.desc())
+    """向目标用户发送一封用于验证连通性的测试到期提醒邮件（纯虚拟样例，绝不绑定真实节点操作链接）。"""
+    sample_node = UserNode(
+        id=None,
+        token="",
+        user_id=user.id,
+        name="示例 VPS (连通性测试)",
+        country="hk",
+        group_name="主力演示",
+        billing_cycle="monthly",
+        price=29.99,
+        currency="USD",
+        traffic_limit_gb=1024,
+        os_type="Debian 12",
+        expires_at=datetime.now(timezone.utc),
     )
-
-    if not sample_node:
-        # 虚拟样例节点（不写入数据库）
-        sample_node = UserNode(
-            user_id=user.id,
-            name="示例 VPS (测试节点)",
-            country="hk",
-            group_name="主力演示",
-            billing_cycle="monthly",
-            price=29.99,
-            currency="USD",
-            traffic_limit_gb=1024,
-            os_type="Debian 12",
-            expires_at=datetime.now(timezone.utc),
-        )
 
     subject, html = render_expiration_email(
         node=sample_node,
