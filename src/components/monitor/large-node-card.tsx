@@ -54,6 +54,13 @@ export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
       ? Math.round((metrics.disk_used_bytes / metrics.disk_total_bytes) * 100)
       : 0;
 
+  // CPU 百分比
+  const cpuPercent = typeof metrics?.cpu_percent === "number" ? metrics.cpu_percent : 0;
+
+  // 负载百分比（按核心数归一化，如 1 核负载 1.0 时为 100%）
+  const cores = node.cpu_cores || 1;
+  const loadPercent = Math.min(100, Math.round(((metrics?.load_1 ?? 0) / cores) * 100));
+
   // 周期流量使用与百分比
   const cycleUsedBytes =
     typeof node.cycle_traffic_used_bytes === "number"
@@ -69,13 +76,6 @@ export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
           ),
         )
       : 0;
-
-  const trafficMeterColor =
-    trafficPercent >= 90
-      ? "bg-rose-500 dark:bg-rose-400"
-      : trafficPercent >= 75
-        ? "bg-amber-500 dark:bg-amber-400"
-        : "bg-emerald-500 dark:bg-emerald-400";
 
   // 计费周期展示
   const cycleLabels: Record<string, string> = {
@@ -195,9 +195,8 @@ export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
             {node.cpu_cores || 1} 核
           </div>
           <SegmentedMeter
-            percent={metrics?.cpu_percent ?? 0}
+            percent={cpuPercent}
             totalBlocks={14}
-            colorClass="bg-blue-600 dark:bg-blue-500"
           />
         </div>
 
@@ -218,7 +217,6 @@ export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
           <SegmentedMeter
             percent={ramPercent}
             totalBlocks={14}
-            colorClass="bg-indigo-600 dark:bg-indigo-400"
           />
         </div>
 
@@ -239,7 +237,6 @@ export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
           <SegmentedMeter
             percent={diskPercent}
             totalBlocks={14}
-            colorClass="bg-amber-500 dark:bg-amber-400"
           />
         </div>
 
@@ -258,9 +255,8 @@ export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
             {(metrics?.load_5 ?? 0).toFixed(2)} / {(metrics?.load_15 ?? 0).toFixed(2)}
           </div>
           <SegmentedMeter
-            percent={Math.min(100, (metrics?.load_1 ?? 0) * 50)}
+            percent={loadPercent}
             totalBlocks={14}
-            colorClass="bg-rose-500 dark:bg-rose-400"
           />
         </div>
       </div>
@@ -373,7 +369,6 @@ export function LargeNodeCard({ node, onClick }: LargeNodeCardProps) {
             <SegmentedMeter
               percent={trafficPercent}
               totalBlocks={24}
-              colorClass={trafficMeterColor}
               size="sm"
             />
           </div>

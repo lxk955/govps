@@ -6,23 +6,30 @@ import { cn } from "@/lib/utils";
 interface SegmentedMeterProps {
   percent: number; // 0 ~ 100
   totalBlocks?: number; // 默认 16 格
-  colorClass?: string; // 填充色
+  colorClass?: string; // 填充色，未指定时按使用率动态展示：<75% 绿、75-90% 黄、>=90% 红
   bgClass?: string; // 底色
   className?: string;
   size?: "sm" | "md";
   minBlocks?: number; // 接近 0% 时的最少显示格数，默认为 1（避免看起来像数据异常）
 }
 
+export function getMeterColor(percent: number): string {
+  if (percent >= 90) return "bg-rose-500 dark:bg-rose-400";
+  if (percent >= 75) return "bg-amber-500 dark:bg-amber-400";
+  return "bg-emerald-500 dark:bg-emerald-400";
+}
+
 export function SegmentedMeter({
   percent,
   totalBlocks = 16,
-  colorClass = "bg-indigo-500 dark:bg-indigo-400",
+  colorClass,
   bgClass = "bg-slate-100 dark:bg-slate-800",
   className,
   size = "md",
   minBlocks = 1,
 }: SegmentedMeterProps) {
   const safePercent = Math.max(0, Math.min(100, isNaN(percent) ? 0 : percent));
+  const effectiveColor = colorClass || getMeterColor(safePercent);
   const calculatedBlocks = Math.round((safePercent / 100) * totalBlocks);
   // 当接近或等于 0% 时，至少保证显示 minBlocks 格（避免完全空白看起来像未加载或异常）
   const filledBlocks = Math.min(
@@ -48,7 +55,7 @@ export function SegmentedMeter({
             key={i}
             className={cn(
               "flex-1 h-full rounded-[1.5px] transition-colors duration-300",
-              isFilled ? colorClass : bgClass,
+              isFilled ? effectiveColor : bgClass,
             )}
           />
         );
