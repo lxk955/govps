@@ -284,7 +284,8 @@ Do not claim that a change is verified unless the relevant checks were actually 
 - For major architectural decisions, explain important trade-offs before making the change.
 - After implementation, review the changed code.
 - Run appropriate checks for the affected functionality.
-- Before pushing to remote, run a separate read-only `grok` review in this repository and wait for it to finish (e.g. `grok -p "..."`). Specify the exact git range in the prompt (uncommitted changes or `origin/main...HEAD`). The review process must be read-only: do not edit files, commit, push, or start recursive grok instances. Fix confirmed correctness/security bugs, record rationales for any declined suggestions, and limit review to at most two rounds.
-- If `grok` is unavailable or the review fails to complete, stop, report the blocker to the user, and keep commits unpushed.
+- Before pushing to remote, run a separate read-only `grok` review in this repository and wait for it to finish (e.g. `grok -p "用户需求: <USER_PROMPT>. 请审查当前未提交改动是否准确满足了用户需求，是否存在正确性、安全性、响应式或边界问题。本次审查为只读审查。"`). Specify the exact git range in the prompt (uncommitted changes or `origin/main...HEAD`). The review process must be read-only: do not edit files, commit, push, or start recursive grok instances. Fix confirmed correctness/security bugs, record rationales for any declined suggestions, and limit review to at most two rounds.
+- When Grok review has no objections (达成一致/无异议), proceed directly with commit and push without needing additional confirmation.
+- If `grok` is unavailable (e.g. API quota/balance exhausted) or the review fails to complete, stop, report the blocker to the user, and keep commits unpushed.
 - After pushing commits to `main`, track the GitHub Actions deployment workflow until it finishes. If deployment fails, inspect the failure logs immediately, resolve the issue, and ensure production deployment is successful and health checks pass.
 - Report what was changed, what was actually verified, and any remaining issues.
