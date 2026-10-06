@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, Info, ShieldCheck, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info, XCircle } from "lucide-react";
 
 import type { IpCheckResult } from "@/lib/api/endpoints";
 
@@ -182,9 +182,8 @@ export function IpReportView({
               </li>
             ))}
           </ul>
-          <p className="text-muted-foreground mt-3 flex items-start gap-1 text-xs leading-relaxed">
-            <ShieldCheck aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            以上为基于 IP 属性的模型预测，实际可用性以平台实时风控为准。
+          <p className="text-muted-foreground mt-3 text-xs">
+            按 IP 属性预测，以平台实时结果为准。
           </p>
         </Panel>
       )}

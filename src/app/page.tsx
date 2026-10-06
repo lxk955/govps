@@ -238,13 +238,6 @@ export default async function HomePage({ searchParams }: PageProps) {
         {items.length > 0 && (
           <Pagination state={state} total={total} freshness={timeAgo(freshness)} />
         )}
-
-        {items.length > 0 && (
-          <p className="text-muted-foreground mt-4 text-xs leading-relaxed">
-            价格为商家原币标价，「折年」为同币种按付款周期折算，跨币种统一折算为美元参考价。
-            数据更新时间以卡片标注为准，库存与价格以商家页面为准。
-          </p>
-        )}
       </section>
     </div>
   );

@@ -12,7 +12,8 @@ export const metadata: Metadata = {
 
 /**
  * IP 检测板块框架（1:1 复刻旧站 views/ip/IpLayout.vue）：
- * .ipcx 命名空间 + sticky 二级导航 + 1080px 版心 + 板块页脚。
+ * .ipcx 命名空间 + sticky 二级导航 + 1080px 版心。
+ * 页脚说明走全站 SiteFooter，这里不再另加一层。
  *
  * `-mx-4 -my-6` 用于抵消全站 main 的 px-4/py-6，让板块背景铺满视口宽度
  * （旧站 .ipcx 自带 background，独立成一套视觉）。
@@ -28,12 +29,7 @@ export default function IpLayout({ children }: { children: React.ReactNode }) {
           <IpNav />
         </div>
       </div>
-      <div className="wrap">
-        {children}
-        <footer className="foot">
-          GoVPS · IP 归属、网络类型、威胁与代理情报、纯净度评分 —— 数据仅供参考
-        </footer>
-      </div>
+      <div className="wrap">{children}</div>
     </div>
   );
 }

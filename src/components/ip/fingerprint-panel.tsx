@@ -116,9 +116,8 @@ export function FingerprintPanel() {
               </div>
             ))}
           </dl>
-          <p className="text-muted-foreground mt-4 border-t pt-3 text-xs leading-relaxed">
-            缓解方式：使用 Firefox 的 resistFingerprinting、Brave 的随机化指纹或 Tor Browser；
-            常规浏览器的扩展级缓解（如 Canvas Blocker）也能显著提高追踪成本。
+          <p className="text-muted-foreground mt-3 text-xs">
+            指纹只在本地计算。可用 Firefox、Brave 或 Tor 降低被追踪的可能。
           </p>
         </div>
       )}

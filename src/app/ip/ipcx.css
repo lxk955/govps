@@ -566,15 +566,6 @@
 }
 
 /* ── 页脚 ── */
-.ipcx .foot {
-  margin-top: 44px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
-  color: var(--faint);
-  font-size: 12.5px;
-  text-align: center;
-}
-
 /* ── 焦点可见（AGENTS.md Accessibility）──
    旧站未定义任何焦点样式，键盘用户在板块内会完全失去位置感，此处补齐。
    查询框是特例：input 自带 outline:0，改由整行 :focus-within 高亮，

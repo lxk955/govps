@@ -111,10 +111,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
   const failedCount = slots.filter((s) => s.error).length;
   const lineById = new Map(loaded.map((s) => [s.product.id, lineInfo(s.product)]));
   const yearlyLabel = "折年价";
-  const comparableHint =
-    mode === "original"
-      ? "原币标价币种不同时不可直接横比，跨套餐请看折年价（按美元换算）。"
-      : "原币或付款周期不同时不可直接横比，跨套餐请看折年价（按当前币种换算）。";
+  const comparableHint = mode === "original" ? "币种不同时看折年价。" : "周期不同时看折年价。";
 
   return (
     <>
@@ -123,6 +120,7 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
           <h1 className="text-xl font-bold tracking-tight lg:text-2xl">套餐对比</h1>
           <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
             最多对比 {COMPARE_MAX} 款。{comparableHint}
+            {slots.length > 0 && slots.length < 2 ? ` 再加 ${2 - slots.length} 款即可对比。` : ""}
           </p>
           {failedCount > 0 && (
             <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
@@ -339,16 +337,6 @@ export function CompareView({ initialIds }: { initialIds: number[] }) {
             </tbody>
           </table>
         </div>
-      )}
-
-      {slots.length > 0 && (
-        <footer className="text-muted-foreground mt-4 border-t pt-3 text-xs leading-relaxed">
-          {slots.length < 2 && (
-            <>已选 {slots.length} 款，再加 {2 - slots.length} 款即可对比。{" "}</>
-          )}
-          {comparableHint} 汇率来源见
-          {" "}<Link href="/api/rates" className="underline underline-offset-2">/api/rates</Link>。
-        </footer>
       )}
     </>
   );

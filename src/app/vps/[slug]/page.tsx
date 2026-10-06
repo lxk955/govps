@@ -417,11 +417,11 @@ export default async function VpsDetailPage({ params }: PageProps) {
         <DetailShareButton product={p} />
       </div>
 
-      <footer className="text-muted-foreground text-xs leading-relaxed">
-        数据定期同步自各商家官网；价格为商家原币标价，「折年」为同币种按付款周期折算。
-        库存与价格以商家页面为准——最近核对于{" "}
-        <time dateTime={p.last_checked_at ?? undefined}>{timeAgo(p.last_checked_at)}</time>。
-      </footer>
+      <p className="text-xs text-slate-400 dark:text-slate-500">
+        最近核对于{" "}
+        <time dateTime={p.last_checked_at ?? undefined}>{timeAgo(p.last_checked_at)}</time>
+        ，以商家页面为准。
+      </p>
     </div>
   );
 }

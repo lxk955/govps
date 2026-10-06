@@ -188,9 +188,8 @@ export function WebrtcPanel() {
             </div>
           </dl>
 
-          <p className="text-muted-foreground mt-4 border-t pt-3 text-xs leading-relaxed">
-            缓解方式：浏览器禁用 WebRTC 或安装 uBlock Origin 等扩展限制非媒体站的 ICE 收集；
-            本页面仅在本地与 STUN 服务间建立探测连接，不向你以外的任何服务器上报结果。
+          <p className="text-muted-foreground mt-3 text-xs">
+            只在本地探测，结果不会上报。可关闭 WebRTC，或用扩展限制 ICE。
           </p>
         </div>
       )}
