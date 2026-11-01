@@ -185,11 +185,15 @@ export default async function VpsDetailPage({ params }: PageProps) {
     <div className="space-y-6">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdProduct) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLdProduct).replace(/</g, "\\u003c"),
+        }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdBreadcrumb) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLdBreadcrumb).replace(/</g, "\\u003c"),
+        }}
       />
 
       <DetailCycleProvider product={p}>

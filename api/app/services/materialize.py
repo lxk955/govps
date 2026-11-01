@@ -14,6 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from ..models import AffClick, NotifyEvent, Product, Watchlist
+from .rates import current_rates_map
 from .scoring import _product_search_text, calculate_scores_and_reasons, spec_group_key
 
 
@@ -93,11 +94,12 @@ def engagement_snapshot(db: Session) -> dict:
                 )
             ).all()
         ),
+        "rates": current_rates_map(db),
     }
 
 
 def score_product(p: Product, snap: dict) -> None:
-    """按既有公式计算并把评分/理由落到物化列（公式零改动）。"""
+    """按既有公式计算并把评分/理由落到物化列（多币种按汇率折算为 USD 口径对比）。"""
     deal_s, pop_s, hot_s, reasons = calculate_scores_and_reasons(
         p,
         watch_count=snap["watch_counts"].get(p.id, 0),
@@ -106,6 +108,7 @@ def score_product(p: Product, snap: dict) -> None:
         clicks_3h=snap["clicks_3h"].get(p.id, 0),
         is_recent_restock=(p.id in snap["restocked_48h"]),
         is_recent_drop=(p.id in snap["dropped_48h"]),
+        rates=snap.get("rates"),
     )
     p.deal_score = deal_s
     p.popularity_score = pop_s

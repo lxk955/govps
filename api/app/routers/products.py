@@ -19,6 +19,7 @@ from ..models import (
     to_iso_utc,
 )
 from ..schemas import yearly_price
+from ..services.client_ip import client_ip
 from ..services.materialize import engagement_snapshot, fill_static_fields, score_product
 from ..services.rates import current_rates_map
 
@@ -491,6 +492,7 @@ def list_products(
                     clicks_3h=heat_snap["clicks_3h"].get(p.id, 0),
                     is_recent_restock=(p.id in heat_snap["restocked_48h"]),
                     is_recent_drop=(p.id in heat_snap["dropped_48h"]),
+                    rates=heat_snap.get("rates"),
                 )
 
             key = p.spec_key if p.spec_key is not None else f"u:{p.id}"
@@ -656,6 +658,7 @@ def product_detail(product_id: int, db: Session = Depends(get_db)):
             clicks_3h=snap["clicks_3h"].get(p.id, 0),
             is_recent_restock=(p.id in snap["restocked_48h"]),
             is_recent_drop=(p.id in snap["dropped_48h"]),
+            rates=snap.get("rates"),
         )
         data.update(hot_score=h_s, deal_score=d_s, popularity_score=pop_s, recommend_reasons=reasons)
     data["price_snapshots"] = [
@@ -692,16 +695,19 @@ def toggle_recommend(
 def track_product_click(
     product_id: int,
     request: Request,
+    user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
     p = db.scalar(select(Product).where(Product.id == product_id))
     if p is None:
         raise HTTPException(status_code=404, detail="product not found")
+    resolved_ip = client_ip(request)
     db.add(
         AffClick(
             product_id=p.id,
+            user_id=user.id if user else None,
             src="site_click",
-            ip=request.client.host if request.client else None,
+            ip=resolved_ip[:64] if resolved_ip and resolved_ip != "unknown" else None,
             ua=request.headers.get("user-agent", "")[:255],
         )
     )

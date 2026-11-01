@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select
 
 from ..database import get_db
-from ..models import AffClick, Product
+from ..deps import get_optional_user
+from ..models import AffClick, Product, User
+from ..services.client_ip import client_ip
 from .products import _get_product_price_options, group_members
 
 router = APIRouter(tags=["go"])
@@ -28,7 +30,7 @@ def _auto_post_page(url: str, fields: dict[str, str]) -> HTMLResponse:
 <html lang="zh-CN">
 <head><meta charset="utf-8"><title>正在跳转到商家…</title></head>
 <body>
-<form id="auto-submit" method="POST" action="{url}">{inputs}</form>
+<form id="auto-submit" method="POST" action="{escape(url, quote=True)}">{inputs}</form>
 <script>document.getElementById('auto-submit').submit()</script>
 <!-- JS 被禁用时的兜底：手动点击仍可继续 -->
 <noscript>
@@ -169,6 +171,7 @@ def go(
     request: Request,
     src: str = "site",
     cycle: str | None = None,
+    user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
     product = db.scalar(
@@ -184,11 +187,13 @@ def go(
     # 点击口径：缺货时用户会被插页拦下、并未真正到达商家，
     # src 追加 _oos 后缀便于后续分析剔除未成交点击（热度统计仍计入，代表关注意向）
     click_src = src if target_product.in_stock else f"{src[:26]}_oos"
+    resolved_ip = client_ip(request)
     db.add(
         AffClick(
             product_id=target_product.id,
+            user_id=user.id if user else None,
             src=click_src[:32],
-            ip=request.client.host if request.client else None,
+            ip=resolved_ip[:64] if resolved_ip and resolved_ip != "unknown" else None,
             ua=request.headers.get("user-agent", "")[:255],
         )
     )

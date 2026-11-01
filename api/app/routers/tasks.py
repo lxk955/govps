@@ -6,6 +6,7 @@ from ..config import settings
 from ..database import get_db
 from ..deps import verify_task_token
 from ..services.backup import run_backup
+from ..services.materialize import refresh_derived_fields
 from ..services.notify import process_pending_emails
 from ..services.rates import update_rates
 from ..services.scan import run_scan
@@ -38,8 +39,12 @@ def update_rates_task(
     db: Session = Depends(get_db),
 ):
     """每日由 cron 调用：拉取汇率并写当日快照；断源时保留旧值不报错污染。
-    携带 overrides 即人工覆盖异常汇率。"""
-    return update_rates(db, overrides=payload.overrides if payload else None)
+    携带 overrides 即人工覆盖异常汇率。更新成功后同步重算多币种物化评分。"""
+    res = update_rates(db, overrides=payload.overrides if payload else None)
+    if res.get("ok") and res.get("updated"):
+        refresh_derived_fields(db)
+        db.commit()
+    return res
 
 
 @router.post("/process-emails")

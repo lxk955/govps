@@ -44,6 +44,7 @@ def calculate_scores_and_reasons(
     clicks_3h: int = 0,
     is_recent_restock: bool = False,
     is_recent_drop: bool = False,
+    rates: dict[str, float] | None = None,
 ) -> tuple[float, float, float, list[str]]:
     """计算客观值得买指数 (Deal Score)、活跃热度指数 (Popularity Score)、综合推荐指数 (Hot Score) 以及可解释推荐理由 (Reasons)。"""
     deal_score = 0.0
@@ -60,16 +61,24 @@ def calculate_scores_and_reasons(
         deal_score += 25.0
         reasons.append("优化直连线路")
 
-    # 2. 价格与性价比 (折算年付价格)
+    # 2. 价格与性价比 (折算年付价格并按实时汇率统一为 USD 口径，不改写原始货币价格)
     yp = yearly_price(p.price, p.billing_cycle)
-    if yp <= 36.0:
-        deal_score += 40.0
-        reasons.append("超低门槛年付")
-    elif yp <= 60.0:
-        deal_score += 25.0
-        reasons.append("年付高性价比")
-    elif yp <= 100.0:
-        deal_score += 15.0
+    cur = (p.currency or "USD").upper()
+    if cur == "USD":
+        yp_usd: float | None = float(yp)
+    else:
+        rate = (rates or {}).get(cur)
+        yp_usd = (float(yp) / float(rate)) if (rate and rate > 0) else None
+
+    if yp_usd is not None:
+        if yp_usd <= 36.0:
+            deal_score += 40.0
+            reasons.append("超低门槛年付")
+        elif yp_usd <= 60.0:
+            deal_score += 25.0
+            reasons.append("年付高性价比")
+        elif yp_usd <= 100.0:
+            deal_score += 15.0
 
     # 3. 硬件规格亮点 (如 7950X, >=1Gbps 大带宽, 大内存)
     name_lower = (p.name or "").lower()
@@ -79,7 +88,7 @@ def calculate_scores_and_reasons(
     if p.port_mbps and p.port_mbps >= 1000:
         deal_score += 15.0
         reasons.append("1Gbps+ 大带宽")
-    if p.ram_gb and p.ram_gb >= 2.0 and yp <= 60.0:
+    if p.ram_gb and p.ram_gb >= 2.0 and yp_usd is not None and yp_usd <= 60.0:
         deal_score += 15.0
         reasons.append("大内存高配")
 
@@ -108,7 +117,7 @@ def calculate_scores_and_reasons(
         reasons.append("精选推荐款")
 
     # 7. 冷启动探索机制 (Exploration Bonus - 消除马太效应，扶持低曝光但高性价比的好 SKU)
-    if total_clicks <= 5 and p.in_stock and (tags & PREMIUM_LINES or yp <= 60.0):
+    if total_clicks <= 5 and p.in_stock and (tags & PREMIUM_LINES or (yp_usd is not None and yp_usd <= 60.0)):
         deal_score += 25.0
         reasons.append("高性价比潜力款")
 

@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     INDEXNOW_KEY: str = "c032dbfcde5e4860a4f5f5bc98126e03"
     INDEXNOW_ENABLED: bool = True
     SERVER_IP: str = "43.173.89.152"
+    DNS_PORT: int = 53
     TASK_TOKEN: str = "change-me"
     RESEND_API_KEY: str = ""
     MAIL_FROM: str = "GoVPS · VPS雷达 <notify@govps.xyz>"

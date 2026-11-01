@@ -73,6 +73,7 @@ services:
     container_name: govps-caddy
     restart: unless-stopped
     depends_on:
+      - api
       - web
     ports:
       - "${HTTP_PORT:-80}:80"
@@ -86,7 +87,7 @@ services:
     networks:
       - govps-net
 
-  # 4. 可编程权威 DNS 服务（用于 DNS 泄露检测）
+  # 4. 可编程权威 DNS 服务（用于 DNS 泄露检测，非 root 监听高端口由 Docker 映射 53）
   dns:
     image: ${API_IMAGE:-ghcr.io/lxk955/govps-api:latest}
     build:
@@ -94,19 +95,19 @@ services:
       dockerfile: Dockerfile
     container_name: govps-dns
     restart: unless-stopped
-    user: "0"
     command: ["python", "-m", "app.services.dns_server"]
     volumes:
       - ./data:/app/data
     environment:
       - DATABASE_URL=sqlite:////app/data/govps.db
       - SITE_DOMAIN=${SITE_DOMAIN:-govps.xyz}
-      - SERVER_IP=43.173.89.152
+      - SERVER_IP=${SERVER_IP:-43.173.89.152}
+      - DNS_PORT=5353
     healthcheck:
       disable: true
     ports:
-      - "53:53/udp"
-      - "53:53/tcp"
+      - "53:5353/udp"
+      - "53:5353/tcp"
     networks:
       - govps-net
 

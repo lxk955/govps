@@ -177,8 +177,10 @@ def upsert_product(db: Session, merchant: Merchant, raw: RawProduct) -> tuple[Pr
     )
 
     incoming_stock = raw.in_stock
+    is_preset = bool(getattr(raw, "from_preset", False))
+    is_live_verified = (not is_preset) or bool(getattr(raw, "stock_verified", False))
     # 预置目录且未对实时库存进行验证时：不得改变已有商品的库存状态（既不误报有货，也不误打缺货）
-    if raw.from_preset and not raw.stock_verified and p is not None:
+    if not is_live_verified and p is not None:
         incoming_stock = p.in_stock
 
     incoming_price = raw.price if _positive_price(raw.price) else None
@@ -200,7 +202,7 @@ def upsert_product(db: Session, merchant: Merchant, raw: RawProduct) -> tuple[Pr
         if incoming_price is not None:
             db.add(PriceSnapshot(product_id=p.id, price=incoming_price, currency=raw.currency))
         db.add(StockSnapshot(product_id=p.id, in_stock=incoming_stock))
-        p.last_checked_at = datetime.now(timezone.utc)
+        p.last_checked_at = datetime.now(timezone.utc) if is_live_verified else None
         p.location = normalize_location(raw.location)
         p.line_tags = normalize_line_tags(f"{raw.name} {p.location or ''}", raw.line_tags)
         p.purchase_url = raw.purchase_url or p.purchase_url
@@ -216,8 +218,6 @@ def upsert_product(db: Session, merchant: Merchant, raw: RawProduct) -> tuple[Pr
     events: list[NotifyEvent] = []
 
     # 静态预设兜底数据严禁触发任何对外的补货或降价事件，防止因源站抖动导致虚假补货海啸
-    is_preset = getattr(raw, "from_preset", False)
-
     # 缺货 → 有货：补货事件（新品已在上面返回，不会走到这里）
     if not p.in_stock and incoming_stock and not is_preset:
         if not _has_recent_event(db, p.id, EventType.RESTOCK.value):
@@ -241,22 +241,25 @@ def upsert_product(db: Session, merchant: Merchant, raw: RawProduct) -> tuple[Pr
 
     if p.in_stock != incoming_stock:
         db.add(StockSnapshot(product_id=p.id, in_stock=incoming_stock))
-    if incoming_price is not None and Decimal(str(p.price)) != incoming_price:
+    # 未经实时验证的静态预设不得覆盖存量有效价格或伪造价格快照
+    can_update_price = is_live_verified or not _positive_price(p.price)
+    if can_update_price and incoming_price is not None and Decimal(str(p.price)) != incoming_price:
         db.add(PriceSnapshot(product_id=p.id, price=incoming_price, currency=raw.currency))
         p.prev_price = p.price
         p.price = incoming_price
 
     p.name = raw.name
     p.in_stock = incoming_stock
-    p.last_checked_at = datetime.now(timezone.utc)
-    if raw.currency:
+    if is_live_verified:
+        p.last_checked_at = datetime.now(timezone.utc)
+    if raw.currency and (is_live_verified or not p.currency):
         p.currency = raw.currency
-    if raw.billing_cycle:
+    if raw.billing_cycle and (is_live_verified or not p.billing_cycle):
         p.billing_cycle = raw.billing_cycle
     p.purchase_url = raw.purchase_url or p.purchase_url
     p.location = normalize_location(raw.location or p.location)
     p.line_tags = normalize_line_tags(f"{p.name} {p.location or ''}", raw.line_tags or p.line_tags)
-    if raw.price_options:
+    if raw.price_options and (is_live_verified or not p.price_options):
         p.price_options = raw.price_options
     _apply_specs(p, raw)
     if raw.recommended:
@@ -424,12 +427,22 @@ def _run_scan_internal(db: Session, force: bool = False) -> dict:
                     summary[crawler.slug] = "0 products (skipped)"
                     continue
 
-                merchant.last_success_at = datetime.now(timezone.utc)
-                merchant.last_error = None
-
                 total_count = len(raws)
                 official_count = sum(1 for raw in raws if not raw.from_preset)
+                verified_count = sum(
+                    1
+                    for raw in raws
+                    if (not raw.from_preset) or bool(getattr(raw, "stock_verified", False))
+                )
                 in_stock_count = sum(1 for raw in raws if raw.in_stock)
+
+                # 仅在存在实时抓取或实时库存核验的数据时推进 last_success_at；
+                # 100% 静态预设降级时保留上次真实成功时间，避免把陈旧数据伪装成刚刚验证（AGENTS.md Data Freshness）
+                if verified_count > 0:
+                    merchant.last_success_at = datetime.now(timezone.utc)
+                    merchant.last_error = None
+                else:
+                    merchant.last_error = "官方源受阻，当前回退至静态预设兜底"
 
                 if official_count == total_count:
                     log_status = "success"
@@ -493,12 +506,12 @@ def _run_scan_internal(db: Session, force: bool = False) -> dict:
                         f"{len(raws)} products ({retired} retired), {event_count} events"
                     )
 
+    # 汇率日更先行：确保随后物化评分立刻使用最新汇率（运维只配 scan 这一个 cron 时，汇率也不会长期过期）
+    rates = maybe_update_rates(db)
+
     # 扫描收尾：按既有公式全量刷新评分/理由等物化列（refactor-plan §2 #1）。
     # 关注数/点击数等时变信号每扫描周期刷新一次，列表请求不再逐条实时计算。
     refreshed = refresh_derived_fields(db)
-
-    # 汇率日更：运维只配 scan 这一个 cron 时，汇率也不会长期过期
-    rates = maybe_update_rates(db)
     pruned = prune_snapshots(db)
     db.commit()
 

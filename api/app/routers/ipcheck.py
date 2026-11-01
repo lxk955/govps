@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 import httpx
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -168,8 +168,12 @@ async def _lookup_resolver_geo(ip: str) -> str:
     return "公网递归解析器"
 
 
+_DNS_LEAK_TOKEN_RE = re.compile(r"^[a-z0-9]{8,48}$")
+
+
 @router.get("/dns-leak/results")
 async def dns_leak_results(
+    request: Request,
     token: str = Query(default="", max_length=64),
     db: Session = Depends(get_db),
 ):
@@ -178,19 +182,20 @@ async def dns_leak_results(
     读取权威 DNS 记录器记录的发出 *.dnstest.govps.xyz 查询的递归服务器 IP，
     并解析各服务器的运营商与地理位置归属。
     """
-    token = token.strip()
-    if not token:
+    if hit_rate_limited(db, f"dnsleak:{client_ip(request)}", window_seconds=60, max_requests=30):
+        raise HTTPException(status_code=429, detail="请求过于频繁，请稍后再试")
+
+    token = token.strip().lower()
+    if not token or not _DNS_LEAK_TOKEN_RE.fullmatch(token):
         return {"configured": True, "resolvers": [], "token": ""}
 
-    # 查出 10 分钟内匹配该 token 的所有 resolver_ip
+    # 仅精确匹配该 token 及其单数字探针变体（0-9），杜绝短前缀枚举泄露其他访客 Resolver IP
+    allowed_tokens = [token, *(f"{token}{i}" for i in range(10))]
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
     stmt = (
         select(DnsLeakHit.resolver_ip)
         .where(
-            or_(
-                DnsLeakHit.token == token,
-                DnsLeakHit.token.startswith(token),
-            ),
+            DnsLeakHit.token.in_(allowed_tokens),
             DnsLeakHit.created_at >= cutoff,
         )
         .distinct()

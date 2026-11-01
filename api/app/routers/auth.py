@@ -24,6 +24,8 @@ MAX_ATTEMPTS = 5
 # 计数存 request_rate_events 表，多 worker / 重启后窗口仍连续。
 IP_RATE_SECONDS = 60
 IP_MAX_REQUESTS = 5
+VERIFY_IP_RATE_SECONDS = 60
+VERIFY_IP_MAX_REQUESTS = 15
 
 
 class RequestCodeIn(BaseModel):
@@ -97,8 +99,15 @@ def request_code(payload: RequestCodeIn, request: Request, db: Session = Depends
 
 
 @router.post("/verify", response_model=TokenOut)
-def verify(payload: VerifyIn, db: Session = Depends(get_db)):
+def verify(payload: VerifyIn, request: Request, db: Session = Depends(get_db)):
     """校验验证码，换取长期 token（注册/登录合一）。"""
+    if hit_rate_limited(
+        db,
+        f"verify:{client_ip(request)}",
+        window_seconds=VERIFY_IP_RATE_SECONDS,
+        max_requests=VERIFY_IP_MAX_REQUESTS,
+    ):
+        raise HTTPException(status_code=429, detail="请求过于频繁，请稍后再试")
     email = str(payload.email).lower()
     record = db.scalar(
         select(EmailCode)

@@ -40,7 +40,7 @@ const DEFAULT_RATES: Record<string, number> = {
   CAD: 1.38,
 };
 
-function convertPrice(
+export function convertPrice(
   price: number,
   currency: string,
   mode: CurrencyMode,
@@ -65,8 +65,22 @@ function convertPrice(
         originalPrice: originalFormatted,
       };
     }
-    const fromUnits = rates[rawCurrency] || (rawCurrency === "EUR" ? 0.86 : 1);
-    const cnyUnits = rates["CNY"] || 7.2;
+    const fromUnits = rawCurrency === "USD" ? 1 : rates[rawCurrency];
+    const cnyUnits = rates["CNY"];
+    if (
+      !fromUnits ||
+      !Number.isFinite(fromUnits) ||
+      fromUnits <= 0 ||
+      !cnyUnits ||
+      !Number.isFinite(cnyUnits) ||
+      cnyUnits <= 0
+    ) {
+      return {
+        displayPrice: originalFormatted,
+        isConverted: false,
+        originalPrice: originalFormatted,
+      };
+    }
     const inUsd = price / fromUnits;
     const inCny = inUsd * cnyUnits;
     const formattedCny = inCny >= 100 ? Math.round(inCny).toString() : inCny.toFixed(1);
@@ -87,7 +101,14 @@ function convertPrice(
         originalPrice: originalFormatted,
       };
     }
-    const fromUnits = rates[rawCurrency] || 1;
+    const fromUnits = rates[rawCurrency];
+    if (!fromUnits || !Number.isFinite(fromUnits) || fromUnits <= 0) {
+      return {
+        displayPrice: originalFormatted,
+        isConverted: false,
+        originalPrice: originalFormatted,
+      };
+    }
     const inUsd = price / fromUnits;
     const formattedUsd = inUsd >= 100 ? Math.round(inUsd).toString() : inUsd.toFixed(2);
 

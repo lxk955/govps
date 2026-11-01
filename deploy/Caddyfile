@@ -20,9 +20,20 @@ http://{$SITE_DOMAIN:govps.xyz}, http://www.{$SITE_DOMAIN:govps.xyz}, http://loc
     }
     header @static Cache-Control "public, max-age=31536000, immutable"
 
+    # 后端 API 与返利跳转直连 FastAPI，避免经 Next.js rewrite 二次中转丢失真实客户端连接上下文
+    @backend {
+        path /api/* /go/*
+    }
+    reverse_proxy @backend api:8000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Proto https
+    }
+
     # 反向代理至 Next.js 容器
     reverse_proxy web:3000 {
         header_up Host {host}
+        header_up X-Real-IP {remote_host}
         header_up X-Forwarded-Proto https
     }
 }
@@ -46,9 +57,20 @@ https://{$SITE_DOMAIN:govps.xyz}, https://www.{$SITE_DOMAIN:govps.xyz} {
     }
     header @static Cache-Control "public, max-age=31536000, immutable"
 
+    # 后端 API 与返利跳转直连 FastAPI
+    @backend {
+        path /api/* /go/*
+    }
+    reverse_proxy @backend api:8000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Proto https
+    }
+
     # 反向代理至 Next.js 容器
     reverse_proxy web:3000 {
         header_up Host {host}
+        header_up X-Real-IP {remote_host}
         header_up X-Forwarded-Proto https
     }
 }

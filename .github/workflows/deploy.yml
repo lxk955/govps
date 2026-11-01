@@ -137,6 +137,9 @@ jobs:
             echo "==> Starting containers with new images..."
             docker compose up -d --remove-orphans
 
+            echo "==> Reloading Caddy configuration..."
+            docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile || docker compose restart caddy
+
             echo "==> Running database migrations..."
             docker compose exec -T api alembic upgrade head
 
