@@ -7,10 +7,22 @@ from app.models import AffClick, CrawlLog, Merchant, PageView, Product, User, Wa
 
 def _login(client, db, monkeypatch, email="admin@example.com") -> str:
     monkeypatch.setattr("app.routers.auth.send_email", lambda *a, **k: (True, None))
-    client.post("/api/auth/request-code", json={"email": email})
-    rec = db.query(__import__("app.models", fromlist=["EmailCode"]).EmailCode).filter_by(email=email).first()
+    r_req = client.post("/api/auth/request-code", json={"email": email})
+    assert r_req.status_code == 200
+    if not (db.new or db.dirty or db.deleted):
+        db.commit()
+    db.expire_all()
+    rec = (
+        db.query(__import__("app.models", fromlist=["EmailCode"]).EmailCode)
+        .populate_existing()
+        .filter_by(email=email)
+        .first()
+    )
     resp = client.post("/api/auth/verify", json={"email": email, "code": rec.code})
     assert resp.status_code == 200
+    if not (db.new or db.dirty or db.deleted):
+        db.commit()
+    db.expire_all()
     return resp.json()["token"]
 
 

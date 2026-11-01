@@ -23,7 +23,10 @@ def _request_code(client, monkeypatch, email="u@example.com"):
 
 
 def _latest_code(db, email="u@example.com") -> str:
-    rec = db.query(EmailCode).filter_by(email=email).order_by(EmailCode.id.desc()).first()
+    if not (db.new or db.dirty or db.deleted):
+        db.commit()
+    db.expire_all()
+    rec = db.query(EmailCode).populate_existing().filter_by(email=email).order_by(EmailCode.id.desc()).first()
     return rec.code
 
 
